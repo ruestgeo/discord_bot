@@ -1,1 +1,1 @@
-# BDO_TheDynasty
+# Discord bot
