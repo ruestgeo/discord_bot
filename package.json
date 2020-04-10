@@ -1,0 +1,10 @@
+{
+  "name": "JiJae_Bot",
+  "version": "1.0.0",
+  "description": "JiJae's Bot",
+  "main": "bot.js",
+  "author": "JiJae",
+  "dependencies": {
+    "discord.js": "^12.1.1"
+  }
+}
