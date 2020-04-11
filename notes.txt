@@ -1,0 +1,64 @@
+currently not functioning
+==============================//find isn't a function
+(command === '--emoji'){
+            //msg.guild.emojis.
+            //client.emojis.
+            /*const emote = client.emojis.Collection.find(emoji => emoji.name === content); //find isn't a function?
+            console.log(emote);
+            if(emote) {
+                console.log("emote found");
+                //if(msg.content.startsWith("<:"+content+":" + emote.id + ">")) { msg.react(emote.id); }
+            }
+            else {
+                console.log("emote not found");
+            }*/
+
+================================//not clear on actual usage, probably emote deletion
+
+/* reaction is disposed? */
+                    collector.on('dispose', (reaction, user) => { //dispose event is not being fired on emoji complete removal
+                        console.log("\ncollected a disposed reaction");
+                        console.log("user ["+user.username+":"+user.id+"]");
+                        console.log("  removed reaction ["+reaction.emoji.name+":"+reaction.emoji.id+"]");
+                        console.log("  on message ["+reaction.message.id+"]");
+                        if (reaction.emoji.id) { //not null -> custom
+                            var react_emote = reaction.emoji.id;
+                        }
+                        else { //null -> unicode
+                            var react_emote = reaction.emoji.name;
+                        }
+                        var role_to_assign = reactroles[reaction.message.guild.id][reaction.message.channel.id][reaction.message.id]['emotes'][react_emote];
+                        console.log("role to remove: "+role_to_assign);
+
+                        var self_remove = (user.id === reaction.client.user.id);
+                        console.log("user id: "+user.id);
+                        console.log("reaction user id: "+reaction.client.user.id);
+                        console.log("user removing own reaction: "+self_remove);
+                        
+                        //restart reaction
+                        reaction.message.react(react_emote);
+                        console.log("--replaced base emote");
+                    });
+
+================================
+//user menu removal doesn't trigger this event
+                        /*var self_remove = (user.id === reaction.client.user.id);
+                        console.log("user id: "+user.id);
+                        console.log("reaction user id: "+reaction.client.user.id);
+                        console.log("user removing own reaction: "+self_remove);
+                        
+                        //restart reaction
+                        reaction.message.react(react_emote);
+                        console.log("--replaced base emote");*/
+
+=====================================
+//for testing 
+    msg.guild.channels.resolve("").messages.fetch("")
+    .then(message => {
+        console.log(message.author.username+":"+message.author.id);
+        console.log(message.content);
+    })
+    .catch(console.error);
+
+======================================
+========================================
