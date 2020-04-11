@@ -1,4 +1,8 @@
-currently not functioning
+https://developers.google.com/sheets/api/quickstart/nodejs
+https://discord.js.org/#/docs/main/stable/general/welcome
+
+
+
 ==============================//find isn't a function
 (command === '--emoji'){
             //msg.guild.emojis.
@@ -61,4 +65,51 @@ currently not functioning
     .catch(console.error);
 
 ======================================
+//switched design from give role then delete rest to delete all then give role
+if ( role_to_assign !== current_group[( reactrole_group.includes(msg_react.emoji.id) 
+                                    ? msg_react.emoji.id // if id key exists then use id as key
+                                    : msg_react.emoji.name )] )  //if name key exists then use name as key
+                                //role is the newly added role (if emotes have the same role assignment)
+                                {
+                                    //re-add role?
+                                }
+
 ========================================
+
+console.log("--removing existing reactions in react group");
+                        var current_group = reactroles[reaction.message.guild.id][reaction.message.channel.id][reaction.message.id]['emotes'];
+                        var reactrole_group = Object.keys(current_group);
+                        var message_reactions = reaction.message.reactions.cache;
+                        var msg_reacts = message_reactions.values(); //array/iterable of MessageReaction
+                        var hadReact = false;
+                        for (var msg_react of msg_reacts){
+                            //console.log(msg_react.emoji.name+":"+msg_react.emoji.id);
+                            //console.log(msg_react.users.cache.mapValues(_user => server.members.resolve(_user.id).displayName+":"+_user.id));
+                            //console.log("new: "+role_to_assign+"    cur: "+current_group[ reactrole_group.includes(msg_react.emoji.id) ? msg_react.emoji.id : msg_react.emoji.name ]);
+                            if ( msg_react.users.resolve(user.id) ){ //member has this reaction on this message
+                                if ( ( reactrole_group.includes(msg_react.emoji.name) || reactrole_group.includes(msg_react.emoji.id) ) //react is in reactrole group
+                                    && !( (msg_react.emoji.id === react_emote) || (msg_react.emoji.name === react_emote) ) //react isn't the newly added reaction                            
+                                ){
+                                    hadReact = true;
+                                    msg_react.users.remove(user.id) //removing triggers the reaction 'remove' event and deals with the role removal
+                                    .then(m_id => {
+                                        console.log("----removed user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
+                                        //instead apply the role after handling the deletion in 'remove' event
+                                        /*console.log("--giving role to member");
+                                        member.roles.add(role.id)
+                                        .then(m_id => {
+                                            console.log("----successfully added role to member ["+m_id+"]");
+                                        })
+                                        .catch(err => {
+                                            console.log("----failed to add role due to error");
+                                            console.log(err);
+                                        });*/
+                                    })
+                                    .catch(err => {
+                                        console.log("----failed to remove user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
+                                        console.log(err);
+                                    });
+                                }
+                            }
+                            else  console.log("----user ["+server.members.resolve(user.id).displayName+":"+user.id+"] didnt have reaction on ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
+                        }
