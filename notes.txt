@@ -1,5 +1,15 @@
-https://developers.google.com/sheets/api/quickstart/nodejs
 https://discord.js.org/#/docs/main/stable/general/welcome
+
+
+https://www.youtube.com/watch?v=UGN6EUi4Yio
+https://www.npmjs.com/package/google-spreadsheet  //used
+https://developers.google.com/sheets/api/quickstart/nodejs  //not used
+
+https://console.developers.google.com/
+
+
+npm install discord.js
+npm i google-spreadsheet --save
 
 
 

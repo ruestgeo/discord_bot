@@ -19,11 +19,13 @@ Made by JiJae (ruestgeo)
 
 const Discord = require('discord.js');
 const client = new Discord.Client();
+const { promisify } = require('util');
 
 
 const token = require('./auth.json').token;
 const configs = require('./configs.json');
 const prefix = configs.prefix;
+const googleEnabled = configs.googleEnabled;
 
 var reactroles = {};
 var bot_id = null;
@@ -31,15 +33,19 @@ var bot_id = null;
 const utils = require('./utils.js');
 const reactroles_functions = require('./ReactRoles.js');
 const condroles_functions = require('./ConditionedRoles.js');
+const dump_functions = require('./DocumentDump.js');
+
+
+
+
+
+
+
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
     bot_id = client.user.id;
-    console.log("  bot client id: "+bot_id);
-
-    
-    //test
-    //console.log(client.emojis.resolveIdentifier("👍"));
+    console.log("  bot client id: "+bot_id+"\n");    
 });
 
 client.on('message', msg => {
@@ -51,7 +57,7 @@ client.on('message', msg => {
         console.log('\ni see ping, i send pong!');
     }
     
-    //to get emotes either post "\:emote:" and copy the resulting unicode icon, or use bot through "..jijaebot :emote:" and copy the result from the bot logs
+    //to get emotes either post "\:emote:" and copy the resulting unicode char
     else if (msg.content === '👍') {  //🤔   🍌
         //msg.channel.send(':thumbsup:');
         msg.react('👍');
@@ -154,11 +160,11 @@ function commandHandler(msg, command, content, isRepeat){
         "**--remove-role-condition**  ->  `{\"remove-role\": ['roleName', ...] <,  \"has-role\": ['roleName', ...]> <,  \"missing-role\": ['roleName', ...]>  }` \n" +
         ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
-        "**--document-reacts**  ->  `TBD` \n" +
-        ".     *Dumps the reaction information of a specified post (via ID) into a specified google doc/sheet* \n" +
+        "**--document-reacts**  ->  `message_link` \n" +
+        ".     *Dumps the reaction information of a specified post (via message link) into a specified google sheet* \n" +
         "- - - - - - - - - \n"+
-        "**--document-reacts**  ->  `TBD` \n" +
-        ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google doc/sheet* \n" +
+        "**--document-voice**  ->  `channel_id` \n" +
+        ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet* \n" +
         "";
         msg.reply(reply);
     }
@@ -194,7 +200,7 @@ function commandHandler(msg, command, content, isRepeat){
     /* remove a role if members have certain roles or are missing certain roles */
     else if (command === '--remove-role-conditioned'){ //for all users
         console.log("received request [give-role-conditioned]");
-        condroles_functions.removeRoles(client,msg , content);
+        condroles_functions.removeRoles(client, msg , content);
     }
 
 
@@ -202,7 +208,13 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump reacts of a post to a doc */
     else if (command === '--document-reacts'){
         console.log("received request [document-reacts]");
-        //TODO
+        if (!googleEnabled){
+            console.log("---google not enabled");
+            //msg.reply("Google has not been enabled, contact sys-admin to set up");
+            //return;
+        }
+        dump_functions.documentReactions(doc, client, msg, content)
+        .catch(err => { console.log(err)});
     }
 
 
@@ -210,14 +222,20 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump names of members in voice channel to a doc */
     else if (command === '--document-voice'){
         console.log("received request [document-voice]");
-        //TODO
+        if (!googleEnabled){
+            console.log("---google not enabled");
+            //msg.reply("Google has not been enabled, contact sys-admin to set up");
+            //return;
+        }
+        dump_functions.documentVoice(doc, client, msg, content)
+        .catch(err => { console.log(err)});
     }
 
 
 
-    /* shcedule timed events */
+    /* schedule timed events */
     else if (command === '--repeat'){
-        //--repeat mode time ----event_to_schedule args
+        //--repeat mode time +--event_to_schedule args
         console.log("received request [repeat]");
         if (isRepeat){//shouldn't repeat a repeat!
             console.log("--double repeat -> invalid");
@@ -252,7 +270,7 @@ function commandHandler(msg, command, content, isRepeat){
 
 
 function repeatEventHandler(msg, command, content){
-    //--repeat configs ----event_to_schedule args
+    //--repeat configs +--event_to_schedule args
     /* configs {mode: x, settings: {~~}}
     *
     * modes: < seconds || minutes || days || weekly > 
@@ -279,6 +297,20 @@ function repeatEventHandler(msg, command, content){
 
     //commandHandler(msg, command, content, true);
     //var set = new Set(A);
+    /*
+    var requestBody = msg.content.substring(prefix.length);
+    console.log("\nrequestBody:: "+requestBody);
+    if (requestBody.includes(' ')){
+        var command = requestBody.substr(0,requestBody.indexOf(' '));
+        var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
+    }
+    else {
+        var command = requestBody.trim();
+        var content = "{}";
+    }
+    console.log("__command:: "+command);
+    console.log("__content:: "+content);
+    */
 }
 
 
@@ -328,5 +360,36 @@ function garbage_collection(){
 }
 
 
+/***   google connect   ***/
+async function connectGoogle(configs){
+    if (!googleEnabled)
+        return null;
+    const { GoogleSpreadsheet } = require('google-spreadsheet');
+    const doc = new GoogleSpreadsheet(configs.googleSheetsId);
+    await doc.useServiceAccountAuth(require(configs.googleSecret))
+    .then(x => {
+        console.log("successfully connected to Google Sheets");
+        doc.loadInfo()
+        .then(x => {
+            console.log("Sheets title: ["+doc.title+"]");
+        })
+        .catch(err => {
+            console.log("Error loading info :-: "+err);
+        });
+    })
+    .catch(err => {
+        console.log("Error connecting to Sheets :-: "+err);
+    });
+    return doc;
+}
 
-client.login(token);
+var doc = null;    
+connectGoogle(configs)
+.then(_doc => {
+    doc = _doc;
+    client.login(token);
+})
+.catch(err => {
+    console.log(err.stack);
+    throw new Error("\nError occurred during Google Sheets connection");   
+});
