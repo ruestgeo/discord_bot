@@ -129,6 +129,7 @@ function commandHandler(msg, command, content, isRepeat){
     /* Display a post with all available commands */
     else if (command === '--help' || command === '--commands'){
         console.log("received request [help] or [commands]");
+        console.log("received request [help] or [commands]");
         var reply = "The bot commands are as follows, \n"+
         ".  ***commandName  ->  arguments*** \n"+
         ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
@@ -140,16 +141,18 @@ function commandHandler(msg, command, content, isRepeat){
         ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
         ".    `{\"message\": \"i quote, 'something' and it succeeded :>\"}`\n"+
         ".    `{\"message\": \"i quote, \\\"something\\\" and it succeeded :>\"}`\n"+
-        "================================\n"+
+        "================================";
+    var reply2 = "" +
         //"**--**  ->  ``\n" +
         //".     *description* \n" +
         //"- - - - - - - - - \n"+
-        "**--ook**  ->  *none*" +
+        "**--ook**  -> \ *none\*\n" +
         ".     *description* \n" +
         "- - - - - - - - - \n"+
-        "**--shutdown**  ->  *none*" +
+        "**--shutdown**  ->  \*none\*\n" +
         ".     *close the discord-bot (bot process is also closed)* \n" +
-        "- - - - - - - - - \n"+
+        "- - - - - - - - - ";
+    var reply3 = "" +
         "**--create-reactrole-any**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
         ".     *Create a post with reactions that will assign roles like checkboxes.  Each reaction can freely assign/remove a role.  However newlines must be entered as \\n.* \n" +
         "**--create-reactrole-any**  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
@@ -159,7 +162,8 @@ function commandHandler(msg, command, content, isRepeat){
         ".     *Create a post with reactions that will assign roles like a radio button (switching logic).  Only one reaction at a time, reacting to any others in this group will result in removal of the existing role and reaction then adding the new role (react on B removes role A and react on A, then gives role B)* \n" +
         "**--create-reactrole-switch**  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
         ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
-        "- - - - - - - - - \n"+
+        "- - - - - - - - - ";
+    var reply4 = "" +
         "**--give-role-condition**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Give role(s) to a user in the server if they have or doesn't have some role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
@@ -171,9 +175,14 @@ function commandHandler(msg, command, content, isRepeat){
         "- - - - - - - - - \n"+
         "**--document-voice**  ->  `channel_id` \n" +
         ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet* \n" +
+        "- - - - - - - - - ";
+    var reply5 = "" ;
         //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
-        "";
-        msg.reply(reply);
+        msg.channel.send(reply);
+        //msg.channel.send(reply2);
+        msg.channel.send(reply3);
+        msg.channel.send(reply4);
+        //msg.channel.send(reply5);
     }
 
 
