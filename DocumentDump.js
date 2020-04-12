@@ -98,7 +98,7 @@ module.exports = {
             } 
             else {
                 //console.log(message);
-                var msg_reacts = message.reactions.cache.values();
+                var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
                 
                 console.log("\n\nmessage ["+message.id+"]");
                 var date = new Date();

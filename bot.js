@@ -106,7 +106,7 @@ client.on( => {
 */
 
 function commandHandler(msg, command, content, isRepeat){
-    console.log("isRepeat? "+isRepeat);
+    //console.log("isRepeat? "+isRepeat);
     
     if (command === '--ook'){
         msg.react('🍌');
@@ -164,19 +164,25 @@ function commandHandler(msg, command, content, isRepeat){
         ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
         "- - - - - - - - - ";
     var reply4 = "" +
-        "**--give-role-condition**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
+        "**--give-role-conditioned**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Give role(s) to a user in the server if they have or doesn't have some role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
-        "**--remove-role-condition**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
+        "**--remove-role-conditioned**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
+        "**--give-role-conditioned2**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
+        ".     *Similar to the prior, but checks if the member is missing at least* ***one*** *role from each role-group from 'missing-role'*  \n" +
+        "- - - - - - - - - \n"+
+        "**--remove-role-conditioned2**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
+        ".     *Similar to the prior, but checks if the member has at least* ***one*** *role from each role-group from 'has-role'*  \n" +
+        "- - - - - - - - - \n";
+    var reply5 = "" +
         "**--document-reacts**  ->  `message_link` \n" +
         ".     *Dumps the reaction information of a specified post (via message link) into a specified google sheet* \n" +
         "- - - - - - - - - \n"+
         "**--document-voice**  ->  `channel_id` \n" +
         ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet* \n" +
         "- - - - - - - - - ";
-    var reply5 = "" ;
         //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
         msg.channel.send(reply);
         //msg.channel.send(reply2);
@@ -217,6 +223,22 @@ function commandHandler(msg, command, content, isRepeat){
     else if (command === '--remove-role-conditioned'){ //for all users
         console.log("received request [give-role-conditioned]");
         condroles_functions.removeRoles(client, msg , content);
+    }
+
+
+
+    /* give a role if members have certain roles or are missing certain roles */
+    else if (command === '--give-role-conditioned2'){ //for all users
+        console.log("received request [give-role-conditioned]");
+        condroles_functions.giveRoles_v2(client, msg, content);
+    }
+
+
+
+    /* remove a role if members have certain roles or are missing certain roles */
+    else if (command === '--remove-role-conditioned2'){ //for all users
+        console.log("received request [give-role-conditioned]");
+        condroles_functions.removeRoles_v2(client, msg , content);
     }
 
 
