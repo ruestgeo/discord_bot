@@ -16,14 +16,27 @@ const utils = require('./utils.js');
 module.exports = {
     reactRoles_Any: function (client, msg, content, reactroles){
         //{"message": "*the post text*" ,  "reactions": {"emote": "roleName" ,  ...} }
-        const args = JSON.parse(content);
-        if (!args.hasOwnProperty('message') || !args.hasOwnProperty('reactions')){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.  It should be of the following form: \n"+
-                "`{message: \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }`");
-            return;
+        //{ "reactions": {"emote": "roleName" ,  ...} } --+o+--MessageText--+o+-- <message>
+        var args;
+        var text_body;
+        if(content.includes("--+o+--MessageText--+o+--")){
+            var idx = content.indexOf("--+o+--MessageText--+o+--");
+            args = JSON.parse(content.substring(0,idx));
+            if (!args.hasOwnProperty('reactions')){
+                msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
+                return;
+            }
+            var text_body = content.substring(idx+"--+o+--MessageText--+o+--".length).trim();
         }
-
-        var text_body = args.message;
+        else{
+            args = JSON.parse(content);
+            if (!args.hasOwnProperty('message') || !args.hasOwnProperty('reactions')){
+                msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
+                return;
+            }
+            var text_body = args.message;
+        }
+        
         var emotes = Object.keys(args.reactions);
 
         //check if roles and emotes exist
@@ -179,14 +192,27 @@ module.exports = {
 
     reactRoles_Switch: function (client, msg, content, reactroles){
         //{"message": "*the post text*" ,  "reactions": {"emote": "roleName" ,  ...} }
-        const args = JSON.parse(content);
-        if (!args.hasOwnProperty('message') || !args.hasOwnProperty('reactions')){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.  It should be of the following form: \n"+
-                "`{message: \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }`");
-            return;
+        //{ "reactions": {"emote": "roleName" ,  ...} } --+o+--MessageText--+o+-- <message>
+        var args;
+        var text_body;
+        if(content.includes("--+o+--MessageText--+o+--")){
+            var idx = content.indexOf("--+o+--MessageText--+o+--");
+            args = JSON.parse(content.substring(0,idx));
+            if (!args.hasOwnProperty('reactions')){
+                msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
+                return;
+            }
+            var text_body = content.substring(idx+"--+o+--MessageText--+o+--".length).trim();
         }
-
-        var text_body = args.message;
+        else{
+            args = JSON.parse(content);
+            if (!args.hasOwnProperty('message') || !args.hasOwnProperty('reactions')){
+                msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
+                return;
+            }
+            var text_body = args.message;
+        }
+        
         var emotes = Object.keys(args.reactions);
 
         //check if roles and emotes exist

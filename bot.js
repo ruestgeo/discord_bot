@@ -111,6 +111,7 @@ function commandHandler(msg, command, content, isRepeat){
     if (command === '--ook'){
         msg.react('🍌');
         console.log('ook :banana:');
+        //msg.reply(content);
     }
 
     else if (command === '--emoji'){
@@ -132,7 +133,9 @@ function commandHandler(msg, command, content, isRepeat){
         ".  ***commandName  ->  arguments*** \n"+
         ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
         ".    `\"...\"` implies that you can input more than one\n"+
-        ".    `encapsulating with < and > like \"< args >\"` implies the argument is optional\n"+
+        ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
+        ".    encapsulating with single quotations like `\'(args)\'` implies the argument is literal string.\n"+
+        ".    do not include elipses, <, >, or single quotations in the command \n"+
         ".    do not use double quotations in a key value pair;  instead use single quotations or escaped double quotations for example, for example\n"+
         ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
         ".    `{\"message\": \"i quote, 'something' and it succeeded :>\"}`\n"+
@@ -148,16 +151,19 @@ function commandHandler(msg, command, content, isRepeat){
         ".     *close the discord-bot (bot process is also closed)* \n" +
         "- - - - - - - - - \n"+
         "**--create-reactrole-any**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
-        ".     *Create a post with reactions that will assign roles like checkboxes.  Each reaction can freely assign/remove a role* \n" +
+        ".     *Create a post with reactions that will assign roles like checkboxes.  Each reaction can freely assign/remove a role.  However newlines must be entered as \\n.* \n" +
+        "**--create-reactrole-any**  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
+        ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
         "- - - - - - - - - \n"+
         "**--create-reactrole-switch**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
         ".     *Create a post with reactions that will assign roles like a radio button (switching logic).  Only one reaction at a time, reacting to any others in this group will result in removal of the existing role and reaction then adding the new role (react on B removes role A and react on A, then gives role B)* \n" +
+        "**--create-reactrole-switch**  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
+        ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
         "- - - - - - - - - \n"+
-        //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
-        "**--give-role-condition**  ->  `{\"give-role\": ['roleName', ...] <,  \"has-role\": ['roleName', ...]> <,  \"missing-role\": ['roleName', ...]>  }` \n" +
+        "**--give-role-condition**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Give role(s) to a user in the server if they have or doesn't have some role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
-        "**--remove-role-condition**  ->  `{\"remove-role\": ['roleName', ...] <,  \"has-role\": ['roleName', ...]> <,  \"missing-role\": ['roleName', ...]>  }` \n" +
+        "**--remove-role-condition**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
         "**--document-reacts**  ->  `message_link` \n" +
@@ -165,6 +171,7 @@ function commandHandler(msg, command, content, isRepeat){
         "- - - - - - - - - \n"+
         "**--document-voice**  ->  `channel_id` \n" +
         ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet* \n" +
+        //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
         "";
         msg.reply(reply);
     }
