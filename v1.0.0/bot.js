@@ -73,58 +73,22 @@ client.on('message', msg => {
     /*** bot commands ***/
     else if (msg.content.startsWith(prefix)) {
         try {
-            //there is a role restriction
-            if (configs.authorizedRoles.length > 0){
-                msg.member.fetch()
-                .then(member => {
-                    var authorizedRole = null;
-                    var isAuthorized = false;
-                    for (roleID of configs.authorizedRoles){
-                        //check if any is authorized
-                        var hasRole = member.roles.cache.has(roleID);
-                        isAuthorized = isAuthorized || hasRole; //if member has any authorized role, then they can use commands
-                        if (hasRole) authorizedRole = member.roles.cache.get(roleID);
-                    }
-                    if (!isAuthorized){ //ji
-                        console.log("-- ["+member.displayName+"#"+member.user.discriminator+"] doesn't have permission to use commands");
-                        return;
-                    }
-                    else console.log("-- ["+member.displayName+"#"+member.user.discriminator+"] has permission to use commands through the ["+authorizedRole.name+":"+authorizedRole.id+"] role");
-                    var requestBody = msg.content.substring(prefix.length);
-                    console.log("\nrequestBody:: "+requestBody);
-                    if (requestBody.includes(' ')){
-                        var command = requestBody.substr(0,requestBody.indexOf(' '));
-                        var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
-                    }
-                    else {
-                        var command = requestBody.trim();
-                        var content = "{}";
-                    }
-                    console.log("__command:: "+command);
-                    console.log("__content:: "+content);
-    
-                    commandHandler(msg, command, content, false);
-                })
-                .catch(err => { console.log(err); }); 
+            //throw new Error("this is a test error");
+            var requestBody = msg.content.substring(prefix.length);
+            console.log("\nrequestBody:: "+requestBody);
+            if (requestBody.includes(' ')){
+                var command = requestBody.substr(0,requestBody.indexOf(' '));
+                var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
             }
-
-            // no role restrictions
             else {
-                var requestBody = msg.content.substring(prefix.length);
-                console.log("\nrequestBody:: "+requestBody);
-                if (requestBody.includes(' ')){
-                    var command = requestBody.substr(0,requestBody.indexOf(' '));
-                    var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
-                }
-                else {
-                    var command = requestBody.trim();
-                    var content = "{}";
-                }
-                console.log("__command:: "+command);
-                console.log("__content:: "+content);
-    
-                commandHandler(msg, command, content, false);                
+                var command = requestBody.trim();
+                var content = "{}";
             }
+            console.log("__command:: "+command);
+            console.log("__content:: "+content);
+
+            commandHandler(msg, command, content, false);
+            
         }
         catch (err){
             console.log("\n\n\nAn Error occurred");
@@ -171,7 +135,7 @@ function commandHandler(msg, command, content, isRepeat){
         ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
         ".    `\"...\"` implies that you can input more than one\n"+
         ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
-        //".    encapsulating with single quotations like `\'(args)\'` implies the argument is what is mentioned.\n"+
+        ".    encapsulating with single quotations like `\'(args)\'` implies the argument is literal string.\n"+
         ".    do not include elipses, <, >, or single quotations in the command \n"+
         ".    do not use double quotations in a key value pair;  instead use single quotations or escaped double quotations for example, for example\n"+
         ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
@@ -191,23 +155,23 @@ function commandHandler(msg, command, content, isRepeat){
     var reply3 = "" +
         "**--create-reactrole-any**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
         ".     *Create a post with reactions that will assign roles like checkboxes.  Each reaction can freely assign/remove a role.  However newlines must be entered as \\n.* \n" +
-        "*--create-reactrole-any*  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
+        "**--create-reactrole-any**  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
         ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
         "- - - - - - - - - \n"+
         "**--create-reactrole-switch**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
         ".     *Create a post with reactions that will assign roles like a radio button (switching logic).  Only one reaction at a time, reacting to any others in this group will result in removal of the existing role and reaction then adding the new role (react on B removes role A and react on A, then gives role B)* \n" +
-        "*--create-reactrole-switch*  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
+        "**--create-reactrole-switch**  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
         ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
         "- - - - - - - - - ";
     var reply4 = "" +
         "**--give-role-conditioned**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Give role(s) to a user in the server if they have or doesn't have some role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
-        "**--give-role-conditioned2**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
-        ".     *Similar to the prior, but checks if the member is missing at least* ***one*** *role from each role-group from 'missing-role'*  \n" +
-        "- - - - - - - - - \n"+
         "**--remove-role-conditioned**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
         ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
+        "- - - - - - - - - \n"+
+        "**--give-role-conditioned2**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
+        ".     *Similar to the prior, but checks if the member is missing at least* ***one*** *role from each role-group from 'missing-role'*  \n" +
         "- - - - - - - - - \n"+
         "**--remove-role-conditioned2**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
         ".     *Similar to the prior, but checks if the member has at least* ***one*** *role from each role-group from 'has-role'*  \n" +
@@ -216,28 +180,15 @@ function commandHandler(msg, command, content, isRepeat){
         "**--document-reacts**  ->  `message_link` \n" +
         ".     *Dumps the reaction information of a specified post (via message link) into a specified google sheet* \n" +
         "- - - - - - - - - \n"+
-        "**--document-reacts2**  ->  `message_link` `roleName` \n" +
-        ".     *Similar to above but lists all of roleName with true/false values for each reaction and another column for no reaction.  A role must be specified* \n" +
-        "- - - - - - - - - \n"+
-        "**--document-reacts3**  ->  `message_link` `roleName` \n" +
-        ".     *Similar to v2 but instead lists names for each reaction column.  A role must be specified* \n" +
-        "- - - - - - - - - \n";
-        var reply6 = "" +
         "**--document-voice**  ->  `channel_id` \n" +
         ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet* \n" +
-        "- - - - - - - - - \n"+
-        "**--document-voice2**  ->  `channel_id` `roleName` \n" +
-        ".     *Similar to above but lists all of roleName with true/false values for voice channel participation.  A role must be specified* \n" +
-        "- - - - - - - - - \n"+
-        "**--document-voice3**  ->  `channel_id` `roleName` \n" +
-        ".     *Similar to v2 instead lists names for participation or not.  A role must be specified* \n" +
         "- - - - - - - - - ";
         //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
         msg.channel.send(reply);
         //msg.channel.send(reply2);
         msg.channel.send(reply3);
         msg.channel.send(reply4);
-        msg.channel.send(reply5);
+        //msg.channel.send(reply5);
     }
 
 
@@ -297,8 +248,8 @@ function commandHandler(msg, command, content, isRepeat){
         console.log("received request [document-reacts]");
         if (!googleEnabled){
             console.log("---google not enabled");
-            msg.reply("Google has not been enabled, contact sys-admin to set up");
-            return;
+            //msg.reply("Google has not been enabled, contact sys-admin to set up");
+            //return;
         }
         dump_functions.documentReactions(doc, client, msg, content)
         .catch(err => { console.log(err)});
@@ -311,8 +262,8 @@ function commandHandler(msg, command, content, isRepeat){
         console.log("received request [document-voice]");
         if (!googleEnabled){
             console.log("---google not enabled");
-            msg.reply("Google has not been enabled, contact sys-admin to set up");
-            return;
+            //msg.reply("Google has not been enabled, contact sys-admin to set up");
+            //return;
         }
         dump_functions.documentVoice(doc, client, msg, content)
         .catch(err => { console.log(err)});
@@ -320,63 +271,7 @@ function commandHandler(msg, command, content, isRepeat){
 
 
 
-    /* dump reacts of a post to a doc */
-    else if (command === '--document-reacts2'){
-        console.log("received request [document-reacts2]");
-        if (!googleEnabled){
-            console.log("---google not enabled");
-            msg.reply("Google has not been enabled, contact sys-admin to set up");
-            return;
-        }
-        dump_functions.documentReactions_v2(doc, client, msg, content)
-        .catch(err => { console.log(err)});
-    }
-
-
-
-    /* dump names of members in voice channel to a doc */
-    else if (command === '--document-voice2'){
-        console.log("received request [document-voice2]");
-        if (!googleEnabled){
-            console.log("---google not enabled");
-            msg.reply("Google has not been enabled, contact sys-admin to set up");
-            return;
-        }
-        dump_functions.documentVoice_v2(doc, client, msg, content)
-        .catch(err => { console.log(err)});
-    }
-
-
-
-    /* dump reacts of a post to a doc */
-    else if (command === '--document-reacts3'){
-        console.log("received request [document-reacts3]");
-        if (!googleEnabled){
-            console.log("---google not enabled");
-            msg.reply("Google has not been enabled, contact sys-admin to set up");
-            return;
-        }
-        dump_functions.documentReactions_v3(doc, client, msg, content)
-        .catch(err => { console.log(err)});
-    }
-
-
-
-    /* dump names of members in voice channel to a doc */
-    else if (command === '--document-voice3'){
-        console.log("received request [document-voice3]");
-        if (!googleEnabled){
-            console.log("---google not enabled");
-            msg.reply("Google has not been enabled, contact sys-admin to set up");
-            return;
-        }
-        dump_functions.documentVoice_v3(doc, client, msg, content)
-        .catch(err => { console.log(err)});
-    }
-
-
-
-    /* schedule timed events WorkInProgress */
+    /* schedule timed events */
     else if (command === '--repeat'){
         //--repeat mode time +--event_to_schedule args
         console.log("received request [repeat]");

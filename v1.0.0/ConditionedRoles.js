@@ -384,9 +384,4 @@ module.exports = {
         console.log("----request complete");
     }
 
-
-    //giveRoles_v3: async function(client, msg, content){},
-        //give role if missing at least all of one group
-    //removeRoles_v3: async function(client, msg, content){}
-        //remove role if has at least all of one group
 }

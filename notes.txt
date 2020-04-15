@@ -1,6 +1,8 @@
 node version 12.16.2
 discord.js version 12.1.1
 
+--NOTE: auth.json and googleClientSecret.json  have sensitive data and are confidential, do not share them with anyone.  It may also be of interest to not share configs.json  although the data is less sensitive
+
 
 https://discord.js.org/#/docs/main/stable/general/welcome
 
@@ -8,30 +10,24 @@ https://discord.js.org/#/docs/main/stable/general/welcome
 https://www.youtube.com/watch?v=UGN6EUi4Yio
 https://www.npmjs.com/package/google-spreadsheet  //used
 https://developers.google.com/sheets/api/quickstart/nodejs  //not used
+https://console.developers.google.com/   //for setup (enable drive and sheets API and obtain clientSecret)
 
-https://console.developers.google.com/
-
-
-npm install discord.js
-npm i google-spreadsheet --save
+https://www.sqlitetutorial.net/sqlite-nodejs/
 
 
 
-==============================//find isn't a function
-(command === '--emoji'){
-            //msg.guild.emojis.
-            //client.emojis.
-            /*const emote = client.emojis.Collection.find(emoji => emoji.name === content); //find isn't a function?
-            console.log(emote);
-            if(emote) {
-                console.log("emote found");
-                //if(msg.content.startsWith("<:"+content+":" + emote.id + ">")) { msg.react(emote.id); }
-            }
-            else {
-                console.log("emote not found");
-            }*/
+npm install discord.js --save
+npm install google-spreadsheet --save
+npm install sqlite3 --save
 
-================================//not clear on actual usage, probably emote deletion
+
+https://docs.microsoft.com/en-us/windows/nodejs/setup-on-windows
+https://github.com/coreybutler/nvm-windows/releases/download/1.1.7/nvm-setup.zip
+
+
+
+
+================================//not clear on actual usage, maybe emote deletion?
 
 /* reaction is disposed? */
                     collector.on('dispose', (reaction, user) => { //dispose event is not being fired on emoji complete removal
@@ -58,17 +54,6 @@ npm i google-spreadsheet --save
                         console.log("--replaced base emote");
                     });
 
-================================
-//user menu removal doesn't trigger this event
-                        /*var self_remove = (user.id === reaction.client.user.id);
-                        console.log("user id: "+user.id);
-                        console.log("reaction user id: "+reaction.client.user.id);
-                        console.log("user removing own reaction: "+self_remove);
-                        
-                        //restart reaction
-                        reaction.message.react(react_emote);
-                        console.log("--replaced base emote");*/
-
 =====================================
 //for testing 
     msg.guild.channels.resolve("").messages.fetch("")
@@ -89,41 +74,3 @@ if ( role_to_assign !== current_group[( reactrole_group.includes(msg_react.emoji
                                 }
 
 ========================================
-
-console.log("--removing existing reactions in react group");
-                        var current_group = reactroles[reaction.message.guild.id][reaction.message.channel.id][reaction.message.id]['emotes'];
-                        var reactrole_group = Object.keys(current_group);
-                        var message_reactions = reaction.message.reactions.cache;
-                        var msg_reacts = message_reactions.values(); //array/iterable of MessageReaction
-                        var hadReact = false;
-                        for (var msg_react of msg_reacts){
-                            //console.log(msg_react.emoji.name+":"+msg_react.emoji.id);
-                            //console.log(msg_react.users.cache.mapValues(_user => server.members.resolve(_user.id).displayName+":"+_user.id));
-                            //console.log("new: "+role_to_assign+"    cur: "+current_group[ reactrole_group.includes(msg_react.emoji.id) ? msg_react.emoji.id : msg_react.emoji.name ]);
-                            if ( msg_react.users.resolve(user.id) ){ //member has this reaction on this message
-                                if ( ( reactrole_group.includes(msg_react.emoji.name) || reactrole_group.includes(msg_react.emoji.id) ) //react is in reactrole group
-                                    && !( (msg_react.emoji.id === react_emote) || (msg_react.emoji.name === react_emote) ) //react isn't the newly added reaction                            
-                                ){
-                                    hadReact = true;
-                                    msg_react.users.remove(user.id) //removing triggers the reaction 'remove' event and deals with the role removal
-                                    .then(m_id => {
-                                        console.log("----removed user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
-                                        //instead apply the role after handling the deletion in 'remove' event
-                                        /*console.log("--giving role to member");
-                                        member.roles.add(role.id)
-                                        .then(m_id => {
-                                            console.log("----successfully added role to member ["+m_id+"]");
-                                        })
-                                        .catch(err => {
-                                            console.log("----failed to add role due to error");
-                                            console.log(err);
-                                        });*/
-                                    })
-                                    .catch(err => {
-                                        console.log("----failed to remove user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
-                                        console.log(err);
-                                    });
-                                }
-                            }
-                            else  console.log("----user ["+server.members.resolve(user.id).displayName+":"+user.id+"] didnt have reaction on ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
-                        }

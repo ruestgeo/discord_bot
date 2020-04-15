@@ -1,6 +1,5 @@
 {
     "prefix": "bot-prefix  like '..mybot '",
-    "authorizedRoles": ["roleID = the number not the name; can have multiple; leave empty for no restriction"],
     "googleEnabled": false,
     "googleSecret": "path to client credentials json for example 'googleClientSecret.json'",
     "googleSheetsId": "id from sheets URL"
