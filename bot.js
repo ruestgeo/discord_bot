@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /*
 GNU General Public License v3.0
 
@@ -35,6 +37,11 @@ const reactroles_functions = require('./ReactRoles.js');
 const condroles_functions = require('./ConditionedRoles.js');
 const dump_functions = require('./DocumentDump.js');
 
+if (googleEnabled) {
+    require("./googleClientSecret.json"); //fixed name
+    require('google-spreadsheet');
+}
+
 
 
 
@@ -43,6 +50,7 @@ const dump_functions = require('./DocumentDump.js');
 
 
 client.on('ready', () => {
+    //console.log(client);
     console.log(`Logged in as ${client.user.tag}!`);
     bot_id = client.user.id;
     console.log("  bot client id: "+bot_id+"\n");    
@@ -509,7 +517,7 @@ async function connectGoogle(configs){
         return null;
     const { GoogleSpreadsheet } = require('google-spreadsheet');
     const doc = new GoogleSpreadsheet(configs.googleSheetsId);
-    await doc.useServiceAccountAuth(require(configs.googleSecret))
+    await doc.useServiceAccountAuth(require("./googleClientSecret.json"))
     .then(x => {
         console.log("successfully connected to Google Sheets");
         doc.loadInfo()
@@ -530,9 +538,15 @@ var doc = null;
 connectGoogle(configs)
 .then(_doc => {
     doc = _doc;
+    console.log("Logging in to client via token");
     client.login(token);
 })
 .catch(err => {
     console.log(err.stack);
     throw new Error("\nError occurred during Google Sheets connection");   
 });
+
+
+
+
+

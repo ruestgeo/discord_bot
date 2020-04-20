@@ -102,7 +102,7 @@ module.exports = {
                     console.log("----member ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
                     continue; 
                 }
-                member.roles.add(role_to_add.id)
+                await member.roles.add(role_to_add.id)
                 .then(m_id => console.log("----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     console.log("----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+m_id+"] due to error");
@@ -111,6 +111,7 @@ module.exports = {
             }
         }
         console.log("----request complete");
+        msg.reply("request complete");
     },
 
 
@@ -205,7 +206,7 @@ module.exports = {
                     console.log("----member ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
                     continue; 
                 }
-                member.roles.remove(role_to_remove.id)
+                await member.roles.remove(role_to_remove.id)
                 .then(m_id => console.log("----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     console.log("----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+m_id+"] due to error");
@@ -214,6 +215,7 @@ module.exports = {
             }
         }
         console.log("----request complete");
+        msg.reply("request complete");
     },
 
 
@@ -290,7 +292,7 @@ module.exports = {
                     console.log("----member ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
                     continue; 
                 }
-                member.roles.add(role_to_add.id)
+                await member.roles.add(role_to_add.id)
                 .then(m_id => console.log("----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     console.log("----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+m_id+"] due to error");
@@ -299,6 +301,7 @@ module.exports = {
             }
         }
         console.log("----request complete");
+        msg.reply("request complete");
     },
 
 
@@ -373,7 +376,7 @@ module.exports = {
                     console.log("----member ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
                     continue; 
                 }
-                member.roles.remove(role_to_remove.id)
+                await member.roles.remove(role_to_remove.id)
                 .then(m_id => console.log("----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     console.log("----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+m_id+"] due to error");
@@ -382,6 +385,7 @@ module.exports = {
             }
         }
         console.log("----request complete");
+        msg.reply("request complete");
     }
 
 

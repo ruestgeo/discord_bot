@@ -1,8 +1,9 @@
 {
   "name": "Discord_Bot",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A Discord Bot",
   "main": "bot.js",
+  "bin": "./bot.js",
   "author": "JiJae",
   "dependencies": {
     "discord.js": "^12.1.1",
