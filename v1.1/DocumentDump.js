@@ -175,7 +175,7 @@ module.exports = {
         var col = [];
         var members = [];
         var notInChannel = [];
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        console.log("--fetching members with role ["+role.name+":"+role.id+"]");
         col.push(role.name);
         for (member of role.members.values()){
             col.push(member.displayName+"#"+member.user.discriminator);
@@ -204,7 +204,7 @@ module.exports = {
             list.push(col);
 
             /* print out members not in channel */
-            console.log("\n\nUsers not in channel");
+            console.log("\n\nMembers not in channel");
             for (memberID of notInChannel){
                 var member = server.members.fetch(memberID).then(member => {
                     console.log("  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
@@ -253,8 +253,8 @@ module.exports = {
         var col = [];
         var members = [];
         var noReaction = {}; 
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
-        col.push("Users");
+        console.log("--fetching members with role ["+role.name+":"+role.id+"]");
+        col.push("Members");
         for (member of role.members.values()){
             //console.log(member);
             var member = await server.members.fetch(member);
@@ -329,7 +329,7 @@ module.exports = {
                     }
 
                     /* print out members without reaction and insert col to doc */
-                    console.log("\n\nUsers without reaction");
+                    console.log("\n\nMembers without reaction");
                     var col = [];
                     col.push("No Reaction");
                     var noReacts = Object.keys(noReaction).filter(memberID => noReaction[memberID] == true); // only get the ones that didnt react
@@ -385,7 +385,7 @@ module.exports = {
         var role = await server.roles.fetch(role.id); //for cache
         
         var members = [];
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        console.log("--fetching members with role ["+role.name+":"+role.id+"]");
         for (member of role.members.values()){
             members.push(member.id);
         }
@@ -418,7 +418,7 @@ module.exports = {
             list.push(col_NOT);
 
             /* print out members not in channel */
-            console.log("\n\nUsers not in channel");
+            console.log("\n\nMembers not in channel");
             for (var idx=1; idx < col_NOT.length; idx++){
                 console.log("  "+col_NOT[idx]);
                 
@@ -458,7 +458,7 @@ module.exports = {
         
         var noReaction = {}; 
         var members = [];
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        console.log("--fetching members with role ["+role.name+":"+role.id+"]");
         for (member of role.members.values()){
             var member = await server.members.fetch(member);
             members.push(member.id);
@@ -533,7 +533,7 @@ module.exports = {
                 }
 
                 /* print out members without reaction and insert col to doc */
-                console.log("\n\nUsers without reaction");
+                console.log("\n\nMembers without reaction");
                 var col = [];
                 col.push("No Reaction");
                 var noReacts = Object.keys(noReaction).filter(memberID => noReaction[memberID] == true); // only get the ones that didnt react

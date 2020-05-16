@@ -18,10 +18,9 @@ Made by JiJae (ruestgeo)
 */
 
 
-const package = require('./package.json');
 
 const Discord = require('discord.js');
-//const client = new Discord.Client();
+const client = new Discord.Client();
 const { promisify } = require('util');
 
 
@@ -46,80 +45,59 @@ if (googleEnabled) {
 
 
 
-function clientSetup(){
-    console.log("Setting up client event handlers");
-    client.on('ready', () => {
-        //console.log(client);
-        console.log(`Logged in as ${client.user.tag}!`);
-        bot_id = client.user.id;
-        console.log("  bot client id: "+bot_id);
-        console.log("  -- use the '--help' or '--commands' command for info");
-        botReady = true;
-        if (consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
-    });
 
-    client.on('message', msg => {
-        //console.log(msg);
-        
-        if (msg.content === 'ping') {
-            msg.reply('pong');
-            msg.channel.send('i see ping, i send pong!');
-            console.log('\ni ponged, i big bot now!');
-        }
-        
-        //to get emotes either post "\:emote:" and copy the resulting unicode char
-        else if (msg.content === '👍') {  //🤔   🍌
-            //msg.channel.send(':thumbsup:');
-            msg.react('👍');
-            console.log('\n:thumbsup:');
-        }
-        else if (msg.content.toLowerCase() === 'ook') {
-            //msg.channel.send(':thumbsup:');
-            msg.react('🍌');
-            console.log('\nook');
-        }
 
-        
-        /*** bot commands ***/
-        else if (msg.content.startsWith(prefix)) {
-            try {
-                //there is a role restriction
-                if (configs.authorizedRoles.length > 0){
-                    msg.member.fetch()
-                    .then(member => {
-                        var authorizedRole = null;
-                        var isAuthorized = false;
-                        for (roleID of configs.authorizedRoles){
-                            //check if any is authorized
-                            var hasRole = member.roles.cache.has(roleID);
-                            isAuthorized = isAuthorized || hasRole; //if member has any authorized role, then they can use commands
-                            if (hasRole) authorizedRole = member.roles.cache.get(roleID);
-                        }
-                        if (!isAuthorized){ //ji
-                            console.log("\n\n\n-- ["+member.displayName+"#"+member.user.discriminator+"] doesn't have permission to use commands");
-                            return;
-                        }
-                        else console.log("\n\n\n-- ["+member.displayName+"#"+member.user.discriminator+"] has permission to use commands through the ["+authorizedRole.name+":"+authorizedRole.id+"] role");
-                        var requestBody = msg.content.substring(prefix.length);
-                        console.log("\nrequestBody:: "+requestBody);
-                        if (requestBody.includes(' ')){
-                            var command = requestBody.substr(0,requestBody.indexOf(' '));
-                            var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
-                        }
-                        else {
-                            var command = requestBody.trim();
-                            var content = "{}";
-                        }
-                        console.log("__command:: "+command);
-                        console.log("__content:: "+content);
-        
-                        commandHandler(msg, command, content, false);
-                    })
-                    .catch(err => { console.log(err); }); 
-                }
 
-                // no role restrictions
-                else {
+
+client.on('ready', () => {
+    //console.log(client);
+    console.log(`Logged in as ${client.user.tag}!`);
+    bot_id = client.user.id;
+    console.log("  bot client id: "+bot_id+"\n");    
+});
+
+client.on('message', msg => {
+    //console.log(msg);
+    
+    if (msg.content === 'ping') {
+        msg.reply('pong');
+        msg.channel.send('i ponged, i big bot now!');
+        console.log('\ni see ping, i send pong!');
+    }
+    
+    //to get emotes either post "\:emote:" and copy the resulting unicode char
+    else if (msg.content === '👍') {  //🤔   🍌
+        //msg.channel.send(':thumbsup:');
+        msg.react('👍');
+        console.log('\n:thumbsup:');
+    }
+    else if (msg.content.toLowerCase() === 'ook') {
+        //msg.channel.send(':thumbsup:');
+        msg.react('🍌');
+        console.log('\nook');
+    }
+
+    
+    /*** bot commands ***/
+    else if (msg.content.startsWith(prefix)) {
+        try {
+            //there is a role restriction
+            if (configs.authorizedRoles.length > 0){
+                msg.member.fetch()
+                .then(member => {
+                    var authorizedRole = null;
+                    var isAuthorized = false;
+                    for (roleID of configs.authorizedRoles){
+                        //check if any is authorized
+                        var hasRole = member.roles.cache.has(roleID);
+                        isAuthorized = isAuthorized || hasRole; //if member has any authorized role, then they can use commands
+                        if (hasRole) authorizedRole = member.roles.cache.get(roleID);
+                    }
+                    if (!isAuthorized){ //ji
+                        console.log("-- ["+member.displayName+"#"+member.user.discriminator+"] doesn't have permission to use commands");
+                        return;
+                    }
+                    else console.log("-- ["+member.displayName+"#"+member.user.discriminator+"] has permission to use commands through the ["+authorizedRole.name+":"+authorizedRole.id+"] role");
                     var requestBody = msg.content.substring(prefix.length);
                     console.log("\nrequestBody:: "+requestBody);
                     if (requestBody.includes(' ')){
@@ -132,25 +110,44 @@ function clientSetup(){
                     }
                     console.log("__command:: "+command);
                     console.log("__content:: "+content);
-        
-                    commandHandler(msg, command, content, false);                
-                }
+    
+                    commandHandler(msg, command, content, false);
+                })
+                .catch(err => { console.log(err); }); 
             }
-            catch (err){
-                console.log("\n\n\nAn Error occurred");
-                console.log(err);
-                console.log("\n\n\n");
-                msg.reply("An error occured:\n"+err.stack);
+
+            // no role restrictions
+            else {
+                var requestBody = msg.content.substring(prefix.length);
+                console.log("\nrequestBody:: "+requestBody);
+                if (requestBody.includes(' ')){
+                    var command = requestBody.substr(0,requestBody.indexOf(' '));
+                    var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
+                }
+                else {
+                    var command = requestBody.trim();
+                    var content = "{}";
+                }
+                console.log("__command:: "+command);
+                console.log("__content:: "+content);
+    
+                commandHandler(msg, command, content, false);                
             }
         }
-    });
+        catch (err){
+            console.log("\n\n\nAn Error occurred");
+            console.log(err);
+            console.log("\n\n\n");
+            msg.reply("An error occured:\n"+err.stack);
+        }
+    }
+});
 
-    /*
-    client.on( => {
-        //
-    });
-    */
-}
+/*
+client.on( => {
+    //
+});
+*/
 
 function commandHandler(msg, command, content, isRepeat){
     //console.log("isRepeat? "+isRepeat);
@@ -211,16 +208,16 @@ function commandHandler(msg, command, content, isRepeat){
         ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
         "- - - - - - - - - ";
     var reply4 = "" +
-        "**--give-role-conditioned**  ->  `{\"give-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
-        ".     *Give role(s) to a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give a target role for better performance.*  \n" +
+        "**--give-role-conditioned**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
+        ".     *Give role(s) to a user in the server if they have or doesn't have some role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
-        "**--give-role-conditioned2**  ->  `{\"give-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
+        "**--give-role-conditioned2**  ->  `{\"give-role\": [\"roleName\", ...] <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
         ".     *Similar to the prior, but checks if the member is missing at least* ***one*** *role from each role-group from 'missing-role'*  \n" +
         "- - - - - - - - - \n"+
-        "**--remove-role-conditioned**  ->  `{\"remove-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
-        ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give a target role for better performance.*  \n" +
+        "**--remove-role-conditioned**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
+        ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give at least one has-role for better performance.*  \n" +
         "- - - - - - - - - \n"+
-        "**--remove-role-conditioned2**  ->  `{\"remove-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"has-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
+        "**--remove-role-conditioned2**  ->  `{\"remove-role\": [\"roleName\", ...] <,  \"has-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
         ".     *Similar to the prior, but checks if the member has at least* ***one*** *role from each role-group from 'has-role'*  \n" +
         "- - - - - - - - - \n";
     var reply5 = "" +
@@ -281,7 +278,7 @@ function commandHandler(msg, command, content, isRepeat){
 
     /* remove a role if members have certain roles or are missing certain roles */
     else if (command === '--remove-role-conditioned'){ //for all users
-        console.log("received request [remove-role-conditioned]");
+        console.log("received request [give-role-conditioned]");
         condroles_functions.removeRoles(client, msg , content);
     }
 
@@ -289,7 +286,7 @@ function commandHandler(msg, command, content, isRepeat){
 
     /* give a role if members have certain roles or are missing certain roles */
     else if (command === '--give-role-conditioned2'){ //for all users
-        console.log("received request [give-role-conditioned2]");
+        console.log("received request [give-role-conditioned]");
         condroles_functions.giveRoles_v2(client, msg, content);
     }
 
@@ -297,7 +294,7 @@ function commandHandler(msg, command, content, isRepeat){
 
     /* remove a role if members have certain roles or are missing certain roles */
     else if (command === '--remove-role-conditioned2'){ //for all users
-        console.log("received request [remove-role-conditioned2]");
+        console.log("received request [give-role-conditioned]");
         condroles_functions.removeRoles_v2(client, msg , content);
     }
 
@@ -526,8 +523,6 @@ async function connectGoogle(configs){
         doc.loadInfo()
         .then(x => {
             console.log("Sheets title: ["+doc.title+"]");
-            googleDone = true;
-            if (consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
         })
         .catch(err => {
             console.log("Error loading info :-: "+err);
@@ -539,38 +534,12 @@ async function connectGoogle(configs){
     return doc;
 }
 
-function initializeClient(){
-    console.log("Initializing client");
-    clientSetup();
-    console.log("Logging in to client via token");
-    client.login(token)
-    .then(used_token => {
-        console.log("--login complete");
-        loginDone = true;
-        if (googleEnabled && consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
-        else if (!googleEnabled)  console.log("\n\n\n");
-    })
-    .catch(err => {console.log("--ERROR [LOGIN] ::  "+err); throw new Error("\nError occurred during login");});
-}
-
-
-
-
-const client = new Discord.Client();
-var doc = null;
-var consoleGap = true;
-var botReady = false;
-var googleDone = false;
-var loginDone = false;
-
-
-
-console.log("\n\n["+package.name+"]   version -- "+package.version+"\n\n");    
-
+var doc = null;    
 connectGoogle(configs)
 .then(_doc => {
     doc = _doc;
-    initializeClient();
+    console.log("Logging in to client via token");
+    client.login(token);
 })
 .catch(err => {
     console.log(err.stack);

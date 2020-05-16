@@ -15,7 +15,7 @@ Made by JiJae (ruestgeo)
 
 module.exports = {
     giveRoles: async function(client, msg, content){
-        //{"give-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
+        //{"give-role": ['roleName', ...] <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -42,10 +42,6 @@ module.exports = {
             for (role of args["missing-role"])
                 roles.push(role);
         }
-        if (args.hasOwnProperty("target")){
-            roles.push(args["target"]);
-            console.log("----target role specified: ["+args["target"]+"]");
-        }
         var server_roles = await server.roles.fetch();
         console.log("--verifying all roles are valid");
         for (role of roles){
@@ -57,12 +53,20 @@ module.exports = {
         }
 
         var list;
-        if (args.hasOwnProperty("target")){ //use target role as list
-            console.log("--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
+        var has_role = null;
+        if (args.hasOwnProperty("has-role")){ //use list of first has-role
+            if(Object.keys(args['has-role']).length > 0){
+                var role = server_roles.cache.find(role => role.name.toLowerCase() === args['has-role'][0].toLowerCase());
+                list = role.members.values();
+                has_role = args['has-role'].slice(1); //skip the first
+            }
+            else{  //use entire server member list
+                var server_members = await server.members.fetch();
+                list = server_members.values();
+                has_role = args['has-role'];
+            }
         }
-        else{  //use entire server users as list
-            console.log("--using server users list");
+        else { //use entire server member list
             var server_members = await server.members.fetch();
             list = server_members.values();
         }
@@ -71,13 +75,13 @@ module.exports = {
         for (_member of list){
             var member = await _member.fetch();
             var skip = false;
-            if (args.hasOwnProperty("has-role")){
-                for (role of args['has-role']){ //check if member doesn't have role, if so skiptrue and break
+            if (has_role){
+                for (role of has_role){ //check if member doesn't have role, if so skiptrue and break
                     if ( !member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
                         skip = true;
-                        //console.log("user ["+member.displayName+":"+member.id+"] -- skip (A: doesn't have role) "+role);
+                        //console.log("member ["+member.displayName+":"+member.id+"] -- skip (A: doesn't have role) "+role);
                         break;
-                    }//else console.log("user ["+member.displayName+":"+member.id+"] -- skip (A: has role) "+role);
+                    }//else console.log("member ["+member.displayName+":"+member.id+"] -- skip (A: has role) "+role);
                 }
                 if (skip) continue;
             }
@@ -85,9 +89,9 @@ module.exports = {
                 for (role of args["missing-role"]){ //check if member has role, if so skiptrue and break
                     if ( member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
                         skip = true;
-                        //console.log("user ["+member.displayName+":"+member.id+"] -- skip (B: has role) "+role);
+                        //console.log("member ["+member.displayName+":"+member.id+"] -- skip (B: has role) "+role);
                         break;
-                    }//else console.log("user ["+member.displayName+":"+member.id+"] -- skip (B: doesn't have role) "+role);
+                    }//else console.log("member ["+member.displayName+":"+member.id+"] -- skip (B: doesn't have role) "+role);
                 }
                 if (skip) continue;
             }
@@ -95,13 +99,13 @@ module.exports = {
             for (role of args["give-role"]){
                 var role_to_add = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
                 if (member.roles.cache.has(role_to_add.id)){ 
-                    console.log("----user ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
+                    console.log("----member ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
                     continue; 
                 }
                 await member.roles.add(role_to_add.id)
-                .then(m_id => console.log("----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
+                .then(m_id => console.log("----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
-                    console.log("----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+m_id+"] due to error");
+                    console.log("----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+m_id+"] due to error");
                     console.log(err);
                 });
             }
@@ -115,7 +119,7 @@ module.exports = {
 
 
     removeRoles: async function(client, msg, content){
-        //{"remove-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
+        //{"remove-role": ['roleName', ...] <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -142,10 +146,6 @@ module.exports = {
             for (role of args["missing-role"])
                 roles.push(role);
         }
-        if (args.hasOwnProperty("target")){
-            roles.push(args["target"]);
-            console.log("----target role specified: ["+args["target"]+"]");
-        }
         var server_roles = await server.roles.fetch();
         console.log("--verifying all roles are valid");
         for (role of roles){
@@ -157,12 +157,20 @@ module.exports = {
         }
 
         var list;
-        if (args.hasOwnProperty("target")){ //use target role as list
-            console.log("--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
+        var has_role = null;
+        if (args.hasOwnProperty("has-role")){ //use list of first has-role
+            if(Object.keys(args['has-role']).length > 0){
+                var role = server_roles.cache.find(role => role.name.toLowerCase() === args['has-role'][0].toLowerCase());
+                list = role.members.values();
+                has_role = args['has-role'].slice(1); //skip the first
+            }
+            else{  //use entire server member list
+                var server_members = await server.members.fetch();
+                list = server_members.values();
+                has_role = args['has-role'];
+            }
         }
-        else{  //use entire server users as list
-            console.log("--using server users list");
+        else { //use entire server member list
             var server_members = await server.members.fetch();
             list = server_members.values();
         }
@@ -171,13 +179,13 @@ module.exports = {
         for (_member of list){
             var member = await _member.fetch();
             var skip = false;
-            if (args.hasOwnProperty("has-role")){
-                for (role of args['has-role']){ //check if member doesn't have role, if so skiptrue and break
+            if (has_role){
+                for (role of has_role){ //check if member doesn't have role, if so skiptrue and break
                     if ( !member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
                         skip = true;
-                        //console.log("user ["+member.displayName+":"+member.id+"] -- skip (A: doesn't have role) "+role);
+                        //console.log("member ["+member.displayName+":"+member.id+"] -- skip (A: doesn't have role) "+role);
                         break;
-                    }//else console.log("user ["+member.displayName+":"+member.id+"] -- skip (A: has role) "+role);
+                    }//else console.log("member ["+member.displayName+":"+member.id+"] -- skip (A: has role) "+role);
                 }
                 if (skip) continue;
             }
@@ -185,9 +193,9 @@ module.exports = {
                 for (role of args["missing-role"]){ //check if member has role, if so skiptrue and break
                     if ( member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
                         skip = true;
-                        //console.log("user ["+member.displayName+":"+member.id+"] -- skip (B: has role) "+role);
+                        //console.log("member ["+member.displayName+":"+member.id+"] -- skip (B: has role) "+role);
                         break;
-                    }//else console.log("user ["+member.displayName+":"+member.id+"] -- skip (B: doesn't have role) "+role);
+                    }//else console.log("member ["+member.displayName+":"+member.id+"] -- skip (B: doesn't have role) "+role);
                 }
                 if (skip) continue;
             }
@@ -195,13 +203,13 @@ module.exports = {
             for (role of args["remove-role"]){
                 var role_to_remove = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
                 if (!member.roles.cache.has(role_to_remove.id)){ 
-                    console.log("----user ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
+                    console.log("----member ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
                     continue; 
                 }
                 await member.roles.remove(role_to_remove.id)
-                .then(m_id => console.log("----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
+                .then(m_id => console.log("----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
-                    console.log("----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+m_id+"] due to error");
+                    console.log("----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+m_id+"] due to error");
                     console.log(err);
                 });
             }
@@ -216,7 +224,7 @@ module.exports = {
 
 
     giveRoles_v2: async function(client, msg, content){
-        //{"give-role": ['roleName', ...] <, "target": "roleName"> <,  "missing-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
+        //{"give-role": ['roleName', ...] <,  "missing-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -244,10 +252,6 @@ module.exports = {
                 for (role of rolegroup)
                     roles.push(role);
         }
-        if (args.hasOwnProperty("target")){
-            roles.push(args["target"]);
-            console.log("----target role specified: ["+args["target"]+"]");
-        }
         var server_roles = await server.roles.fetch();
         console.log("--verifying all roles are valid");
         for (role of roles){
@@ -258,19 +262,11 @@ module.exports = {
             }
         }
 
-        var list;
-        if (args.hasOwnProperty("target")){ //use target role as list
-            console.log("--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
-        }
-        else{  //use entire server users as list
-            console.log("--using server users list");
-            var server_members = await server.members.fetch();
-            list = server_members.values();
-        }
-        
+        var list; //use entire server member list
+        var server_members = await server.members.fetch();
+        list = server_members.values();
 
-        console.log("--searching user list for candidates");
+        console.log("--searching member list for candidates");
         for (_member of list){
             var member = await _member.fetch();
             if(args.hasOwnProperty("missing-role")){
@@ -280,8 +276,8 @@ module.exports = {
                         var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id );
                         //console.log("has "+has+" noSkip "+noSkip+" || "+(noSkip || (!has)));
                         noSkip = noSkip || (!has); //if any is true then noSkip is true, if all false then noSkip is false
-                        //if ( has ) console.log("user ["+member.displayName+":"+member.id+"] -- skip (C: has role) "+role);
-                        //else console.log("user ["+member.displayName+":"+member.id+"] -- skip (C: doesn't have role) "+role);
+                        //if ( has ) console.log("member ["+member.displayName+":"+member.id+"] -- skip (C: has role) "+role);
+                        //else console.log("member ["+member.displayName+":"+member.id+"] -- skip (C: doesn't have role) "+role);
                     }
                     //console.log("group ["+rolegroup+"] skip? "+(!noSkip));
                     if (!noSkip) break;
@@ -293,13 +289,13 @@ module.exports = {
             for (role of args["give-role"]){
                 var role_to_add = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
                 if (member.roles.cache.has(role_to_add.id)){ 
-                    console.log("----user ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
+                    console.log("----member ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
                     continue; 
                 }
                 await member.roles.add(role_to_add.id)
-                .then(m_id => console.log("----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
+                .then(m_id => console.log("----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
-                    console.log("----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+m_id+"] due to error");
+                    console.log("----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to member ["+m_id+"] due to error");
                     console.log(err);
                 });
             }
@@ -313,7 +309,7 @@ module.exports = {
 
 
     removeRoles_v2: async function(client, msg, content){
-        //{"remove-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
+        //{"remove-role": ['roleName', ...] <,  "has-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -340,10 +336,6 @@ module.exports = {
             console.log("----incorrect request body");
             return;
         }
-        if (args.hasOwnProperty("target")){
-            roles.push(args["target"]);
-            console.log("----target role specified: ["+args["target"]+"]");
-        }
         var server_roles = await server.roles.fetch();
         console.log("--verifying all roles are valid");
         for (role of roles){
@@ -354,18 +346,11 @@ module.exports = {
             }
         }
 
-        var list;
-        if (args.hasOwnProperty("target")){ //use target role as list
-            console.log("--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
-        }
-        else{  //use entire server users as list
-            console.log("--using server users list");
-            var server_members = await server.members.fetch();
-            list = server_members.values();
-        }
+        var list; //use entire server member list
+        var server_members = await server.members.fetch();
+        list = server_members.values();
 
-        console.log("--searching user list for candidates");
+        console.log("--searching member list for candidates");
         for (_member of list){
             var member = await _member.fetch();
             if(args.hasOwnProperty("has-role")){
@@ -375,8 +360,8 @@ module.exports = {
                         var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id );
                         //console.log("has "+has+" noSkip "+noSkip+" || "+(noSkip || has));
                         noSkip = noSkip || has; //if any is true then noSkip is true, if all false then noSkip is false
-                        //if ( has ) console.log("user ["+member.displayName+":"+member.id+"] -- skip (D: has role) "+role);
-                        //else console.log("user ["+member.displayName+":"+member.id+"] -- skip (D: doesn't have role) "+role);
+                        //if ( has ) console.log("member ["+member.displayName+":"+member.id+"] -- skip (D: has role) "+role);
+                        //else console.log("member ["+member.displayName+":"+member.id+"] -- skip (D: doesn't have role) "+role);
                     }
                     //console.log("group ["+rolegroup+"] skip? "+(!noSkip));
                     if (!noSkip) break;
@@ -388,13 +373,13 @@ module.exports = {
             for (role of args["remove-role"]){
                 var role_to_remove = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
                 if (!member.roles.cache.has(role_to_remove.id)){ 
-                    console.log("----user ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
+                    console.log("----member ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
                     continue; 
                 }
                 await member.roles.remove(role_to_remove.id)
-                .then(m_id => console.log("----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
+                .then(m_id => console.log("----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
-                    console.log("----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+m_id+"] due to error");
+                    console.log("----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from member ["+m_id+"] due to error");
                     console.log(err);
                 });
             }
