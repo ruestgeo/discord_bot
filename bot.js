@@ -64,19 +64,19 @@ function clientSetup(){
         if (msg.content === 'ping') {
             msg.reply('pong');
             msg.channel.send('i see ping, i send pong!');
-            console.log('\ni ponged, i big bot now!');
+            console.log('\n\n\ni ponged, i big bot now!');
         }
         
         //to get emotes either post "\:emote:" and copy the resulting unicode char
         else if (msg.content === '👍') {  //🤔   🍌
             //msg.channel.send(':thumbsup:');
             msg.react('👍');
-            console.log('\n:thumbsup:');
+            console.log('\n\n\n:thumbsup:');
         }
         else if (msg.content.toLowerCase() === 'ook') {
             //msg.channel.send(':thumbsup:');
             msg.react('🍌');
-            console.log('\nook');
+            console.log('\n\n\nook');
         }
 
         
@@ -172,6 +172,11 @@ function commandHandler(msg, command, content, isRepeat){
         msg.reply(content); //unicode or <:name:id> code
     }
 
+    else if (command === '--version'){
+        console.log("\nreceived version query\n["+package.name+"]   version -- "+package.version+"\n\n"); 
+        msg.reply("["+package.name+"]   version -- "+package.version); 
+    }
+
 
     /* Display a post with all available commands */
     else if (command === '--help' || command === '--commands'){
@@ -256,7 +261,9 @@ function commandHandler(msg, command, content, isRepeat){
     /* "checkbox" reactions post */
     else if (command === '--create-reactrole-any'){
         console.log("received request [create-reactrole-any]");
-        reactroles_functions.reactRoles_Any(client, msg, content, reactroles);
+        msg.reply("received and processing request [create-reactrole-any]");
+        reactroles_functions.reactRoles_Any(client, msg, content, reactroles)
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
         console.log(reactroles);
     }
 
@@ -265,7 +272,9 @@ function commandHandler(msg, command, content, isRepeat){
     /* "radio button" reactions post */
     else if (command === '--create-reactrole-switch'){
         console.log("received request [create-reactrole-switch]");
-        reactroles_functions.reactRoles_Switch(client, msg, content, reactroles);
+        msg.reply("received and processing request [create-reactrole-switch]");
+        reactroles_functions.reactRoles_Switch(client, msg, content, reactroles)
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
         console.log(reactroles);
     }
 
@@ -274,7 +283,9 @@ function commandHandler(msg, command, content, isRepeat){
     /* give a role if members have certain roles or are missing certain roles */
     else if (command === '--give-role-conditioned'){ //for all users
         console.log("received request [give-role-conditioned]");
-        condroles_functions.giveRoles(client, msg, content);
+        msg.reply("received and processing request [give-role-conditioned]");
+        condroles_functions.giveRoles(client, msg, content)
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -282,7 +293,9 @@ function commandHandler(msg, command, content, isRepeat){
     /* remove a role if members have certain roles or are missing certain roles */
     else if (command === '--remove-role-conditioned'){ //for all users
         console.log("received request [remove-role-conditioned]");
-        condroles_functions.removeRoles(client, msg , content);
+        msg.reply("received and processing request [remove-role-conditioned]");
+        condroles_functions.removeRoles(client, msg , content)
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -290,7 +303,9 @@ function commandHandler(msg, command, content, isRepeat){
     /* give a role if members have certain roles or are missing certain roles */
     else if (command === '--give-role-conditioned2'){ //for all users
         console.log("received request [give-role-conditioned2]");
-        condroles_functions.giveRoles_v2(client, msg, content);
+        msg.reply("received and processing request [give-role-conditioned2]");
+        condroles_functions.giveRoles_v2(client, msg, content)
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -298,7 +313,9 @@ function commandHandler(msg, command, content, isRepeat){
     /* remove a role if members have certain roles or are missing certain roles */
     else if (command === '--remove-role-conditioned2'){ //for all users
         console.log("received request [remove-role-conditioned2]");
-        condroles_functions.removeRoles_v2(client, msg , content);
+        msg.reply("received and processing request [remove-role-conditioned2]");
+        condroles_functions.removeRoles_v2(client, msg , content)
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -306,13 +323,14 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump reacts of a post to a doc */
     else if (command === '--document-reacts'){
         console.log("received request [document-reacts]");
+        msg.reply("received and processing request [document-reacts]");
         if (!googleEnabled){
             console.log("---google not enabled");
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
         dump_functions.documentReactions(doc, client, msg, content)
-        .catch(err => { console.log(err)});
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -320,13 +338,14 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump names of members in voice channel to a doc */
     else if (command === '--document-voice'){
         console.log("received request [document-voice]");
+        msg.reply("received and processing request [document-voice]");
         if (!googleEnabled){
             console.log("---google not enabled");
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
         dump_functions.documentVoice(doc, client, msg, content)
-        .catch(err => { console.log(err)});
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -334,13 +353,14 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump reacts of a post to a doc */
     else if (command === '--document-reacts2'){
         console.log("received request [document-reacts2]");
+        msg.reply("received and processing request [document-reacts2]");
         if (!googleEnabled){
             console.log("---google not enabled");
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
         dump_functions.documentReactions_v2(doc, client, msg, content)
-        .catch(err => { console.log(err)});
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -348,13 +368,14 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump names of members in voice channel to a doc */
     else if (command === '--document-voice2'){
         console.log("received request [document-voice2]");
+        msg.reply("received and processing request [document-voice2]");
         if (!googleEnabled){
             console.log("---google not enabled");
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
         dump_functions.documentVoice_v2(doc, client, msg, content)
-        .catch(err => { console.log(err)});
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -362,13 +383,14 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump reacts of a post to a doc */
     else if (command === '--document-reacts3'){
         console.log("received request [document-reacts3]");
+        msg.reply("received and processing request [document-reacts3]");
         if (!googleEnabled){
             console.log("---google not enabled");
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
         dump_functions.documentReactions_v3(doc, client, msg, content)
-        .catch(err => { console.log(err)});
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -376,13 +398,14 @@ function commandHandler(msg, command, content, isRepeat){
     /* dump names of members in voice channel to a doc */
     else if (command === '--document-voice3'){
         console.log("received request [document-voice3]");
+        msg.reply("received and processing request [document-voice3]");
         if (!googleEnabled){
             console.log("---google not enabled");
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
         dump_functions.documentVoice_v3(doc, client, msg, content)
-        .catch(err => { console.log(err)});
+        .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
 
@@ -391,6 +414,7 @@ function commandHandler(msg, command, content, isRepeat){
     else if (command === '--repeat'){
         //--repeat mode time +--event_to_schedule args
         console.log("received request [repeat]");
+        msg.reply("received and processing request [repeat]");
         if (isRepeat){//shouldn't repeat a repeat!
             console.log("--double repeat -> invalid");
             msg.reply("repeating a repeat is not allowed!");
@@ -465,6 +489,7 @@ function repeatEventHandler(msg, command, content){
     console.log("__command:: "+command);
     console.log("__content:: "+content);
     */
+   msg.reply("this function is not supported yet");
 }
 
 
