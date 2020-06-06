@@ -11,7 +11,7 @@ Made by JiJae (ruestgeo)
 --feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
 */
 
-//const utils = require('./utils.js');
+const utils = require('./utils.js');
 
 module.exports = {
     giveRoles: async function(client, msg, content){

@@ -32,5 +32,12 @@ module.exports = {
             //console.log("unicode emote: "+emote);
         }
         return {'emote': emote, 'type': type};
-    }
+    },
+
+
+    sleep: function (ms) { //example:  await sleep(1000);
+        return new Promise((resolve) => {
+            setTimeout(resolve, ms);
+        });
+    } 
 }

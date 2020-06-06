@@ -58,6 +58,8 @@ function clientSetup(){
         if (consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
     });
 
+    //TODO:  setpresence away when no commands, active when processing commands
+
     client.on('message', msg => {
         //console.log(msg);
         
@@ -185,11 +187,11 @@ function commandHandler(msg, command, content, isRepeat){
         var reply = "The bot commands are as follows, \n"+
         ".  ***commandName  ->  arguments*** \n"+
         ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
-        ".    `\"...\"` implies that you can input more than one\n"+
+        ".    `...` (ellipsis) implies that you can input more than one\n"+
         ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
         //".    encapsulating with single quotations like `\'(args)\'` implies the argument is what is mentioned.\n"+
         ".    do not include elipses, <, >, or single quotations in the command \n"+
-        ".    do not use double quotations in a key value pair;  instead use single quotations or escaped double quotations for example, for example\n"+
+        ".    do not use double quotations in a key value pair as it is used to encapsulate the key or value;  instead use single quotations or escaped double quotations for example, for example\n"+
         ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
         ".    `{\"message\": \"i quote, 'something' and it succeeded :>\"}`\n"+
         ".    `{\"message\": \"i quote, \\\"something\\\" and it succeeded :>\"}`\n"+
@@ -198,11 +200,8 @@ function commandHandler(msg, command, content, isRepeat){
         //"**--**  ->  ``\n" +
         //".     *description* \n" +
         //"- - - - - - - - - \n"+
-        "**--ook**  -> \ *none\*\n" +
-        ".     *description* \n" +
-        "- - - - - - - - - \n"+
         "**--shutdown**  ->  \*none\*\n" +
-        ".     *close the discord-bot (bot process is also closed)* \n" +
+        ".     * close all listening instances of the discord bot* \n" +
         "- - - - - - - - - ";
     var reply3 = "" +
         "**--create-reactrole-any**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
@@ -250,10 +249,11 @@ function commandHandler(msg, command, content, isRepeat){
         "- - - - - - - - - ";
         //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
         msg.channel.send(reply);
-        //msg.channel.send(reply2);
+        msg.channel.send(reply2);
         msg.channel.send(reply3);
         msg.channel.send(reply4);
         msg.channel.send(reply5);
+        msg.channel.send(reply6);
     }
 
 

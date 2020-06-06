@@ -27,9 +27,9 @@ https://github.com/coreybutler/nvm-windows/releases/download/1.1.7/nvm-setup.zip
 
 
 
-================================//not clear on actual usage, maybe emote deletion?
+================================//not clear on actual usage, maybe emote deletion? dont really need it anyway
 
-/* reaction is disposed? */
+                    /* reaction is disposed? */
                     collector.on('dispose', (reaction, user) => { //dispose event is not being fired on emoji complete removal
                         console.log("\ncollected a disposed reaction");
                         console.log("user ["+user.username+":"+user.id+"]");

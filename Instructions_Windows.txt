@@ -1,6 +1,6 @@
 Windows 10 instructions
 
-Full instructions for installation found on
+nodejs setup instructions found on
 https://docs.microsoft.com/en-us/windows/nodejs/setup-on-windows
 
 1. Download and install nvm from the following link
