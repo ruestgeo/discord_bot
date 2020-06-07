@@ -13,8 +13,20 @@ Made by JiJae (ruestgeo)
 
 const utils = require('./utils.js');
 
-const dumpToSheet = async (msg, doc, sheet_title, list, rowStart, rowEnd, colStart, colEnd) => {
-    const sheet = await doc.addSheet({ title: sheet_title });
+const dumpToSheet = async (msg, globals, sheet_title, list, rowStart, rowEnd, colStart, colEnd) => {
+    var doc = globals.doc;
+    var configs = globals.configs;
+    var rowSize;
+    var colSize;
+    if (configs.autoSheetSize){
+        rowSize = rowEnd-rowStart;
+        colSize = colEnd-colStart;
+    }
+    else { //take the default, or the min necessary amount of rows/cols to fit the data
+        rowSize = Math.min(configs.defaultSheetRows , rowEnd-rowStart);
+        colSize = Math.min(configs.defaultSheetCols , colEnd-colStart);
+    }
+    const sheet = await doc.addSheet({ title: sheet_title, gridProperties: { rowCount: rowSize, columnCount: colSize, frozenRowCount: 1 } });
     await sheet.loadCells({
         startRowIndex: rowStart, endRowIndex: rowEnd, startColumnIndex: colStart, endColumnIndex: colEnd
     });
@@ -24,8 +36,8 @@ const dumpToSheet = async (msg, doc, sheet_title, list, rowStart, rowEnd, colSta
         cell.textFormat = { bold: true };
         cell.value = list[i][0];
     }
-    for (var j=rowStart+1; j<rowEnd; j++){ //row
-        for (var i=colStart; i<colEnd; i++){ //load headers with bold
+    for (var j=rowStart+1; j<rowEnd; j++){
+        for (var i=colStart; i<colEnd; i++){
             const cell = sheet.getCell(j, i);
             cell.value = list[i][j];
         }
@@ -34,18 +46,33 @@ const dumpToSheet = async (msg, doc, sheet_title, list, rowStart, rowEnd, colSta
     msg.reply("Data has been dumped to doc "+"<https://docs.google.com/spreadsheets/d/"+doc.spreadsheetId+"#gid="+sheet.sheetId+">");
 }
 
+const getTime = (globals) => {
+    var configs = globals.configs;
+    const DateTime = globals["luxon"].DateTime;
+    var _date;
+    if (DateTime.local().setZone(configs.IANAZoneTime).isValid) {
+        _date = DateTime.fromISO(DateTime.utc(), {zone: configs.IANAZoneTime});
+    }
+    else { //invalid IANA zone identifier, use UTC as default
+        console.log("## invalid IANA zone identifier, assuming UTC");
+        _date = DateTime.utc();
+    }
+    var date = _date.toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', timeZoneName: "short" });
+    return date;
+}
+
 module.exports = {
     documentVoice: async function (globals, msg, content){
-        var doc = globals.doc;
         var client = globals.client;
 
         console.log("--fetching channel ["+content+"]");
         client.channels.fetch(content.trim())
         .then(channel => {
             var voice_members = channel.members.values();
-            var date = new Date(); //console.log(date.toISOString());
-            //var channel_title = channel.type+" channel ["+channel.name+":"+channel.id+"] "+date.toUTCString();
-            var channel_title = channel.type+" channel ["+channel.name+"] "+date.toUTCString();
+            
+            var date = getTime(globals);
+            var channel_title = channel.type+" channel ["+channel.name+"] "+date;
+
             console.log("\n\n"+channel_title);
             var list = [];
             var col = [];
@@ -57,7 +84,7 @@ module.exports = {
             list.push(col);
 
             /**  create new sheet and dump info  **/
-            dumpToSheet(msg, doc, channel_title, list, 0, col.length, 0, 1);
+            dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, 1);
 
         })
         .catch(err => {
@@ -72,7 +99,6 @@ module.exports = {
 
     documentReactions: async function (globals, msg, content){
         // https://discordapp.com/channels/<server>/<channel>/<message>
-        var doc = globals.doc;
         var client = globals.client;
         
         content = content.trim();
@@ -109,9 +135,11 @@ module.exports = {
                 var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
                 
                 console.log("\n\nmessage ["+message.id+"] reactions");
-                var date = new Date();
-                var reacts_title = "reacts "+date.toUTCString()+"  "+channel.name+"/"+message.id;
-                const fetchUsers = async (doc, msg, message, msg_reacts) => { //declare the func, then later need to call it
+                
+                var date = getTime(globals);
+                var reacts_title = "reacts "+date+"  "+channel.name+"/"+message.id;
+
+                const fetchUsers = async (globals, msg, message, msg_reacts, reacts_title) => { //declare the func, then later need to call it
                     var list = [];
                     var longest_col = 0;
                     for (msg_react of msg_reacts){
@@ -137,10 +165,10 @@ module.exports = {
                     }
 
                     /**  create new sheet and dump info  **/
-                    dumpToSheet(msg, doc, reacts_title, list, 0, longest_col, 0, list.length);
+                    dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length);
 
                 }
-                fetchUsers(doc, msg, message, msg_reacts);
+                fetchUsers(globals, msg, message, msg_reacts, reacts_title);
             }
         })
         .catch(err => {
@@ -156,7 +184,6 @@ module.exports = {
     
     
     documentVoice_v2: async function (globals, msg, content){
-        var doc = globals.doc;
         var client = globals.client;
         
         if (!content.includes(' ')){
@@ -197,9 +224,11 @@ module.exports = {
         client.channels.fetch(target.trim())
         .then(channel => {
             var voice_members = channel.members;
-            var date = new Date();
-            var channel_title = channel.type+" channel ["+channel.name+"] "+date.toUTCString();
+
+            var date = getTime(globals);
+            var channel_title = channel.type+" channel ["+channel.name+"] "+date;
             console.log("\n\n"+channel_title);
+
             col = [];
             col.push("#"+channel.name);
             for (memberID of members){ 
@@ -222,7 +251,7 @@ module.exports = {
             }
 
             /**  create new sheet and dump info  **/
-            dumpToSheet(msg, doc, channel_title, list, 0, col.length, 0, list.length);
+            dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, list.length);
 
         })
         .catch(err => {
@@ -237,7 +266,6 @@ module.exports = {
 
     documentReactions_v2: async function (globals, msg, content){
         // https://discordapp.com/channels/<server>/<channel>/<message>
-        var doc = globals.doc;
         var client = globals.client;
         
         if (!content.includes(' ')){
@@ -310,9 +338,10 @@ module.exports = {
                 var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
                 
                 console.log("\n\nmessage ["+message.id+"] reactions");
-                var date = new Date();
-                var reacts_title = "reacts "+date.toUTCString()+"  "+channel.name+"/"+message.id;
-                const fetchUsers = async (doc, msg, message, msg_reacts, list, members, noReaction) => { //declare the func, then later need to call it
+                var date = getTime(globals);
+                var reacts_title = "reacts "+date+"  "+channel.name+"/"+message.id;
+
+                const fetchUsers = async (globals, msg, message, msg_reacts, reacts_title, list, members, noReaction) => { //declare the func, then later need to call it
                     var longest_col = 0;
                     for (msg_react of msg_reacts){
                         var col = [];
@@ -356,10 +385,10 @@ module.exports = {
                     
 
                     /**  create new sheet and dump info  **/
-                    dumpToSheet(msg, doc, reacts_title, list, 0, longest_col, 0, list.length);
+                    dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length);
 
                 }
-                fetchUsers(doc, msg, message, msg_reacts, list, members, noReaction);
+                fetchUsers(globals, msg, message, msg_reacts, reacts_title, list, members, noReaction);
             }
         })
         .catch(err => {
@@ -375,7 +404,6 @@ module.exports = {
 
 
     documentVoice_v3: async function (globals, msg, content){
-        var doc = globals.doc;
         var client = globals.client;
         
         if (!content.includes(' ')){
@@ -406,7 +434,7 @@ module.exports = {
         }
         console.log("----complete");
 
-        const fetchUsers = async (client, msg, doc, members, roleName) => {
+        const fetchUsers = async (client, msg, globals, members, roleName) => {
             var list = [];
             var col_IN = [];
             var col_NOT = [];
@@ -417,9 +445,11 @@ module.exports = {
                 msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
             });
             var voice_members = channel.members;
-            var date = new Date();
-            var channel_title = roleName+" in "+channel.type+" ["+channel.name+"] "+date.toUTCString();
+            
+            var date = getTime(globals);
+            var channel_title = roleName+" in "+channel.type+" ["+channel.name+"] "+date;
             console.log("\n\n"+channel_title);
+            
             col_IN.push("#"+channel.name);
             col_NOT.push("Not in Channel");
             for (memberID of members){ 
@@ -440,9 +470,9 @@ module.exports = {
             }
 
             /**  create new sheet and dump info  **/
-            dumpToSheet(msg, doc, channel_title, list, 0, Math.max(col_IN.length, col_NOT.length), 0, list.length);
+            dumpToSheet(msg, globals, channel_title, list, 0, Math.max(col_IN.length, col_NOT.length), 0, list.length);
         }
-        await fetchUsers(client, msg, doc, members, role.name);
+        await fetchUsers(client, msg, globals, members, role.name);
     },
 
 
@@ -450,7 +480,6 @@ module.exports = {
 
     documentReactions_v3: async function (globals, msg, content){
         // https://discordapp.com/channels/<server>/<channel>/<message>
-        var doc = globals.doc;
         var client = globals.client;
         
         if (!content.includes(' ')){
@@ -519,9 +548,11 @@ module.exports = {
         else {
             var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
             console.log("\n\nmessage ["+message.id+"] reactions");
-            var date = new Date();
-            var reacts_title = role.name+" reacts "+date.toUTCString()+"  "+channel.name+"/"+message.id;
-            const fetchUsers = async (doc, msg, message, msg_reacts, members, noReaction) => {  //declare the func, then later need to call it
+            
+            var date = getTime(globals);
+            var reacts_title = role.name+" reacts "+date+"  "+channel.name+"/"+message.id;
+
+            const fetchUsers = async (globals, msg, message, msg_reacts, reacts_title, members, noReaction) => {  //declare the func, then later need to call it
                 var list = [];
                 var longest_col = 0;
                 for (msg_react of msg_reacts){
@@ -565,10 +596,10 @@ module.exports = {
                 list.push(col);
 
                 /**  create new sheet and dump info  **/
-                dumpToSheet(msg, doc, reacts_title, list, 0, longest_col, 0, list.length);
+                dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length);
 
             }
-            await fetchUsers(doc, msg, message, msg_reacts, members, noReaction);
+            await fetchUsers(globals, msg, message, msg_reacts, reacts_title, members, noReaction);
         }
     },
 

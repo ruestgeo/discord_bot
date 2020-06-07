@@ -5,6 +5,8 @@
     "googleSheetsId": "id from sheets URL",
     "defaultSheetRows": 200,
     "defaultSheetCols": 10,
+    "autoSheetSize": false,
+    "IANAZoneTime" : "A zone identified by an IANA identifier, like America/New_York.  see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
     "logsFile": "append / overwrite / newfile / none",
     "startupStatusText": "Bot awaiting commands",
     "idleStatusText": "Bot awaiting commands",

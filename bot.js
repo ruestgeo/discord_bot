@@ -33,6 +33,7 @@ const googleEnabled = configs.googleEnabled;
 
 
 const utils = require('./utils.js');
+const luxon = require('luxon');
 const reactroles_functions = require('./ReactRoles.js');
 const condroles_functions = require('./ConditionedRoles.js');
 const dump_functions = require('./DocumentDump.js');
@@ -54,6 +55,7 @@ globals["configs"] = configs;
 globals["logsFileName"] = "LOGS.txt"; //default
 globals["logsFile"] = null; //open file handler when command is being processed, close it on error or finish
 globals["timers"] = [];
+globals["luxon"] = luxon;
 
 var tempString = "";
 
@@ -364,7 +366,7 @@ function commandHandler(msg, command, content, isRepeat){
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
-        dump_functions.documentReactions(doc, client, msg, content)
+        dump_functions.documentReactions(globals, msg, content)
         .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
@@ -379,7 +381,7 @@ function commandHandler(msg, command, content, isRepeat){
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
-        dump_functions.documentVoice(doc, client, msg, content)
+        dump_functions.documentVoice(globals, msg, content)
         .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
@@ -394,7 +396,7 @@ function commandHandler(msg, command, content, isRepeat){
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
-        dump_functions.documentReactions_v2(doc, client, msg, content)
+        dump_functions.documentReactions_v2(globals, msg, content)
         .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
@@ -409,7 +411,7 @@ function commandHandler(msg, command, content, isRepeat){
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
-        dump_functions.documentVoice_v2(doc, client, msg, content)
+        dump_functions.documentVoice_v2(globals, msg, content)
         .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
@@ -424,7 +426,7 @@ function commandHandler(msg, command, content, isRepeat){
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
-        dump_functions.documentReactions_v3(doc, client, msg, content)
+        dump_functions.documentReactions_v3(globals, msg, content)
         .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
@@ -439,7 +441,7 @@ function commandHandler(msg, command, content, isRepeat){
             msg.reply("Google has not been enabled, contact sys-admin to set up");
             return;
         }
-        dump_functions.documentVoice_v3(doc, client, msg, content)
+        dump_functions.documentVoice_v3(globals, msg, content)
         .catch(err => {  console.log("ERROR in handling command\n"+err.stack); msg.reply("An error occured:  "+err);  });
     }
 
