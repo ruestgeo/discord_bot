@@ -41,35 +41,10 @@ module.exports = {
         });
     },
 
-    botLogs: function (globals, content){
+    log_to_file: function (toFile, content){
         if (toFile){
-            var file = globals.logsFile;
-            if (file == null){
-                console.log("## error: logsfile handle is null, retrying");
-                this.obtain_log_file(globals);
-                this.botLogs(globals, content);
-                return;
-            }
             //record to file
         }
         console.log(content);
-    },
-
-    obtain_log_file: function (globals){
-        var configs = globals.configs;
-
-        if ((configs.logsFileMode !== "none") || (configs.logsFileMode !== "")){
-            //setup to append to logsFile and set configs.logsFile from configs.logsFileName
-
-        } 
-        //else ignore
-    },
-
-    close_log_file: function (globals){
-        //
-    },
-
-    change_status: function(status, text){
-        //TODO
     }
 }

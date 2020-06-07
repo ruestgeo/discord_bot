@@ -1,0 +1,6 @@
+{
+    "prefix": "bot-prefix  like '..mybot '",
+    "authorizedRoles": ["roleID = the number not the name; can have multiple; leave empty for no restriction"],
+    "googleEnabled": false,
+    "googleSheetsId": "id from sheets URL"
+}

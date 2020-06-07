@@ -14,11 +14,8 @@ Made by JiJae (ruestgeo)
 const utils = require('./utils.js');
 
 module.exports = {
-    giveRoles: async function(globals, msg, content){
+    giveRoles: async function(client, msg, content){
         //{"give-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
-
-        var client = globals.client;
-
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -117,11 +114,8 @@ module.exports = {
 
 
 
-    removeRoles: async function(globals, msg, content){
+    removeRoles: async function(client, msg, content){
         //{"remove-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
-
-        var client = globals.client;
-
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -221,11 +215,8 @@ module.exports = {
 
 
 
-    giveRoles_v2: async function(globals, msg, content){
+    giveRoles_v2: async function(client, msg, content){
         //{"give-role": ['roleName', ...] <, "target": "roleName"> <,  "missing-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
-
-        var client = globals.client;
-
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -321,11 +312,8 @@ module.exports = {
 
 
 
-    removeRoles_v2: async function(globals, msg, content){
+    removeRoles_v2: async function(client, msg, content){
         //{"remove-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
-
-        var client = globals.client;
-
         console.log("--parsing request");
         const args = JSON.parse(content);
 
@@ -416,8 +404,8 @@ module.exports = {
     }
 
 
-    //giveRoles_v3: async function(globals, msg, content){},
+    //giveRoles_v3: async function(client, msg, content){},
         //give role if missing at least all of one group
-    //removeRoles_v3: async function(globals, msg, content){}
+    //removeRoles_v3: async function(client, msg, content){}
         //remove role if has at least all of one group
 }

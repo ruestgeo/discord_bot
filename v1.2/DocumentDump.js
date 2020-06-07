@@ -35,10 +35,7 @@ const dumpToSheet = async (msg, doc, sheet_title, list, rowStart, rowEnd, colSta
 }
 
 module.exports = {
-    documentVoice: async function (globals, msg, content){
-        var doc = globals.doc;
-        var client = globals.client;
-
+    documentVoice: async function (doc, client, msg, content){
         console.log("--fetching channel ["+content+"]");
         client.channels.fetch(content.trim())
         .then(channel => {
@@ -70,11 +67,8 @@ module.exports = {
 
 
 
-    documentReactions: async function (globals, msg, content){
+    documentReactions: async function (doc, client, msg, content){
         // https://discordapp.com/channels/<server>/<channel>/<message>
-        var doc = globals.doc;
-        var client = globals.client;
-        
         content = content.trim();
         console.log("--fetching message ["+content+"]");
         if (! content.startsWith("https://discordapp.com/channels/")){
@@ -155,10 +149,7 @@ module.exports = {
     
     
     
-    documentVoice_v2: async function (globals, msg, content){
-        var doc = globals.doc;
-        var client = globals.client;
-        
+    documentVoice_v2: async function (doc, client, msg, content){
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             console.log("----incorrect request body");
@@ -235,11 +226,8 @@ module.exports = {
 
 
 
-    documentReactions_v2: async function (globals, msg, content){
+    documentReactions_v2: async function (doc, client, msg, content){
         // https://discordapp.com/channels/<server>/<channel>/<message>
-        var doc = globals.doc;
-        var client = globals.client;
-        
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             console.log("----incorrect request body");
@@ -374,10 +362,7 @@ module.exports = {
 
 
 
-    documentVoice_v3: async function (globals, msg, content){
-        var doc = globals.doc;
-        var client = globals.client;
-        
+    documentVoice_v3: async function (doc, client, msg, content){
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             console.log("----incorrect request body");
@@ -448,11 +433,8 @@ module.exports = {
 
 
 
-    documentReactions_v3: async function (globals, msg, content){
+    documentReactions_v3: async function (doc, client, msg, content){
         // https://discordapp.com/channels/<server>/<channel>/<message>
-        var doc = globals.doc;
-        var client = globals.client;
-        
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             console.log("----incorrect request body");
@@ -579,20 +561,14 @@ module.exports = {
 
 
     /*
-    createAttendanceSheet: async function (globals, msg, content){
+    createAttendanceSheet: async function (doc, client, msg, content){
         //create a sheet with the first column being a list of member names, then return the sheet ID
-        var doc = globals.doc;
-        var client = globals.client;
-        
     },
 
 
 
 
-    insertReactAttendance: async function (globals, msg, content){
-        var doc = globals.doc;
-        var client = globals.client;
-        
+    insertReactAttendance: async function (doc, client, msg, content){
         await doc.loadInfo();
         //parse for the ID, obtain the new info to insert, find a column to insert the data 
         //var sheet = doc.sheetsById[sheetID];
@@ -601,10 +577,7 @@ module.exports = {
 
 
 
-    insertVoiceAttendance: async function (globals, msg, content){
-        var doc = globals.doc;
-        var client = globals.client;
-        
+    insertVoiceAttendance: async function (doc, client, msg, content){
         await doc.loadInfo();
         //parse for the ID, obtain the new info to insert, find a column to insert the data
         //var sheet = doc.sheetsById[sheetID];

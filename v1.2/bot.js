@@ -14,8 +14,7 @@ Made by JiJae (ruestgeo)
 
 --currently uses in-memory storage so the amount of reactroles that can be held is limited
 
---requires manage-roles permissions to use ConditionedRoles functions
---requires google sheets setup to use DocumentDump functions
+--requires manage-roles permissions
 */
 
 
@@ -31,6 +30,8 @@ const configs = require('./configs.json');
 const prefix = configs.prefix;
 const googleEnabled = configs.googleEnabled;
 
+var reactroles = {};
+var bot_id = null;
 
 const utils = require('./utils.js');
 const reactroles_functions = require('./ReactRoles.js');
@@ -44,42 +45,6 @@ if (googleEnabled) {
 
 
 
-var globals = {};
-var reactroles = {};
-var bot_id = null;
-globals["reactroles"] = reactroles;
-globals["bot_id"] = bot_id;
-globals["busy"] = true;
-globals["configs"] = configs;
-globals["logsFileName"] = "LOGS.txt"; //default
-globals["logsFile"] = null; //open file handler when command is being processed, close it on error or finish
-globals["timers"] = [];
-
-var tempString = "";
-
-if ((configs.logsFileMode !== "none") || (configs.logsFileMode !== "")){
-    tempString += "--logsFileMode:  "+configs.logsFileMode;
-    if (configs.logsFileMode === "newfile"){
-        var date = new Date();
-        globals["logsFileName"] = "LOGS_"+date.toISOString()+".txt";
-        //setup 24hour interval to renew name and make new file
-        //var logInterval = 
-        //globals["timers"].push(logInterval);
-    }
-    else if (configs.logsFile === "overwrite"){
-        //create file
-    }
-    else {
-        if (configs.logsFile !== "append"){
-            //incorrect mode, assume append
-        }
-        //append
-    }
-}
-
-
-
-
 
 function clientSetup(){
     console.log("Setting up client event handlers");
@@ -87,13 +52,13 @@ function clientSetup(){
         //console.log(client);
         console.log(`Logged in as ${client.user.tag}!`);
         bot_id = client.user.id;
-        console.log("  bot client id: "+globals["bot_id"]); //bot_id);
+        console.log("  bot client id: "+bot_id);
         console.log("  -- use the '--help' or '--commands' command for info");
         botReady = true;
         if (consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
-        globals["busy"] = false;
     });
 
+    //TODO:  setpresence away when no commands, active when processing commands
 
     client.on('message', msg => {
         //console.log(msg);
@@ -611,7 +576,6 @@ function initializeClient(){
         else if (!googleEnabled)  console.log("\n\n\n");
     })
     .catch(err => {console.log("--ERROR [LOGIN] ::  "+err); throw new Error("\nError occurred during login");});
-    globals["client"] = client;
 }
 
 
@@ -631,7 +595,6 @@ console.log("\n\n["+package.name+"]   version -- "+package.version+"\n\n");
 connectGoogle(configs)
 .then(_doc => {
     doc = _doc;
-    globals["doc"] = doc;
     initializeClient();
 })
 .catch(err => {
