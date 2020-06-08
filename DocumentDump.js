@@ -26,7 +26,7 @@ const dumpToSheet = async (msg, globals, sheet_title, list, rowStart, rowEnd, co
         rowSize = Math.min(configs.defaultSheetRows , rowEnd-rowStart);
         colSize = Math.min(configs.defaultSheetCols , colEnd-colStart);
     }
-    const sheet = await doc.addSheet({ title: sheet_title, gridProperties: { rowCount: rowSize, columnCount: colSize, frozenRowCount: 1 } });
+    const sheet = await doc.addSheet({ title: sheet_title, gridProperties: { rowCount: rowSize, columnCount: colSize, frozenRowCount: (rowStart == 0 ? 1 : 0) } });
     await sheet.loadCells({
         startRowIndex: rowStart, endRowIndex: rowEnd, startColumnIndex: colStart, endColumnIndex: colEnd
     });

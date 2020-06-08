@@ -50,7 +50,7 @@ module.exports = {
                 this.botLogs(globals, content);
                 return;
             }
-            //record to file
+            //record to file TODO
         }
         console.log(content);
     },
@@ -60,16 +60,21 @@ module.exports = {
 
         if ((configs.logsFileMode !== "none") || (configs.logsFileMode !== "")){
             //setup to append to logsFile and set configs.logsFile from configs.logsFileName
-
+            //TODO
         } 
         //else ignore
     },
 
     close_log_file: function (globals){
-        //
+        //TODO
     },
 
-    change_status: function(status, text){
-        //TODO
+    change_status: async function(client, status, text, type){ //type is optional, defaults to PLAYING
+        if (!type) type = "PLAYING";
+        await client.user.setPresence({ activity: { name: text, type: type }, status: status })
+        .catch(err => {
+            console.log("## err ::  "+err); 
+            throw new Error("An error occured when changing bot status");
+        });
     }
 }

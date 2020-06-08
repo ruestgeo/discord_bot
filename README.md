@@ -2,7 +2,11 @@
 
 using
 node version 12.16.2
-discord.js version 12.1.1
+discord.js version 12.2.0
+
+
+This bot is intended for use on a single server (for now).
+
 
 To set up the bot a auth.json  and configs.json must be made, examples have been provided.
 
