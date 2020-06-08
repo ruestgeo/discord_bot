@@ -8,7 +8,7 @@ discord.js version 12.2.0
 This bot is intended for use on a single server (for now).
 
 
-To set up the bot a auth.json  and configs.json must be made, examples have been provided.
+To set up the bot an auth.json  and configs.json must be made, examples have been provided.
 
 If using the google sheets functions then additional setup is required and a googleClientSecret.json must be obtained.
 You can see https://www.youtube.com/watch?v=UGN6EUi4Yio  for some instructions on the process if needed.

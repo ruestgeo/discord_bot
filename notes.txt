@@ -30,8 +30,8 @@ https://github.com/coreybutler/nvm-windows/releases/download/1.1.7/nvm-setup.zip
 
 
 
-================================
-client.user.setStatus('dnd') //dnd doesn't seem to work, defaults to idle
+================================//aimed to use to determine whether a bot was already online before starting the current one
+"bot_id": "(UNUSED) bot userID / clientID (can find in general info on discord dev applications site or rightclick bot in user list on a server and [copy ID])",
 
 ================================//not clear on actual usage, maybe emote deletion? dont really need it anyway
 

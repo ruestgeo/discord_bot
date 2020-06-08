@@ -76,5 +76,42 @@ module.exports = {
             console.log("## err ::  "+err); 
             throw new Error("An error occured when changing bot status");
         });
+    },
+
+    status_blink: function(globals){
+        var client = globals.client;
+        client.user.setStatus('online') //blink 1
+        .then(_ => {
+            this.sleep(500) //sleep 1
+            .then(_ => {
+                client.user.setStatus('dnd') //blink 2
+                .then(_ => {
+                    this.sleep(500) //sleep 2
+                    .then(_ => {
+                        client.user.setStatus('online') //blink 3
+                        .then(_ => {
+                            this.sleep(500) //sleep 3
+                            .then(_ => {
+                                client.user.setStatus('dnd') //blink 4
+                                .then(_ => {
+                                    this.sleep(500) //sleep 4
+                                    .then(_ => {
+                                        client.user.setStatus('idle') //return
+                                        .then(_ => {
+                                            globals.busy = false;
+                                        })
+                                        .catch(err => { console.log("## err in status_blink ::  "+err); globals.busy = false;})
+                                    });
+                                })
+                                .catch(err => { console.log("## err in status_blink ::  "+err); globals.busy = false;})
+                            });
+                        })
+                        .catch(err => { console.log("## err in status_blink ::  "+err); globals.busy = false;})
+                    });
+                })
+                .catch(err => { console.log("## err in status_blink ::  "+err); globals.busy = false;})
+            });
+        })
+        .catch(err => { console.log("## err in status_blink ::  "+err); globals.busy = false;});
     }
 }
