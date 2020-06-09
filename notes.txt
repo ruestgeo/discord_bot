@@ -30,6 +30,26 @@ https://github.com/coreybutler/nvm-windows/releases/download/1.1.7/nvm-setup.zip
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ================================//aimed to use to determine whether a bot was already online before starting the current one
 "bot_id": "(UNUSED) bot userID / clientID (can find in general info on discord dev applications site or rightclick bot in user list on a server and [copy ID])",
 
@@ -78,5 +98,75 @@ if ( role_to_assign !== current_group[( reactrole_group.includes(msg_react.emoji
                                 {
                                     //re-add role?
                                 }
+
+========================================
+//discontinued development for using writestreams in favor of writeFileSync
+
+globals["logsFile"] = null; //open file handler when command is being processed, close it on error or finish
+
+    obtain_log_file: function (globals){ //unused (to be removed later)
+        var configs = globals.configs;
+
+        if ((configs.logsFileMode !== "none") || (configs.logsFileMode !== "")){
+            //setup to append to logsFile and set configs.logsFile from configs.logsFileName
+            let logsStream = fs.createWriteStream(configs.logsPath+configs.logsFileName,  {flags:'a'});
+
+            logsStream.on('finish', () => {
+                console.log('//finished writing logs to file');
+                console.log(globals.logsFile);
+                globals.logsFile = null;
+                console.log(globals.logsFile);
+            });
+            logsStream.on('error', () => {
+                console.log('//error when writing logs to file');
+                console.log(globals.logsFile);
+                globals.logsFile = null;
+                console.log(globals.logsFile);
+            });
+        } 
+        //else ignore
+    },
+
+    close_log_file: function (globals){//unused (to be removed later)
+        //set logsFile to null
+    },
+
+    botLogs: function (globals, content){
+        if (globals.LogsToFile){
+            var file = globals.logsFile;
+            if (file == null){
+                console.log("## error: logsfile handle is null, retrying");
+                this.obtain_log_file(globals);
+                this.botLogs(globals, content);
+                return;
+            }
+            //record to file TODO
+        }
+        console.log(content);
+    },
+
+
+
+    function logInterval(globals){
+    try{
+        var date = utils.getDateTime(globals);
+        var oldLogsFileName = globals.logsFileName;
+        var newLogsFileName = "LOGS_"+date.toISO()+".txt";
+        if (globals.logsFile != null){ //unused (to be removed later)
+            console.log("\n\nSwitching to new logs file with name:  LOGS_"+date.toISO()+".txt"); //write to old file which is currently open
+            globals["logsFileName"] = newLogsFileName;
+        }
+        else { //file not currently being written to 
+            globals["logsFileName"] = newLogsFileName;    
+            fs.writeFileSync(logsPath+oldLogsFileName, "\n\nSwitching to new logs file with name:  LOGS_"+date.toISO()+".txt");
+        }
+        fs.writeFileSync(logsPath+newLogsFileName, "\n\n\n\n\nCreating new logs file  [LOGS_"+date.toISO()+".txt]\n    "+utils.getDateTimeString(globals)+"\n\n\n\n");
+    }
+    catch (err){
+        console.log("## ERR occurred during 24hour new logs file interval");
+    }
+}
+
+
 
 ========================================

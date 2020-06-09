@@ -46,39 +46,26 @@ const dumpToSheet = async (msg, globals, sheet_title, list, rowStart, rowEnd, co
     msg.reply("Data has been dumped to doc "+"<https://docs.google.com/spreadsheets/d/"+doc.spreadsheetId+"#gid="+sheet.sheetId+">");
 }
 
-const getTime = (globals) => {
-    var configs = globals.configs;
-    const DateTime = globals["luxon"].DateTime;
-    var _date;
-    if (DateTime.local().setZone(configs.IANAZoneTime).isValid) {
-        _date = DateTime.fromISO(DateTime.utc(), {zone: configs.IANAZoneTime});
-    }
-    else { //invalid IANA zone identifier, use UTC as default
-        console.log("## invalid IANA zone identifier, assuming UTC");
-        _date = DateTime.utc();
-    }
-    var date = _date.toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', timeZoneName: "short" });
-    return date;
-}
+
 
 module.exports = {
     documentVoice: async function (globals, msg, content){
         var client = globals.client;
 
-        console.log("--fetching channel ["+content+"]");
+        utils.botLogs(globals,  "--fetching channel ["+content+"]");
         client.channels.fetch(content.trim())
         .then(channel => {
             var voice_members = channel.members.values();
             
-            var date = getTime(globals);
+            var date = utils.getDateTimeString(globals);
             var channel_title = channel.type+" channel ["+channel.name+"] "+date;
 
-            console.log("\n\n"+channel_title);
+            utils.botLogs(globals,  "\n\n"+channel_title);
             var list = [];
             var col = [];
             col.push("#"+channel.name);
             for (member of voice_members){
-                console.log("  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
                 col.push(member.displayName+"#"+member.user.discriminator);
             }
             list.push(col);
@@ -88,7 +75,7 @@ module.exports = {
 
         })
         .catch(err => {
-            console.log(err.stack)
+            utils.botLogs(globals,  err.stack)
             msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
         });
         
@@ -102,9 +89,9 @@ module.exports = {
         var client = globals.client;
         
         content = content.trim();
-        console.log("--fetching message ["+content+"]");
+        utils.botLogs(globals,  "--fetching message ["+content+"]");
         if (! content.startsWith("https://discordapp.com/channels/")){
-            console.log("----invalid message link"+content);
+            utils.botLogs(globals,  "----invalid message link"+content);
             msg.reply("Invalid message link: ["+content+"]");
             return;
         }
@@ -114,29 +101,28 @@ module.exports = {
         var message_id = ids[2];
         var server = client.guilds.resolve(server_id);
         if( !server){
-            console.log("----server could not be resolved from id "+server_id);
+            utils.botLogs(globals,  "----server could not be resolved from id "+server_id);
             msg.reply("Server could not be resolved from id "+server_id)
             return;
         }
         var channel = server.channels.resolve(channel_id);
         if (!channel){
-            console.log("----channel could not be resolved from id "+channel_id);
+            utils.botLogs(globals,  "----channel could not be resolved from id "+channel_id);
             msg.reply("Channel could not be resolved from id "+channel_id)
             return;
         }
         await channel.messages.fetch(message_id) //NOTE: currently only messages have links, if others have links then need to type check channel type
         .then(message => {
             if (message.deleted){
-                console.log("----message "+message.id+" DELETED");
+                utils.botLogs(globals,  "----message "+message.id+" DELETED");
                 msg.reply("Message with id ["+message_id+"] had been deleted")
             } 
             else {
-                //console.log(message);
                 var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
                 
-                console.log("\n\nmessage ["+message.id+"] reactions");
+                utils.botLogs(globals,  "\n\nmessage ["+message.id+"] reactions");
                 
-                var date = getTime(globals);
+                var date = utils.getDateTimeString(globals);
                 var reacts_title = "reacts "+date+"  "+channel.name+"/"+message.id;
 
                 const fetchUsers = async (globals, msg, message, msg_reacts, reacts_title) => { //declare the func, then later need to call it
@@ -147,16 +133,16 @@ module.exports = {
                         try{
                             var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
                             col.push(emote);
-                            console.log("  "+emote);
+                            utils.botLogs(globals,  "  "+emote);
                             var _react_users = await msg_react.users.fetch();
                             var react_users = _react_users.values();
                             for (user of react_users){
                                 var display_name = message.guild.members.resolve(user.id).displayName+"#"+user.discriminator;
                                 col.push(display_name);
-                                console.log("      "+display_name+":"+user.id);
+                                utils.botLogs(globals,  "      "+display_name+":"+user.id);
                             }
                         } catch (err){
-                            console.log(err.stack);
+                            utils.botLogs(globals,  err.stack);
                             msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
                             return;
                         }
@@ -172,7 +158,7 @@ module.exports = {
             }
         })
         .catch(err => {
-            console.log(err);
+            utils.botLogs(globals,  err);
             msg.reply("Couldn't fetch message from id "+message_id)
         });
     },
@@ -188,20 +174,19 @@ module.exports = {
         
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
-            console.log("----incorrect request body");
+            utils.botLogs(globals,  "----incorrect request body");
             return;
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
-        console.log("----target:: "+target);
-        console.log("----targetRole:: "+targetRole); //might include spaces
+        utils.botLogs(globals,  "----target:: "+target+"\n----targetRole:: "+targetRole);
         var server = msg.guild;
 
         var server_roles = await server.roles.fetch();
-        console.log("--verifying role is valid");
+        utils.botLogs(globals,  "--verifying role is valid");
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
-            console.log("----invalid role ::  "+targetRole);
+            utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             msg.reply("Invalid role -> "+targetRole);
             return;
         }
@@ -211,23 +196,23 @@ module.exports = {
         var col = [];
         var members = [];
         var notInChannel = [];
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
         col.push(role.name);
         for (member of role.members.values()){
             col.push(member.displayName+"#"+member.user.discriminator);
             members.push(member.id);
         }
         list.push(col);
-        console.log("----complete");
+        utils.botLogs(globals,  "----complete");
 
-        console.log("--fetching channel ["+target+"]");
+        utils.botLogs(globals,  "--fetching channel ["+target+"]");
         client.channels.fetch(target.trim())
         .then(channel => {
             var voice_members = channel.members;
 
-            var date = getTime(globals);
+            var date = utils.getDateTimeString(globals);
             var channel_title = channel.type+" channel ["+channel.name+"] "+date;
-            console.log("\n\n"+channel_title);
+            utils.botLogs(globals,  "\n\n"+channel_title);
 
             col = [];
             col.push("#"+channel.name);
@@ -236,16 +221,16 @@ module.exports = {
                 col.push(isMemberInChannel);
                 if(isMemberInChannel){
                     var member = voice_members.get(memberID);
-                    console.log("  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                    utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
                 } else notInChannel.push(memberID);
             }
             list.push(col);
 
             /* print out members not in channel */
-            console.log("\n\nUsers not in channel");
+            utils.botLogs(globals,  "\n\nUsers not in channel");
             for (memberID of notInChannel){
                 var member = server.members.fetch(memberID).then(member => {
-                    console.log("  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                    utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
                 }); 
                 
             }
@@ -255,7 +240,7 @@ module.exports = {
 
         })
         .catch(err => {
-            console.log(err.stack)
+            utils.botLogs(globals,  err.stack)
             msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
         });
         
@@ -270,20 +255,19 @@ module.exports = {
         
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
-            console.log("----incorrect request body");
+            utils.botLogs(globals,  "----incorrect request body");
             return;
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
-        console.log("__target:: "+target);
-        console.log("__targetRole:: "+targetRole); //might include spaces
+        utils.botLogs(globals,  "----target:: "+target+"\n----targetRole:: "+targetRole);
         var server = msg.guild;
 
         var server_roles = await server.roles.fetch();
-        console.log("--verifying role is valid");
+        utils.botLogs(globals,  "--verifying role is valid");
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
-            console.log("----invalid role ::  "+targetRole);
+            utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             msg.reply("Invalid role -> "+targetRole);
             return;
         }
@@ -293,21 +277,20 @@ module.exports = {
         var col = [];
         var members = [];
         var noReaction = {}; 
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
         col.push("Users");
         for (member of role.members.values()){
-            //console.log(member);
             var member = await server.members.fetch(member);
             col.push(member.displayName+"#"+member.user.discriminator);
             members.push(member.id);
             noReaction[member.id] = true; //later updated to false if member has reacted
         }
         list.push(col);
-        console.log("----complete");
+        utils.botLogs(globals,  "----complete");
 
-        console.log("--fetching message ["+target+"]");
+        utils.botLogs(globals,  "--fetching message ["+target+"]");
         if (! target.startsWith("https://discordapp.com/channels/")){
-            console.log("----invalid message link"+target);
+            utils.botLogs(globals,  "----invalid message link"+target);
             msg.reply("Invalid message link: ["+target+"]");
             return;
         }
@@ -317,28 +300,27 @@ module.exports = {
         var message_id = ids[2];
         var server = client.guilds.resolve(server_id);  //not really neccessary, could use `msg.guild` for more restrictive use
         if( !server){
-            console.log("----server could not be resolved from id "+server_id);
+            utils.botLogs(globals,  "----server could not be resolved from id "+server_id);
             msg.reply("Server could not be resolved from id "+server_id)
             return;
         }
         var channel = server.channels.resolve(channel_id);
         if (!channel){
-            console.log("----channel could not be resolved from id "+channel_id);
+            utils.botLogs(globals,  "----channel could not be resolved from id "+channel_id);
             msg.reply("Channel could not be resolved from id "+channel_id)
             return;
         }
         await channel.messages.fetch(message_id) //NOTE: currently only messages have links, if others have links then need to type check channel type
         .then(message => {
             if (message.deleted){
-                console.log("----message "+message.id+" DELETED");
+                utils.botLogs(globals,  "----message "+message.id+" DELETED");
                 msg.reply("Message with id ["+message_id+"] had been deleted")
             } 
-            else {
-                //console.log(message);
+            else{
                 var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
                 
-                console.log("\n\nmessage ["+message.id+"] reactions");
-                var date = getTime(globals);
+                utils.botLogs(globals,  "\n\nmessage ["+message.id+"] reactions");
+                var date = utils.getDateTimeString(globals);
                 var reacts_title = "reacts "+date+"  "+channel.name+"/"+message.id;
 
                 const fetchUsers = async (globals, msg, message, msg_reacts, reacts_title, list, members, noReaction) => { //declare the func, then later need to call it
@@ -348,7 +330,7 @@ module.exports = {
                         try{
                             var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
                             col.push(emote);
-                            console.log("  "+emote);
+                            utils.botLogs(globals,  "  "+emote);
                             var _react_users = await msg_react.users.fetch();
                             var react_users = _react_users;
                             for (memberID of members){
@@ -356,12 +338,12 @@ module.exports = {
                                 col.push(hasReacted);
                                 if(hasReacted){
                                     var member = message.guild.members.resolve(memberID);
-                                    console.log("      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                                    utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
                                 }
                                 noReaction[memberID] = ((!hasReacted) && noReaction[memberID]); //only true if NOT hasReacted for all reactions
                             }
                         } catch (err){
-                            console.log(err.stack);
+                            utils.botLogs(globals,  err.stack);
                             msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
                             return;
                         }
@@ -370,7 +352,7 @@ module.exports = {
                     }
 
                     /* print out members without reaction and insert col to doc */
-                    console.log("\n\nUsers without reaction");
+                    utils.botLogs(globals,  "\n\nUsers without reaction");
                     var col = [];
                     col.push("No Reaction");
                     var noReacts = Object.keys(noReaction).filter(memberID => noReaction[memberID] == true); // only get the ones that didnt react
@@ -378,8 +360,7 @@ module.exports = {
                         var member = await server.members.fetch(memberID); 
                         var hasNotReacted = noReaction[memberID];
                         col.push(hasNotReacted);
-                        //if (hasNotReacted) console.log("      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
-                        console.log("      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                        utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
                     }
                     list.push(col);
                     
@@ -392,7 +373,7 @@ module.exports = {
             }
         })
         .catch(err => {
-            console.log(err);
+            utils.botLogs(globals,  err);
             msg.reply("Couldn't fetch message from id "+message_id)
         });
     },
@@ -408,47 +389,46 @@ module.exports = {
         
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
-            console.log("----incorrect request body");
+            utils.botLogs(globals,  "----incorrect request body");
             return;
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
-        console.log("----target:: "+target);
-        console.log("----targetRole:: "+targetRole); //might include spaces
+        utils.botLogs(globals,  "----target:: "+target+"\n----targetRole:: "+targetRole);
         var server = msg.guild;
 
         var server_roles = await server.roles.fetch();
-        console.log("--verifying role is valid");
+        utils.botLogs(globals,  "--verifying role is valid");
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
-            console.log("----invalid role ::  "+targetRole);
+            utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             msg.reply("Invalid role -> "+targetRole);
             return;
         }
         var role = await server.roles.fetch(role.id); //for cache
         
         var members = [];
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
         for (member of role.members.values()){
             members.push(member.id);
         }
-        console.log("----complete");
+        utils.botLogs(globals,  "----complete");
 
         const fetchUsers = async (client, msg, globals, members, roleName) => {
             var list = [];
             var col_IN = [];
             var col_NOT = [];
-            console.log("--fetching channel ["+target+"]");
+            utils.botLogs(globals,  "--fetching channel ["+target+"]");
             var channel = await client.channels.fetch(target.trim())
             .catch(err => {
-                console.log(err.stack)
+                utils.botLogs(globals,  err.stack)
                 msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
             });
             var voice_members = channel.members;
             
-            var date = getTime(globals);
+            var date = utils.getDateTimeString(globals);
             var channel_title = roleName+" in "+channel.type+" ["+channel.name+"] "+date;
-            console.log("\n\n"+channel_title);
+            utils.botLogs(globals,  "\n\n"+channel_title);
             
             col_IN.push("#"+channel.name);
             col_NOT.push("Not in Channel");
@@ -456,16 +436,16 @@ module.exports = {
                 var member = channel.guild.members.resolve(memberID);
                 if(voice_members.has(memberID)){
                     col_IN.push(member.displayName+"#"+member.user.discriminator);    
-                    console.log("  "+member.displayName+"#"+member.user.discriminator);
+                    utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator);
                 } else col_NOT.push(member.displayName+"#"+member.user.discriminator);
             }
             list.push(col_IN);
             list.push(col_NOT);
 
             /* print out members not in channel */
-            console.log("\n\nUsers not in channel");
+            utils.botLogs(globals,  "\n\nUsers not in channel");
             for (var idx=1; idx < col_NOT.length; idx++){
-                console.log("  "+col_NOT[idx]);
+                utils.botLogs(globals,  "  "+col_NOT[idx]);
                 
             }
 
@@ -484,20 +464,19 @@ module.exports = {
         
         if (!content.includes(' ')){
             msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
-            console.log("----incorrect request body");
+            utils.botLogs(globals,  "----incorrect request body");
             return;
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
-        console.log("__target:: "+target);
-        console.log("__targetRole:: "+targetRole); //might include spaces
+        utils.botLogs(globals,  "----target:: "+target+"\n----targetRole:: "+targetRole);
         var server = msg.guild;
 
         var server_roles = await server.roles.fetch();
-        console.log("--verifying role is valid");
+        utils.botLogs(globals,  "--verifying role is valid");
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
-            console.log("----invalid role ::  "+targetRole);
+            utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             msg.reply("Invalid role -> "+targetRole);
             return;
         }
@@ -505,17 +484,17 @@ module.exports = {
         
         var noReaction = {}; 
         var members = [];
-        console.log("--fetching users with role ["+role.name+":"+role.id+"]");
+        utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
         for (member of role.members.values()){
             var member = await server.members.fetch(member);
             members.push(member.id);
             noReaction[member.id] = true; //later updated to false if member has reacted
         }
-        console.log("----complete");
+        utils.botLogs(globals,  "----complete");
 
-        console.log("--fetching message ["+target+"]");
+        utils.botLogs(globals,  "--fetching message ["+target+"]");
         if (! target.startsWith("https://discordapp.com/channels/")){
-            console.log("----invalid message link"+target);
+            utils.botLogs(globals,  "----invalid message link"+target);
             msg.reply("Invalid message link: ["+target+"]");
             return;
         }
@@ -525,31 +504,31 @@ module.exports = {
         var message_id = ids[2];
         var server = client.guilds.resolve(server_id);  //not really neccessary, could use `msg.guild` for more restrictive use
         if( !server){
-            console.log("----server could not be resolved from id "+server_id);
+            utils.botLogs(globals,  "----server could not be resolved from id "+server_id);
             msg.reply("Server could not be resolved from id "+server_id)
             return;
         }
         var channel = server.channels.resolve(channel_id);
         if (!channel){
-            console.log("----channel could not be resolved from id "+channel_id);
+            utils.botLogs(globals,  "----channel could not be resolved from id "+channel_id);
             msg.reply("Channel could not be resolved from id "+channel_id)
             return;
         }
         var message = await channel.messages.fetch(message_id) //NOTE: currently only messages have links, if others have links then need to type check channel type
         .catch(err => {
-            console.log(err);
+            utils.botLogs(globals,  err);
             msg.reply("Couldn't fetch message from id "+message_id);
             return;
         });
         if (message.deleted){
-            console.log("----message "+message.id+" DELETED");
+            utils.botLogs(globals,  "----message "+message.id+" DELETED");
             msg.reply("Message with id ["+message_id+"] had been deleted")
         } 
         else {
             var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
-            console.log("\n\nmessage ["+message.id+"] reactions");
+            utils.botLogs(globals,  "\n\nmessage ["+message.id+"] reactions");
             
-            var date = getTime(globals);
+            var date = utils.getDateTimeString(globals);
             var reacts_title = role.name+" reacts "+date+"  "+channel.name+"/"+message.id;
 
             const fetchUsers = async (globals, msg, message, msg_reacts, reacts_title, members, noReaction) => {  //declare the func, then later need to call it
@@ -560,20 +539,20 @@ module.exports = {
                     try{
                         var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
                         col.push(emote);
-                        console.log("  "+emote);
+                        utils.botLogs(globals,  "  "+emote);
                         var _react_users = await msg_react.users.fetch();
                         var react_users = _react_users;
                         for (memberID of members){
                             var member = message.guild.members.resolve(memberID);
                             var hasReacted = react_users.has(memberID);
                             if(hasReacted){
-                                console.log("      "+member.displayName+"#"+member.user.discriminator);
+                                utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator);
                                 col.push(member.displayName+"#"+member.user.discriminator);
                             }
                             noReaction[memberID] = ((!hasReacted) && noReaction[memberID]); //only true if NOT hasReacted for all reactions
                         }
                     } catch (err){
-                        console.log(err.stack);
+                        utils.botLogs(globals,  err.stack);
                         msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
                         return;
                     }
@@ -582,15 +561,14 @@ module.exports = {
                 }
 
                 /* print out members without reaction and insert col to doc */
-                console.log("\n\nUsers without reaction");
+                utils.botLogs(globals,  "\n\nUsers without reaction");
                 var col = [];
                 col.push("No Reaction");
                 var noReacts = Object.keys(noReaction).filter(memberID => noReaction[memberID] == true); // only get the ones that didnt react
                 for (memberID of noReacts){
-                    var member = await server.members.fetch(memberID); 
-                    //var hasNotReacted = noReaction[memberID];
+                    var member = await server.members.fetch(memberID);
                     col.push(member.displayName+"#"+member.user.discriminator);
-                    console.log("      "+member.displayName+"#"+member.user.discriminator);
+                    utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator);
                 }
                 longest_col = Math.max(longest_col, col.length);
                 list.push(col);

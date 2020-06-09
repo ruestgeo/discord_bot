@@ -7,3 +7,4 @@ googleClientSecret.json
 node_modules/*
 *.exe
 **/*.exe
+logs
