@@ -752,11 +752,17 @@ function commandHandler(msg, member, command, content, isRepeat){
 
             /* shutdown the bot */
             else if (command === '--shutdown'){
-                msg.react('👋');
-                msg.channel.send("i must go, my pepol call me!")
-                .then(msg => {
-                    utils.change_status(client, 'dnd', configs.shutdownStatusText).then(_ => client.destroy() );
-                });
+                msg.react('👋').then(_ => {
+                    utils.change_status(client, 'dnd', configs.shutdownStatusText)
+                    .then(msg => {
+                        msg.channel.send("i must go, my pepol call me!")
+                        .then(_ => { client.destroy(); utils.sleep(5000); } )
+                        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [0]  \n'+err); });;
+                    })
+                    .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [1]  \n'+err); });;
+                })
+                .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [2]  \n'+err); });
+                
                 utils.botLogs(globals,'--bot shutting down');
             }   
 
