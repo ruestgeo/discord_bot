@@ -156,15 +156,14 @@ function clientSetup(){
         
         if (msg.content === 'ping') {
             if (!globals.busy){
-                utils.work_Lock(globals);
                 msg.member.fetch()
                 .then(member => {
                     if (configs.authorizedRoles.length > 0)
                         if (checkMemberAuthorized(member, false)){
-                            msg.reply('pong');
-                            msg.channel.send('i see ping, i send pong!');
-                            utils.botLogs(globals,'\n\n\ni ponged, i big bot now!');
-                            utils.status_blink(globals);
+                            utils.botLogs(globals,'\n\ni ponged, i big bot now!');
+                            utils.work_Lock(globals);
+                            msg.reply('i see ping, i send pong!');
+                            utils.status_blink(globals).then(_ => { utils.botLogs(globals,  "--blink done"); utils.work_Unlock(globals); });
                         }
                 })
                 .catch(err => { utils.botLogs(globals,"## Err in member fetch [ping] ::  "+err); utils.work_Unlock(globals); });   
@@ -385,7 +384,7 @@ function commandHandler(msg, member, command, content, isRepeat){
             else if (command === '--ping'){
                 utils.botLogs(globals,"received request [ping]");
                 msg.reply("pong");
-                utils.status_blink(globals);
+                utils.status_blink(globals).then(_ => { utils.botLogs(globals,  "--blink done"); utils.work_Unlock(globals); });
                 msg.react('✅');
             }
 
@@ -416,17 +415,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
                 //console.log(reactroles);
             }
 
@@ -441,17 +439,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
                 //console.log(reactroles);
             }
 
@@ -466,17 +463,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -490,17 +486,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -514,17 +509,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -538,17 +532,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -560,6 +553,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                 if (!googleEnabled){
                     utils.botLogs(globals,"---google not enabled");
                     msg.reply("Google has not been enabled, contact sys-admin to set up");
+                    utils.work_Unlock(globals);
                     return;
                 }
                 dump_functions.documentReactions(globals, msg, content)
@@ -567,17 +561,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -589,6 +582,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                 if (!googleEnabled){
                     utils.botLogs(globals,"---google not enabled");
                     msg.reply("Google has not been enabled, contact sys-admin to set up");
+                    utils.work_Unlock(globals);
                     return;
                 }
                 dump_functions.documentVoice(globals, msg, content)
@@ -596,17 +590,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -618,6 +611,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                 if (!googleEnabled){
                     utils.botLogs(globals,"---google not enabled");
                     msg.reply("Google has not been enabled, contact sys-admin to set up");
+                    utils.work_Unlock(globals);
                     return;
                 }
                 dump_functions.documentReactions_v2(globals, msg, content)
@@ -625,17 +619,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -647,6 +640,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                 if (!googleEnabled){
                     utils.botLogs(globals,"---google not enabled");
                     msg.reply("Google has not been enabled, contact sys-admin to set up");
+                    utils.work_Unlock(globals);
                     return;
                 }
                 dump_functions.documentVoice_v2(globals, msg, content)
@@ -654,17 +648,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -676,6 +669,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                 if (!googleEnabled){
                     utils.botLogs(globals,"---google not enabled");
                     msg.reply("Google has not been enabled, contact sys-admin to set up");
+                    utils.work_Unlock(globals);
                     return;
                 }
                 dump_functions.documentReactions_v3(globals, msg, content)
@@ -683,17 +677,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });;
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -705,6 +698,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                 if (!googleEnabled){
                     utils.botLogs(globals,"---google not enabled");
                     msg.reply("Google has not been enabled, contact sys-admin to set up");
+                    utils.work_Unlock(globals);
                     return;
                 }
                 dump_functions.documentVoice_v3(globals, msg, content)
@@ -712,17 +706,16 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                })
+                .finally(_ => { utils.work_Unlock(globals); });
             }
 
 
@@ -754,12 +747,12 @@ function commandHandler(msg, member, command, content, isRepeat){
             else if (command === '--shutdown'){
                 msg.react('👋').then(_ => {
                     utils.change_status(client, 'dnd', configs.shutdownStatusText)
-                    .then(msg => {
+                    .then(_ => {
                         msg.channel.send("i must go, my pepol call me!")
                         .then(_ => { client.destroy(); utils.sleep(5000); } )
-                        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [0]  \n'+err); });;
+                        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [0]  \n'+err); });
                     })
-                    .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [1]  \n'+err); });;
+                    .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [1]  \n'+err); });
                 })
                 .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [2]  \n'+err); });
                 
@@ -801,7 +794,7 @@ function commandHandler(msg, member, command, content, isRepeat){
             utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
             msg.reply("An error occured:  "+err);
             msg.react('❌'); 
-            
+            utils.work_Unlock(globals); 
         }
     })
     .catch(err => { msg.channel.send("ERR occurred when changing status: "+err); utils.work_Unlock(globals); });

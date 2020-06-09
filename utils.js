@@ -74,41 +74,33 @@ module.exports = {
         });
     },
 
-    status_blink: function(globals){
+    status_blink: async function(globals){
         var client = globals.client;
-        client.user.setStatus('online') //blink 1
-        .then(_ => {
-            this.sleep(500) //sleep 1
-            .then(_ => {
-                client.user.setStatus('dnd') //blink 2
-                .then(_ => {
-                    this.sleep(500) //sleep 2
-                    .then(_ => {
-                        client.user.setStatus('online') //blink 3
-                        .then(_ => {
-                            this.sleep(500) //sleep 3
-                            .then(_ => {
-                                client.user.setStatus('dnd') //blink 4
-                                .then(_ => {
-                                    this.sleep(500) //sleep 4
-                                    .then(_ => {
-                                        client.user.setStatus('idle') //return
-                                        .then(_ => {
-                                            this.work_Unlock(globals);
-                                        })
-                                        .catch(err => { console.log("## err in status_blink ::  "+err); this.work_Unlock(globals);})
-                                    });
-                                })
-                                .catch(err => { console.log("## err in status_blink ::  "+err); this.work_Unlock(globals);})
-                            });
-                        })
-                        .catch(err => { console.log("## err in status_blink ::  "+err); this.work_Unlock(globals);})
-                    });
-                })
-                .catch(err => { console.log("## err in status_blink ::  "+err); this.work_Unlock(globals);})
-            });
-        })
-        .catch(err => { console.log("## err in status_blink ::  "+err); this.work_Unlock(globals);});
+        var configs = globals.configs;
+        //console.log("blink online");
+        await client.user.setStatus('online') //blink 1
+        .catch(err => { console.log("## err in status_blink ::  "+err); });
+        //console.log("blink pause");
+        await this.sleep(1000) //sleep 1
+        //console.log("blink dnd");
+        await client.user.setStatus('dnd') //blink 2
+        .catch(err => { console.log("## err in status_blink ::  "+err); });
+        //console.log("blink pause");
+        await this.sleep(1000) //sleep 2
+        //console.log("blink online");
+        await client.user.setStatus('online') //blink 3
+        .catch(err => { console.log("## err in status_blink ::  "+err); });
+        //console.log("blink pause");
+        await this.sleep(1000) //sleep 3
+        //console.log("blink dnd");
+        await client.user.setStatus('dnd') //blink 4
+        .catch(err => { console.log("## err in status_blink ::  "+err); });
+        //console.log("blink pause");
+        await this.sleep(1000) //sleep 4
+        //console.log("blink return");
+        await this.change_status(client, 'idle', configs.idleStatusText)
+        .catch(err => { this.botLogs(globals,"## err occured on returning status in status_blink: "+err); })
+        return;
     },
 
 
