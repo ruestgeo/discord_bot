@@ -43,23 +43,23 @@ module.exports = {
         for (_emote of emotes){
             var emote_info = utils.get_emote_id(_emote);
             var emote = emote_info.emote.trim();
-            if (  (emote_info.type === "custom") && //skip unicode, cuz i dunno how to verify
+            if (  (emote_info.type === "custom") && 
                     !( msg.guild.emojis.resolve(emote)  //.cache.find(emoji => ((emoji.name === emote) || (emoji.id === emote)))
                      || client.emojis.resolve(emote) )  ) {
-                console.log("--invalid emote ::  "+_emote);
+                utils.botLogs(globals, "--invalid emote ::  "+_emote);
                 msg.reply("Invalid emote -> "+_emote);
                 return;
             }
             var _role = args.reactions[_emote];
             var server_roles = await msg.guild.roles.fetch();
             if ( !server_roles.cache.find(role => role.name.toLowerCase() === _role.toLowerCase()) ){
-                console.log("--invalid role ::  "+_role);
+                utils.botLogs(globals, "--invalid role ::  "+_role);
                 msg.reply("Invalid role -> "+_role);
                 return;
             }
         }
 
-        console.log("--setting up bot message");
+        utils.botLogs(globals, "--setting up bot message");
         msg.channel.send(text_body)
         .then(async function (bot_message) {
             var bot_message_id = bot_message.id;
@@ -72,30 +72,30 @@ module.exports = {
             else if ( !reactroles[server_id].hasOwnProperty(channel_id) )
                 reactroles[server_id][channel_id] = {};
             reactroles[server_id][channel_id][bot_message_id] = {};
-            console.log("----message posted with id ["+bot_message_id+"] in channel ["+channel_id+"] in server ["+server_id+"]");
+            utils.botLogs(globals, "----message posted with id ["+bot_message_id+"] in channel ["+channel_id+"] in server ["+server_id+"]");
             var current_post = reactroles[server_id][channel_id][bot_message_id];
             current_post['type'] = "any"; //
             current_post['emotes'] = {};
-            console.log("--setting up reactions");
+            utils.botLogs(globals, "--setting up reactions");
             for (var raw_emote of emotes){
-                console.log('--set up reaction on bot message: '+raw_emote); 
+                utils.botLogs(globals, '--set up reaction on bot message: '+raw_emote); 
                 var emote_info = utils.get_emote_id(raw_emote);
                 var emote = emote_info.emote.trim();
                 var emote_type = emote_info.type;
                 switch (emote_type){
                     case "unicode":
-                        console.log("----unicode emote");
+                        utils.botLogs(globals, "----unicode emote");
                         break;
                     case "custom":
-                        console.log("----custom emote");
+                        utils.botLogs(globals, "----custom emote");
                         break;
                 }
                 current_post['emotes'][emote] = args.reactions[raw_emote].trim();
                 await bot_message.react(emote); 
-                console.log("----complete");
+                utils.botLogs(globals, "----complete");
             };
 
-            console.log("--creating reaction collector");
+            utils.botLogs(globals, "--creating reaction collector");
             //if filter returns true then check event, otherwise ignore
             const filter = (reaction, user) => {
                 //console.log("user react: "+(user.id !== client.user.id));
@@ -112,39 +112,32 @@ module.exports = {
             /* reaction is added */
             collector.on('collect', (reaction, user) => {
                 const collect_func = async (reaction, user) => {
-                    console.log("\n__collected an added reaction");
                     var server = reaction.message.guild;
                     var channel = reaction.message.channel;
-                    console.log("__user ["+user.username+":"+user.id+"]");
-                    console.log("____reacted with ["+reaction.emoji.name+":"+reaction.emoji.id+"]");
-                    console.log("____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
+                    utils.botLogs(globals, "__[reactRoleEvent]__collected an added reaction\n____user ["+user.username+":"+user.id+"]\n____reacted with ["+reaction.emoji.name+":"+reaction.emoji.id+"]\n____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
                     if (reaction.emoji.id) //not null -> custom
                         var react_emote = reaction.emoji.id;
                     else //null -> unicode
                         var react_emote = reaction.emoji.name;
                     var role_to_assign = reactroles[server.id][channel.id][reaction.message.id]['emotes'][react_emote];
-                    console.log("__role to assign: "+role_to_assign);
+                    utils.botLogs(globals, "__[reactRoleEvent]__role to assign: "+role_to_assign+"\n__resolving server role");
 
-                    console.log("--resolving server role");
                     var server_roles = await server.roles.fetch();
                     var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
                     if (role){
-                        console.log("----found: "+role.name+":"+role.id);
-                        console.log("--resolving server member");
+                        utils.botLogs(globals, "____[reactRoleEvent]____found: "+role.name+":"+role.id+"\n__[reactRoleEvent]__resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
                         if (member){
-                            console.log("----found: "+member.displayName+":"+member.id);
-                            console.log("--giving role to member");
+                            utils.botLogs(globals, "____[reactRoleEvent]____found: "+member.displayName+":"+member.id+"\n__[reactRoleEvent]__giving role to member");
                             member.roles.add(role.id)
-                            .then(m_id => console.log("----successfully added role to member ["+m_id+"]"))
+                            .then(m_id => utils.botLogs(globals, "____[reactRoleEvent]____successfully added role to member ["+m_id+"]"))
                             .catch(err => {
-                                console.log("----failed to add role due to error");
-                                console.log(err);
+                                utils.botLogs(globals, "____[reactRoleEvent]____failed to add role due to error\n"+err);
                             });
                         }
-                        else console.log("----member not found");
+                        else utils.botLogs(globals, "____[reactRoleEvent]____member not found");
                     }
-                    else console.log("----role not found");
+                    else utils.botLogs(globals, "____[reactRoleEvent]____role not found");
                 }
                 collect_func(reaction, user);
             });
@@ -152,44 +145,37 @@ module.exports = {
             /* reaction is removed */
             collector.on('remove', (reaction, user) => { //remove event is not being fired on emoji removal
                 const remove_func = async (reaction, user) => {
-                    console.log("\n__collected a removed reaction");
                     var server = reaction.message.guild;
                     var channel = reaction.message.channel;
-                    console.log("__user ["+user.username+":"+user.id+"]");
-                    console.log("____removed reaction ["+reaction.emoji.name+":"+reaction.emoji.id+"]");
-                    console.log("____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
+                    utils.botLogs(globals, "__[reactRoleEvent]__collected a removed reaction\n____user ["+user.username+":"+user.id+"]\n____removed reaction ["+reaction.emoji.name+":"+reaction.emoji.id+"]\n____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
                     if (reaction.emoji.id) //not null -> custom
                         var react_emote = reaction.emoji.id;
                     else //null -> unicode
                         var react_emote = reaction.emoji.name;
                     var role_to_assign = reactroles[server.id][channel.id][reaction.message.id]['emotes'][react_emote];
-                    console.log("__role to remove: "+role_to_assign);
+                    utils.botLogs(globals, "__[reactRoleEvent]__role to remove: "+role_to_assign+"\n__resolving server role");
 
-                    console.log("--resolving server role");
                     var server_roles = await server.roles.fetch();
                     var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
                     if (role){
-                        console.log("----role found: "+role.name+":"+role.id);
-                        console.log("--resolving server member");
+                        utils.botLogs(globals, "____[reactRoleEvent]____role found: "+role.name+":"+role.id+"\n__resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
                         if (member){
-                            console.log("----member found: "+member.displayName+":"+member.id);
-                            console.log("--removing role to member");
+                            utils.botLogs(globals, "____[reactRoleEvent]____member found: "+member.displayName+":"+member.id+"\n__removing role to member");
                             member.roles.remove(role.id)
-                            .then(m_id => console.log("----successfully removed role from member ["+m_id+"]"))
+                            .then(m_id => utils.botLogs(globals, "____[reactRoleEvent]____successfully removed role from member ["+m_id+"]"))
                             .catch(err => {
-                                console.log("----failed to remove role due to error");
-                                console.log(err);
+                                utils.botLogs(globals, "____[reactRoleEvent]____failed to remove role due to error\n"+err);
                             });
                         }
-                        else console.log("----member not found");
+                        else utils.botLogs(globals, "____[reactRoleEvent]____member not found");
                     } 
-                    else console.log("----role not found");
+                    else utils.botLogs(globals, "____[reactRoleEvent]____role not found");
                 }
                 remove_func(reaction, user);
             });
             
-            console.log("----complete");
+            utils.botLogs(globals, "----complete");
             //console.log(reactroles);
         });
     },
@@ -228,23 +214,23 @@ module.exports = {
         for (_emote of emotes){
             var emote_info = utils.get_emote_id(_emote);
             var emote = emote_info.emote.trim();
-            if (  (emote_info.type === "custom") && //skip unicode, cuz i dunno how to verify
+            if (  (emote_info.type === "custom") && 
                     !( msg.guild.emojis.resolve(emote)  //.cache.find(emoji => ((emoji.name === emote) || (emoji.id === emote)))
                      || client.emojis.resolve(emote) )  ) {
-                console.log("--invalid emote ::  "+_emote);
+                utils.botLogs(globals, "--invalid emote ::  "+_emote);
                 msg.reply("Invalid emote -> "+_emote);
                 return;
             }
             var _role = args.reactions[_emote];
             var server_roles = await msg.guild.roles.fetch();
             if ( !server_roles.cache.find(role => role.name.toLowerCase() === _role.toLowerCase()) ){
-                console.log("--invalid role ::  "+_role);
+                utils.botLogs(globals, "--invalid role ::  "+_role);
                 msg.reply("Invalid role -> "+_role);
                 return;
             }
         }
 
-        console.log("--setting up bot message");
+        utils.botLogs(globals, "--setting up bot message");
         msg.channel.send(text_body)
         .then(async function (bot_message) {
             var bot_message_id = bot_message.id;
@@ -257,30 +243,30 @@ module.exports = {
             else if ( !reactroles[server_id].hasOwnProperty(channel_id) )
                 reactroles[server_id][channel_id] = {};
             reactroles[server_id][channel_id][bot_message_id] = {};
-            console.log("----message posted with id ["+bot_message_id+"] in channel ["+channel_id+"] in server ["+server_id+"]");
+            utils.botLogs(globals, "----message posted with id ["+bot_message_id+"] in channel ["+channel_id+"] in server ["+server_id+"]");
             var current_post = reactroles[server_id][channel_id][bot_message_id];
             current_post['type'] = "switch"; //
             current_post['emotes'] = {};
-            console.log("--setting up reactions");
+            utils.botLogs(globals, "--setting up reactions");
             for (var raw_emote of emotes){
-                console.log('--set up reaction on bot message: '+raw_emote); 
+                utils.botLogs(globals, '--set up reaction on bot message: '+raw_emote); 
                 var emote_info = utils.get_emote_id(raw_emote);
                 var emote = emote_info.emote.trim();
                 var emote_type = emote_info.type;
                 switch (emote_type){
                     case "unicode":
-                        console.log("----unicode emote");
+                        utils.botLogs(globals, "----unicode emote");
                         break;
                     case "custom":
-                        console.log("----custom emote");
+                        utils.botLogs(globals, "----custom emote");
                         break;
                 }
                 current_post['emotes'][emote] = args.reactions[raw_emote].trim();
                 await bot_message.react(emote); 
-                console.log("----complete");
+                utils.botLogs(globals, "----complete");
             };
 
-            console.log("--creating reaction collector");
+            utils.botLogs(globals, "--creating reaction collector");
             //if filter returns true then check event, otherwise ignore
             const filter = (reaction, user) => {
                 return ((user.id !== client.user.id)
@@ -292,30 +278,24 @@ module.exports = {
             /* reaction is added */
             collector.on('collect', (reaction, user) => {
                 const collect_func = async (reaction, user) => {
-                    console.log("\n__collected an added reaction");
                     var server = reaction.message.guild;
                     var channel = reaction.message.channel;
-                    console.log("__user ["+user.username+":"+user.id+"]");
-                    console.log("____reacted with ["+reaction.emoji.name+":"+reaction.emoji.id+"]");
-                    console.log("____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
+                    utils.botLogs(globals, "__[reactRoleEvent]__collected an added reaction\n__user ["+user.username+":"+user.id+"]\n____reacted with ["+reaction.emoji.name+":"+reaction.emoji.id+"]\n____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
                     if (reaction.emoji.id) //not null -> custom
                         var react_emote = reaction.emoji.id;
                     else //null -> unicode
                         var react_emote = reaction.emoji.name;
                     var role_to_assign = reactroles[server.id][channel.id][reaction.message.id]['emotes'][react_emote];
-                    console.log("__role to assign: "+role_to_assign);
+                    utils.botLogs(globals, "__[reactRoleEvent]__role to assign: "+role_to_assign+"\n__[reactRoleEvent]__resolving server role");
 
-                    console.log("--resolving server role");
                     var server_roles = await server.roles.fetch();
                     var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
                     if (role){
-                        console.log("----found: "+role.name+":"+role.id);
-                        console.log("--resolving server member");
+                        utils.botLogs(globals, "____[reactRoleEvent]____found: "+role.name+":"+role.id+"\n__resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
                         if (member){
-                            console.log("----found: "+member.displayName+":"+member.id);
+                            utils.botLogs(globals, "____[reactRoleEvent]____found: "+member.displayName+":"+member.id+"\n__removing existing reactions in react group");
 
-                            console.log("--removing existing reactions in react group");
                             var current_group = reactroles[reaction.message.guild.id][reaction.message.channel.id][reaction.message.id]['emotes'];
                             var reactrole_group = Object.keys(current_group);
                             var message_reactions = reaction.message.reactions.cache;
@@ -332,33 +312,31 @@ module.exports = {
                                         hadReact = true;
                                         msg_react.users.remove(user.id) //removing triggers the reaction 'remove' event and deals with the role removal
                                         .then(m_id => {
-                                            console.log("----removed user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
+                                            utils.botLogs(globals, "____[reactRoleEvent]____removed user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
                                             //apply the role after handling the deletion in 'remove' event to prevent race conditions
                                         })
                                         .catch(err => {
-                                            console.log("----failed to remove user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
-                                            console.log(err);
+                                            utils.botLogs(globals, "____[reactRoleEvent]____failed to remove user ["+user.id+"] from react ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]\n"+err);
                                         });
                                     }
                                 }
-                                else  console.log("----user ["+server.members.resolve(user.id).displayName+":"+user.id+"] didnt have reaction on ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
+                                else  utils.botLogs(globals, "____[reactRoleEvent]____user ["+server.members.resolve(user.id).displayName+":"+user.id+"] didnt have reaction on ["+msg_react.emoji.name+":"+msg_react.emoji.id+"]");
                             }
 
                             if (!hadReact){
-                                console.log("--giving role ["+role.name+":"+role.id+"] to member");
+                                utils.botLogs(globals, "__[reactRoleEvent]__giving role ["+role.name+":"+role.id+"] to member");
                                 member.roles.add(role.id)
                                 .then(m_id => {
-                                    console.log("----successfully added ["+role.name+":"+role.id+"] role to member ["+m_id+"]");
+                                    utils.botLogs(globals, "____[reactRoleEvent]____successfully added ["+role.name+":"+role.id+"] role to member ["+m_id+"]");
                                 })
                                 .catch(err => {
-                                    console.log("----failed to add role ["+role.name+":"+role.id+"] due to error");
-                                    console.log(err);
+                                    utils.botLogs(globals, "____[reactRoleEvent]____failed to add role ["+role.name+":"+role.id+"] due to error\n"+err);
                                 });
                             }
                         }
-                        else console.log("----member not found");
+                        else utils.botLogs(globals, "____[reactRoleEvent]____member not found");
                     } 
-                    else console.log("----role not found");
+                    else utils.botLogs(globals, "____[reactRoleEvent]____role not found");
                 }
                 collect_func(reaction, user);
             });
@@ -366,47 +344,39 @@ module.exports = {
             /* reaction is removed */
             collector.on('remove', (reaction, user) => { //remove event is not being fired on emoji removal
                 const remove_func = async (reaction, user) => {
-                    console.log("\n__collected a removed reaction");
                     var server = reaction.message.guild;
                     var channel = reaction.message.channel;
-                    console.log("__user ["+user.username+":"+user.id+"]");
-                    console.log("____removed reaction ["+reaction.emoji.name+":"+reaction.emoji.id+"]");
-                    console.log("____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
+                    utils.botLogs(globals, "__[reactRoleEvent]__collected a removed reaction\n__user ["+user.username+":"+user.id+"]\n____removed reaction ["+reaction.emoji.name+":"+reaction.emoji.id+"]\n____on message ["+reaction.message.id+"] in channel ["+channel.name+":"+channel.id+"] in server ["+server.name+":"+server.id+"]");
                     if (reaction.emoji.id) //not null -> custom
                         var react_emote = reaction.emoji.id;
                     else //null -> unicode
                         var react_emote = reaction.emoji.name;
                     var role_to_assign = reactroles[server.id][channel.id][reaction.message.id]['emotes'][react_emote];
-                    console.log("__role to remove: "+role_to_assign);
+                    utils.botLogs(globals, "__[reactRoleEvent]__role to remove: "+role_to_assign+"\n__resolving server role");
 
-                    console.log("--resolving server role");
                     var server_roles = await server.roles.fetch();
                     var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
                     if (role){
-                        console.log("----role found: "+role.name+":"+role.id);
-                        console.log("--resolving server member");
+                        utils.botLogs(globals, "____[reactRoleEvent]____role found: "+role.name+":"+role.id+"\n__resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
                         if (member){
-                            console.log("----member found: "+member.displayName+":"+member.id);
+                            utils.botLogs(globals, " ____[reactRoleEvent]____member found: "+member.displayName+":"+member.id+"\n__removing role ["+role.name+":"+role.id+"] from member");
 
-                            console.log("--removing role ["+role.name+":"+role.id+"] from member");
                             member.roles.remove(role.id)
                             .then(m_id => {
-                                console.log("----successfully removed role ["+role.name+":"+role.id+"] from member ["+m_id+"]");
+                                utils.botLogs(globals, " ____[reactRoleEvent]____successfully removed role ["+role.name+":"+role.id+"] from member ["+m_id+"]");
                             })
                             .catch(err => {
-                                console.log("----failed to remove role ["+role.name+":"+role.id+"] due to error");
-                                console.log(err);
+                                utils.botLogs(globals, " ____[reactRoleEvent]____failed to remove role ["+role.name+":"+role.id+"] due to error\n")+err;
                             });
 
                             //give or restore role
-                            console.log("--removing existing reactions in react group");
+                            utils.botLogs(globals, "__[reactRoleEvent]__removing existing reactions in react group");
                             var current_group = reactroles[reaction.message.guild.id][reaction.message.channel.id][reaction.message.id]['emotes'];
                             var reactrole_group = Object.keys(current_group);
                             var message = await reaction.message.fetch();
                             var message_reactions = message.reactions.cache;
                             var msg_reacts = message_reactions.values(); //array/iterable of MessageReaction
-                            //var hadReact = false;
                             for (var msg_react of msg_reacts){
                                 if ( msg_react.users.resolve(user.id)  //member has this reaction on this message
                                     && ( reactrole_group.includes(msg_react.emoji.name) 
@@ -417,28 +387,26 @@ module.exports = {
                                     var restored_role_name = current_group[ reactrole_group.includes(msg_react.emoji.name) ? msg_react.emoji.name : msg_react.emoji.id ]; 
                                     //console.log(restored_role_name);
                                     var restored_role = server_roles.cache.find(role => role.name.toLowerCase() === restored_role_name.toLowerCase());;
-                                    console.log("--giving role ["+restored_role.name+":"+restored_role.id+"] to member from switched react");
+                                    utils.botLogs(globals, "__[reactRoleEvent]__giving role ["+restored_role.name+":"+restored_role.id+"] to member from switched react");
                                     member.roles.add(restored_role.id)
                                     .then(m_id => {
-                                        console.log("----successfully added role ["+restored_role.name+":"+restored_role.id+"] to member ["+m_id+"]");
+                                        utils.botLogs(globals, " ____[reactRoleEvent]____successfully added role ["+restored_role.name+":"+restored_role.id+"] to member ["+m_id+"]");
                                     })
                                     .catch(err => {
-                                        console.log("----failed to add role ["+restored_role.name+":"+restored_role.id+"] due to error");
-                                        console.log(err);
+                                        utils.botLogs(globals, " ____[reactRoleEvent]____failed to add role ["+restored_role.name+":"+restored_role.id+"] due to error\n"+err);
                                     });
-                                    //hadReact = true;
                                     break;
                                 }
                             }
                         }
-                        else console.log("----member not found");
+                        else utils.botLogs(globals, " ____[reactRoleEvent]____member not found");
                     } 
-                    else console.log("----role not found");
+                    else utils.botLogs(globals, " ____[reactRoleEvent]____role not found");
                 }
                 remove_func(reaction, user);
             });
             
-            console.log("----complete");
+            utils.botLogs(globals, " ____[reactRoleEvent]____complete");
             //console.log(reactroles);
         });
     }

@@ -97,6 +97,12 @@ async function logInterval(globals){
     catch (err){
         utils.botLogs(globals,"## ERR occurred during 24hour new logs file interval");
     }
+    finally {
+        if (globals.busy){
+            utils.botLogs(globals,"* releasing work lock for log newfile *");
+            utils.work_Unlock(globals);
+        }
+    }
 }
 
 function setupLogs(){
@@ -114,7 +120,7 @@ function setupLogs(){
             fileName = fileName.replace(/-/g,"_");
             fileName = fileName.replace(/:/g,"-");
             globals["logsFileName"] = fileName;
-            var log_interval = setInterval(logInterval, 24*60*60*1000, globals);
+            var log_interval = setInterval(logInterval, 60000/*24*60*60*1000*/, globals);
             globals["timers"].push(log_interval);
             fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n\n\n");
         }
@@ -399,7 +405,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                     msg.react('😪');
                     utils.change_status(client, 'idle', configs.idleStatusText)
                     .then(_ => { msg.react('✅'); })
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  })
                     .finally(_ => { utils.work_Unlock(globals); });
                 });
             }
@@ -415,14 +421,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
                 //console.log(reactroles);
@@ -439,14 +445,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
                 //console.log(reactroles);
@@ -463,14 +469,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -486,14 +492,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -509,14 +515,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -532,14 +538,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -561,14 +567,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -590,14 +596,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -619,14 +625,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -648,14 +654,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -677,14 +683,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -706,14 +712,14 @@ function commandHandler(msg, member, command, content, isRepeat){
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .catch(err => {  
                     utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
                     msg.reply("An error occured:  "+err);
                     msg.react('❌'); 
                     utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") });
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  });
                 })
                 .finally(_ => { utils.work_Unlock(globals); });
             }
@@ -769,7 +775,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                         utils.botLogs(globals,"\nCompleted request\n");
                         msg.react('✅');
                         utils.change_status(client, 'idle', configs.idleStatusText)
-                        .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.")})
+                        .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.") })
                         .finally(_ => { utils.work_Unlock(globals); });
                     })
                     .catch(err => {  
@@ -777,7 +783,7 @@ function commandHandler(msg, member, command, content, isRepeat){
                         msg.reply("An error occured:  "+err);
                         msg.react('❌'); 
                         utils.change_status(client, 'idle', configs.idleStatusText)
-                        .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send(err + ". my status should be 'idle'.") })
+                        .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.")  })
                         .finally(_ => { utils.work_Unlock(globals); });
                     });
                 }
@@ -785,6 +791,9 @@ function commandHandler(msg, member, command, content, isRepeat){
                 else{ //unknown command
                     msg.react('🤔');
                     msg.reply("`"+prefix+command+"` command unknown, try --help or --commands for a list of commands and short documentation");
+                    utils.change_status(client, 'idle', configs.idleStatusText)
+                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.") })
+                    .finally(_ => { utils.work_Unlock(globals); });
                 }
             }
         }
@@ -851,7 +860,7 @@ function repeatEventHandler(msg, member, command, content){
 
 
 /***   scheduled reactroles garbage collection   ***/
-var maintenance_interval = 1000*60*60*24; // 24 hours
+var maintenance_interval = 60000/*24*60*60*1000*/; // 24 hours
 setInterval(garbage_collection, maintenance_interval); 
 async function garbage_collection(){ //(not tested)
     while (globals.busy) {
