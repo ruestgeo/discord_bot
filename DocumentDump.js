@@ -29,20 +29,26 @@ const dumpToSheet = async (msg, globals, sheet_title, list, rowStart, rowEnd, co
     const sheet = await doc.addSheet({ title: sheet_title, gridProperties: { rowCount: rowSize, columnCount: colSize, frozenRowCount: (rowStart == 0 ? 1 : 0) } });
     await sheet.loadCells({
         startRowIndex: rowStart, endRowIndex: rowEnd, startColumnIndex: colStart, endColumnIndex: colEnd
-    });
+    }).catch (err => { throw (err); });
     
     for (var i=colStart; i<colEnd; i++){ //load headers with bold
         const cell = sheet.getCell(rowStart, i); 
         cell.textFormat = { bold: true };
         cell.value = list[i][0];
+        cell.wrapStrategy = configs.sheetCellWrap;
     }
     for (var j=rowStart+1; j<rowEnd; j++){
         for (var i=colStart; i<colEnd; i++){
             const cell = sheet.getCell(j, i);
             cell.value = list[i][j];
+            cell.wrapStrategy = configs.sheetCellWrap;
         }
     }
-    await sheet.saveUpdatedCells();  // save all updates in one call
+    await sheet.saveUpdatedCells()  // save all updates in one call
+    .catch (err => { 
+        utils.botLogs(globals, err.toString()); 
+        throw new Error("  (first line of error) ::   "+err.toString().split('\n', 1)[0]); 
+    });  
     msg.reply("Data has been dumped to doc "+"<https://docs.google.com/spreadsheets/d/"+doc.spreadsheetId+"#gid="+sheet.sheetId+">");
 }
 
@@ -54,7 +60,7 @@ module.exports = {
 
         utils.botLogs(globals,  "--fetching channel ["+content+"]");
         client.channels.fetch(content.trim())
-        .then(channel => {
+        .then(async (channel) => {
             var voice_members = channel.members.values();
             
             var date = utils.getDateTimeString(globals);
@@ -71,12 +77,13 @@ module.exports = {
             list.push(col);
 
             /**  create new sheet and dump info  **/
-            dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, 1);
+            await dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, 1)
+            .catch (err => { throw (err); });
 
         })
         .catch(err => {
             utils.botLogs(globals,  err.stack)
-            msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
+            throw ("An error occurred, couldn't complete the request\n`"+err+"`");
         });
         
     },
@@ -92,8 +99,7 @@ module.exports = {
         utils.botLogs(globals,  "--fetching message ["+content+"]");
         if (! content.startsWith("https://discordapp.com/channels/")){
             utils.botLogs(globals,  "----invalid message link"+content);
-            msg.reply("Invalid message link: ["+content+"]");
-            return;
+            throw ("Invalid message link: ["+content+"]");
         }
         var ids = content.substring("https://discordapp.com/channels/".length).split("/");
         var server_id = ids[0];
@@ -102,20 +108,18 @@ module.exports = {
         var server = client.guilds.resolve(server_id);
         if( !server){
             utils.botLogs(globals,  "----server could not be resolved from id "+server_id);
-            msg.reply("Server could not be resolved from id "+server_id)
-            return;
+            throw ("Server could not be resolved from id "+server_id);
         }
         var channel = server.channels.resolve(channel_id);
         if (!channel){
             utils.botLogs(globals,  "----channel could not be resolved from id "+channel_id);
-            msg.reply("Channel could not be resolved from id "+channel_id)
-            return;
+            throw ("Channel could not be resolved from id "+channel_id);
         }
         await channel.messages.fetch(message_id) //NOTE: currently only messages have links, if others have links then need to type check channel type
         .then(message => {
             if (message.deleted){
                 utils.botLogs(globals,  "----message "+message.id+" DELETED");
-                msg.reply("Message with id ["+message_id+"] had been deleted")
+                throw ("Message with id ["+message_id+"] had been deleted");
             } 
             else {
                 var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
@@ -143,23 +147,24 @@ module.exports = {
                             }
                         } catch (err){
                             utils.botLogs(globals,  err.stack);
-                            msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
-                            return;
+                            throw ("An error occurred, couldn't complete the request\n`"+err+"`");
                         }
                         longest_col = Math.max(longest_col, col.length);
                         list.push(col);
                     }
 
                     /**  create new sheet and dump info  **/
-                    dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length);
+                    await dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length)
+                    .catch (err => { throw (err); });
 
                 }
-                fetchUsers(globals, msg, message, msg_reacts, reacts_title);
+                fetchUsers(globals, msg, message, msg_reacts, reacts_title)
+                .catch (err => { throw (err); });
             }
         })
         .catch(err => {
-            utils.botLogs(globals,  err);
-            msg.reply("Couldn't fetch message from id "+message_id)
+            utils.botLogs(globals,  err.stack);
+            throw ("Couldn't fetch message from id "+message_id);
         });
     },
     
@@ -173,9 +178,8 @@ module.exports = {
         var client = globals.client;
         
         if (!content.includes(' ')){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
@@ -187,8 +191,7 @@ module.exports = {
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
-            msg.reply("Invalid role -> "+targetRole);
-            return;
+            throw ("Invalid role -> "+targetRole);
         }
         var role = await server.roles.fetch(role.id); //for cache
         
@@ -207,7 +210,7 @@ module.exports = {
 
         utils.botLogs(globals,  "--fetching channel ["+target+"]");
         client.channels.fetch(target.trim())
-        .then(channel => {
+        .then(async (channel) => {
             var voice_members = channel.members;
 
             var date = utils.getDateTimeString(globals);
@@ -236,12 +239,13 @@ module.exports = {
             }
 
             /**  create new sheet and dump info  **/
-            dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, list.length);
+            await dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, list.length)
+            .catch (err => { throw (err); });
 
         })
         .catch(err => {
             utils.botLogs(globals,  err.stack)
-            msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
+            throw ("An error occurred, couldn't complete the request\n`"+err+"`");
         });
         
     },
@@ -254,9 +258,8 @@ module.exports = {
         var client = globals.client;
         
         if (!content.includes(' ')){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
@@ -268,8 +271,7 @@ module.exports = {
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
-            msg.reply("Invalid role -> "+targetRole);
-            return;
+            throw ("Invalid role -> "+targetRole);
         }
         var role = await server.roles.fetch(role.id); //for cache
         
@@ -291,8 +293,7 @@ module.exports = {
         utils.botLogs(globals,  "--fetching message ["+target+"]");
         if (! target.startsWith("https://discordapp.com/channels/")){
             utils.botLogs(globals,  "----invalid message link"+target);
-            msg.reply("Invalid message link: ["+target+"]");
-            return;
+            throw ("Invalid message link: ["+target+"]");
         }
         var ids = target.substring("https://discordapp.com/channels/".length).split("/");
         var server_id = ids[0];
@@ -301,20 +302,18 @@ module.exports = {
         var server = client.guilds.resolve(server_id);  //not really neccessary, could use `msg.guild` for more restrictive use
         if( !server){
             utils.botLogs(globals,  "----server could not be resolved from id "+server_id);
-            msg.reply("Server could not be resolved from id "+server_id)
-            return;
+            throw ("Server could not be resolved from id "+server_id);
         }
         var channel = server.channels.resolve(channel_id);
         if (!channel){
             utils.botLogs(globals,  "----channel could not be resolved from id "+channel_id);
-            msg.reply("Channel could not be resolved from id "+channel_id)
-            return;
+            throw ("Channel could not be resolved from id "+channel_id);
         }
         await channel.messages.fetch(message_id) //NOTE: currently only messages have links, if others have links then need to type check channel type
         .then(message => {
             if (message.deleted){
                 utils.botLogs(globals,  "----message "+message.id+" DELETED");
-                msg.reply("Message with id ["+message_id+"] had been deleted")
+                throw ("Message with id ["+message_id+"] had been deleted");
             } 
             else{
                 var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
@@ -344,8 +343,7 @@ module.exports = {
                             }
                         } catch (err){
                             utils.botLogs(globals,  err.stack);
-                            msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
-                            return;
+                            throw ("An error occurred, couldn't complete the request\n`"+err+"`");
                         }
                         longest_col = Math.max(longest_col, col.length);
                         list.push(col);
@@ -366,15 +364,17 @@ module.exports = {
                     
 
                     /**  create new sheet and dump info  **/
-                    dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length);
+                    await dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length)
+                    .catch (err => { throw (err); });
 
                 }
-                fetchUsers(globals, msg, message, msg_reacts, reacts_title, list, members, noReaction);
+                fetchUsers(globals, msg, message, msg_reacts, reacts_title, list, members, noReaction)
+                .catch (err => { throw (err); });
             }
         })
         .catch(err => {
-            utils.botLogs(globals,  err);
-            msg.reply("Couldn't fetch message from id "+message_id)
+            utils.botLogs(globals,  err.stack);
+            throw ("Couldn't fetch message from id "+message_id);
         });
     },
 
@@ -388,9 +388,8 @@ module.exports = {
         var client = globals.client;
         
         if (!content.includes(' ')){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
@@ -402,8 +401,7 @@ module.exports = {
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
-            msg.reply("Invalid role -> "+targetRole);
-            return;
+            throw ("Invalid role -> "+targetRole);
         }
         var role = await server.roles.fetch(role.id); //for cache
         
@@ -422,7 +420,7 @@ module.exports = {
             var channel = await client.channels.fetch(target.trim())
             .catch(err => {
                 utils.botLogs(globals,  err.stack)
-                msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
+                throw ("An error occurred, couldn't complete the request\n`"+err+"`");
             });
             var voice_members = channel.members;
             
@@ -450,9 +448,11 @@ module.exports = {
             }
 
             /**  create new sheet and dump info  **/
-            dumpToSheet(msg, globals, channel_title, list, 0, Math.max(col_IN.length, col_NOT.length), 0, list.length);
+            await dumpToSheet(msg, globals, channel_title, list, 0, Math.max(col_IN.length, col_NOT.length), 0, list.length)
+            .catch (err => { throw (err); });
         }
-        await fetchUsers(client, msg, globals, members, role.name);
+        await fetchUsers(client, msg, globals, members, role.name)
+        .catch (err => { throw (err); });
     },
 
 
@@ -463,9 +463,8 @@ module.exports = {
         var client = globals.client;
         
         if (!content.includes(' ')){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         var target = content.substr(0, content.indexOf(' ')).trim();
         var targetRole = content.substr(content.indexOf(' ')+1).trim();
@@ -477,8 +476,7 @@ module.exports = {
         var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
-            msg.reply("Invalid role -> "+targetRole);
-            return;
+            throw ("Invalid role -> "+targetRole);
         }
         var role = await server.roles.fetch(role.id); //for cache
         
@@ -495,8 +493,7 @@ module.exports = {
         utils.botLogs(globals,  "--fetching message ["+target+"]");
         if (! target.startsWith("https://discordapp.com/channels/")){
             utils.botLogs(globals,  "----invalid message link"+target);
-            msg.reply("Invalid message link: ["+target+"]");
-            return;
+            throw ("Invalid message link: ["+target+"]");
         }
         var ids = target.substring("https://discordapp.com/channels/".length).split("/");
         var server_id = ids[0];
@@ -505,24 +502,21 @@ module.exports = {
         var server = client.guilds.resolve(server_id);  //not really neccessary, could use `msg.guild` for more restrictive use
         if( !server){
             utils.botLogs(globals,  "----server could not be resolved from id "+server_id);
-            msg.reply("Server could not be resolved from id "+server_id)
-            return;
+            throw ("Server could not be resolved from id "+server_id);
         }
         var channel = server.channels.resolve(channel_id);
         if (!channel){
             utils.botLogs(globals,  "----channel could not be resolved from id "+channel_id);
-            msg.reply("Channel could not be resolved from id "+channel_id)
-            return;
+            throw ("Channel could not be resolved from id "+channel_id);
         }
         var message = await channel.messages.fetch(message_id) //NOTE: currently only messages have links, if others have links then need to type check channel type
         .catch(err => {
-            utils.botLogs(globals,  err);
-            msg.reply("Couldn't fetch message from id "+message_id);
-            return;
+            utils.botLogs(globals,  err.stack);
+            throw ("Couldn't fetch message from id "+message_id);
         });
         if (message.deleted){
             utils.botLogs(globals,  "----message "+message.id+" DELETED");
-            msg.reply("Message with id ["+message_id+"] had been deleted")
+            throw ("Message with id ["+message_id+"] had been deleted");
         } 
         else {
             var msg_reacts = message.reactions.cache.values(); //doesn't fetch reaction users
@@ -553,8 +547,7 @@ module.exports = {
                         }
                     } catch (err){
                         utils.botLogs(globals,  err.stack);
-                        msg.reply("An error occurred, couldn't complete the request\n`"+err+"`");
-                        return;
+                        throw ("An error occurred, couldn't complete the request\n`"+err+"`");
                     }
                     longest_col = Math.max(longest_col, col.length);
                     list.push(col);
@@ -574,10 +567,12 @@ module.exports = {
                 list.push(col);
 
                 /**  create new sheet and dump info  **/
-                dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length);
+                await dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length)
+                .catch (err => { throw (err); });
 
             }
-            await fetchUsers(globals, msg, message, msg_reacts, reacts_title, members, noReaction);
+            await fetchUsers(globals, msg, message, msg_reacts, reacts_title, members, noReaction)
+            .catch (err => { throw (err); });
         }
     },
 

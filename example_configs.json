@@ -6,12 +6,10 @@
     "defaultSheetRows": 200,
     "defaultSheetCols": 10,
     "autoSheetSize": false,
+    "sheetCellWrap": "CLIP  /  OVERFLOW_CELL  /  WRAP    (defaults to overflow)",
     "IANAZoneTime" : "A zone identified by an IANA identifier, like America/New_York.  see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
     "logsFile": "append / overwrite / newfile / none  ([append] will add logs to LOGS.txt, [overwrite] will write over LOGS.txt on each startup, [newfile] will make a new unique logs file each startup and each 24 hours after, [none] will not dump logs to file)",
     "startupStatusText": "[Bot awaiting commands]",
     "idleStatusText": "[Bot awaiting commands]",
-    "shutdownStatusText": "[Bot shutting down]",
-    "modularFunctions": [
-        "--exampleFunction"
-    ]
+    "shutdownStatusText": "[Bot shutting down]"
 }

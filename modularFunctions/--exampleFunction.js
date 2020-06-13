@@ -37,7 +37,8 @@ module.exports = {
         * 
         * these parameters are fixed until further expansion
         */
-        console.log("this is an example modular function");
+        console.log("this is an example modular function from exampleFunction.js");
+        msg.reply("this is an example modular function from exampleFunction.js");
     }, 
 
     manual: "Example modular function manual."

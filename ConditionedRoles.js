@@ -28,9 +28,8 @@ module.exports = {
             for (role of args["give-role"])
                 roles.push(role);
         } else {
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         if (args.hasOwnProperty("has-role")){
             for (role of args["has-role"])
@@ -49,8 +48,7 @@ module.exports = {
         for (role of roles){
             if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
-                msg.reply("Invalid role -> "+role);
-                return;
+                throw ("Invalid role -> "+role);
             }
         }
 
@@ -98,7 +96,7 @@ module.exports = {
                 .then(m_id => utils.botLogs(globals,  "----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     utils.botLogs(globals,  "----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+m_id+"] due to error");
-                    utils.botLogs(globals,  err);
+                    utils.botLogs(globals,  err.stack);
                 });
             }
         }
@@ -124,9 +122,8 @@ module.exports = {
             for (role of args["remove-role"])
                 roles.push(role);
         } else {
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         if (args.hasOwnProperty("has-role")){
             for (role of args["has-role"])
@@ -145,8 +142,7 @@ module.exports = {
         for (role of roles){
             if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
-                msg.reply("Invalid role -> "+role);
-                return;
+                throw ("Invalid role -> "+role);
             }
         }
 
@@ -194,7 +190,7 @@ module.exports = {
                 .then(m_id => utils.botLogs(globals,  "----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     utils.botLogs(globals,  "----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+m_id+"] due to error");
-                    utils.botLogs(globals,  err);
+                    utils.botLogs(globals,  err.stack);
                 });
             }
         }
@@ -221,15 +217,13 @@ module.exports = {
             for (role of args["give-role"])
                 roles.push(role);
         } else {
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
 
         if (args.hasOwnProperty("has-role")){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct. 'has-role' is not currently supported for this command");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct. 'has-role' is not currently supported for this command");
         }
         if (args.hasOwnProperty("missing-role")){
             for (rolegroup of args["missing-role"])
@@ -245,8 +239,7 @@ module.exports = {
         for (role of roles){
             if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
-                msg.reply("Invalid role -> "+role);
-                return;
+                throw ("Invalid role -> "+role);
             }
         }
 
@@ -287,7 +280,7 @@ module.exports = {
                 .then(m_id => utils.botLogs(globals,  "----successfully added role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     utils.botLogs(globals,  "----failed to add role ["+role_to_add.name+":"+role_to_add.id+"] to user ["+m_id+"] due to error");
-                    utils.botLogs(globals,  err);
+                    utils.botLogs(globals,  err.stack);
                 });
             }
         }
@@ -313,9 +306,8 @@ module.exports = {
             for (role of args["remove-role"])
                 roles.push(role);
         } else {
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct.");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         if (args.hasOwnProperty("has-role")){
             for (rolegroup of args["has-role"])
@@ -323,9 +315,8 @@ module.exports = {
                     roles.push(role);
         }
         if (args.hasOwnProperty("missing-role")){
-            msg.reply("Incorrect request body.  Please ensure that the input arguments are correct. 'missing-role' is not currently supported for this command");
             utils.botLogs(globals,  "----incorrect request body");
-            return;
+            throw ("Incorrect request body.  Please ensure that the input arguments are correct. 'missing-role' is not currently supported for this command");
         }
         if (args.hasOwnProperty("target")){
             roles.push(args["target"]);
@@ -336,8 +327,7 @@ module.exports = {
         for (role of roles){
             if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
-                msg.reply("Invalid role -> "+role);
-                return;
+                throw ("Invalid role -> "+role);
             }
         }
 
@@ -377,7 +367,7 @@ module.exports = {
                 .then(m_id => utils.botLogs(globals,  "----successfully removed role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+server.members.resolve(m_id).displayName+":"+m_id+"] "))
                 .catch(err => {
                     utils.botLogs(globals,  "----failed to remove role ["+role_to_remove.name+":"+role_to_remove.id+"] from user ["+m_id+"] due to error");
-                    utils.botLogs(globals,  err);
+                    utils.botLogs(globals,  err.stack);
                 });
             }
         }
