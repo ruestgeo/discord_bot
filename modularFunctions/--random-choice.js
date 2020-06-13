@@ -33,7 +33,7 @@ module.exports = {
         msg.reply(randomItem);
     }, 
 
-    manual: "--random-choice   *each line after the command will be an item to chose, one line is chosen at random*"
+    manual: "--random-choice   *each line after the command will be an item to chose, one line is chosen at random (use shift+ENTER for newline)*"
 }
 
 
