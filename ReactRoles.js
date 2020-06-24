@@ -40,7 +40,7 @@ module.exports = {
 
         //check if roles and emotes exist
         for (_emote of emotes){
-            var emote_info = utils.get_emote_id(_emote);
+            var emote_info = utils.get_emote_id(_emote.trim());
             var emote = emote_info.emote.trim();
             if (  (emote_info.type === "custom") && 
                     !( msg.guild.emojis.resolve(emote) 
@@ -50,7 +50,7 @@ module.exports = {
             }
             var _role = args.reactions[_emote];
             var server_roles = await msg.guild.roles.fetch();
-            if ( !server_roles.cache.find(role => role.name.toLowerCase() === _role.toLowerCase()) ){
+            if ( !server_roles.cache.find(role => role.name === _role.trim()) ){
                 utils.botLogs(globals, "--invalid role ::  "+_role);
                 throw ("Invalid role -> "+_role);
             }
@@ -76,7 +76,7 @@ module.exports = {
             utils.botLogs(globals, "--setting up reactions");
             for (var raw_emote of emotes){
                 utils.botLogs(globals, '--set up reaction on bot message: '+raw_emote); 
-                var emote_info = utils.get_emote_id(raw_emote);
+                var emote_info = utils.get_emote_id(raw_emote.trim());
                 var emote = emote_info.emote.trim();
                 var emote_type = emote_info.type;
                 switch (emote_type){
@@ -115,7 +115,7 @@ module.exports = {
                     utils.botLogs(globals, "__[rr-e]__  role to assign: "+role_to_assign+"\n__[rr-e]__  resolving server role");
 
                     var server_roles = await server.roles.fetch();
-                    var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
+                    var role = server_roles.cache.find(role => role.name === role_to_assign.trim()); //.resolve()
                     if (role){
                         utils.botLogs(globals, "____[rr-e]____  found: "+role.name+":"+role.id+"\n__[rr-e]__  resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
@@ -148,7 +148,7 @@ module.exports = {
                     utils.botLogs(globals, "__[rr-e]__  role to remove: "+role_to_assign+"\n[rr-e]__  resolving server role");
 
                     var server_roles = await server.roles.fetch();
-                    var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
+                    var role = server_roles.cache.find(role => role.name === role_to_assign.trim()); //.resolve()
                     if (role){
                         utils.botLogs(globals, "____[rr-e]____  role found: "+role.name+":"+role.id+"\n__[rr-e]__  resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
@@ -202,7 +202,7 @@ module.exports = {
 
         //check if roles and emotes exist
         for (_emote of emotes){
-            var emote_info = utils.get_emote_id(_emote);
+            var emote_info = utils.get_emote_id(_emote.trim());
             var emote = emote_info.emote.trim();
             if (  (emote_info.type === "custom") && 
                     !( msg.guild.emojis.resolve(emote) 
@@ -212,7 +212,7 @@ module.exports = {
             }
             var _role = args.reactions[_emote];
             var server_roles = await msg.guild.roles.fetch();
-            if ( !server_roles.cache.find(role => role.name.toLowerCase() === _role.toLowerCase()) ){
+            if ( !server_roles.cache.find(role => role.name === _role.trim()) ){
                 utils.botLogs(globals, "--invalid role ::  "+_role);
                 throw ("Invalid role -> "+_role);
             }
@@ -238,7 +238,7 @@ module.exports = {
             utils.botLogs(globals, "--setting up reactions");
             for (var raw_emote of emotes){
                 utils.botLogs(globals, '--set up reaction on bot message: '+raw_emote); 
-                var emote_info = utils.get_emote_id(raw_emote);
+                var emote_info = utils.get_emote_id(raw_emote.trim());
                 var emote = emote_info.emote.trim();
                 var emote_type = emote_info.type;
                 switch (emote_type){
@@ -277,7 +277,7 @@ module.exports = {
                     utils.botLogs(globals, "__[rr-e]__  role to assign: "+role_to_assign+"\n__[rr-e]__  resolving server role");
 
                     var server_roles = await server.roles.fetch();
-                    var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase());
+                    var role = server_roles.cache.find(role => role.name === role_to_assign.trim());
                     if (role){
                         utils.botLogs(globals, "____[rr-e]____  found: "+role.name+":"+role.id+"\n__[rr-e]__  resolving server member");
                         var member = server.members.resolve(user.id); 
@@ -340,7 +340,7 @@ module.exports = {
                     utils.botLogs(globals, "__[rr-e]__  role to remove: "+role_to_assign+"\n__[rr-e]__  resolving server role");
 
                     var server_roles = await server.roles.fetch();
-                    var role = server_roles.cache.find(role => role.name.toLowerCase() === role_to_assign.toLowerCase()); //.resolve()
+                    var role = server_roles.cache.find(role => role.name === role_to_assign.trim()); //.resolve()
                     if (role){
                         utils.botLogs(globals, "____[rr-e]____  role found: "+role.name+":"+role.id+"\n__[rr-e]__  resolving server member");
                         var member = server.members.resolve(user.id); //.roles.add
@@ -368,7 +368,7 @@ module.exports = {
                                         || reactrole_group.includes(msg_react.emoji.id) ) //react is in reactrole group
                                 ){
                                     var restored_role_name = current_group[ reactrole_group.includes(msg_react.emoji.name) ? msg_react.emoji.name : msg_react.emoji.id ]; 
-                                    var restored_role = server_roles.cache.find(role => role.name.toLowerCase() === restored_role_name.toLowerCase());;
+                                    var restored_role = server_roles.cache.find(role => role.name === restored_role_name.trim());;
                                     utils.botLogs(globals, "__[rr-e]__  giving role ["+restored_role.name+":"+restored_role.id+"] to member from switched react");
                                     member.roles.add(restored_role.id)
                                     .then(m_id => {

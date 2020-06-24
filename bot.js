@@ -546,7 +546,7 @@ function commandHandler(msg, member, command, content, isRepeat){
             else if (command === '--give-role-conditioned'){ //for all users
                 utils.botLogs(globals,"received request [give-role-conditioned]");
                 msg.reply("received and processing request [give-role-conditioned]");
-                condroles_functions.giveRoles(client, msg, content)
+                condroles_functions.giveRoles(globals, msg, content)
                 .then(_ => {
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
@@ -569,7 +569,7 @@ function commandHandler(msg, member, command, content, isRepeat){
             else if (command === '--remove-role-conditioned'){ //for all users
                 utils.botLogs(globals,"received request [remove-role-conditioned]");
                 msg.reply("received and processing request [remove-role-conditioned]");
-                condroles_functions.removeRoles(client, msg , content)
+                condroles_functions.removeRoles(globals, msg , content)
                 .then(_ => {
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
@@ -592,7 +592,7 @@ function commandHandler(msg, member, command, content, isRepeat){
             else if (command === '--give-role-conditioned2'){ //for all users
                 utils.botLogs(globals,"received request [give-role-conditioned2]");
                 msg.reply("received and processing request [give-role-conditioned2]");
-                condroles_functions.giveRoles_v2(client, msg, content)
+                condroles_functions.giveRoles_v2(globals, msg, content)
                 .then(_ => {
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');
@@ -617,7 +617,7 @@ function commandHandler(msg, member, command, content, isRepeat){
             else if (command === '--remove-role-conditioned2'){ //for all users
                 utils.botLogs(globals,"received request [remove-role-conditioned2]");
                 msg.reply("received and processing request [remove-role-conditioned2]");
-                condroles_functions.removeRoles_v2(client, msg , content)
+                condroles_functions.removeRoles_v2(globals, msg , content)
                 .then(_ => {
                     utils.botLogs(globals,"\nCompleted request\n");
                     msg.react('✅');

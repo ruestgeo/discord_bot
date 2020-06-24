@@ -164,7 +164,7 @@ module.exports = {
         })
         .catch(err => {
             utils.botLogs(globals,  err.stack);
-            throw ("Couldn't fetch message from id "+message_id);
+            throw (err);
         });
     },
     
@@ -188,7 +188,7 @@ module.exports = {
 
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying role is valid");
-        var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
+        var role = server_roles.cache.find(_role => _role.name === targetRole.trim());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             throw ("Invalid role -> "+targetRole);
@@ -268,7 +268,7 @@ module.exports = {
 
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying role is valid");
-        var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
+        var role = server_roles.cache.find(_role => _role.name === targetRole.trim());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             throw ("Invalid role -> "+targetRole);
@@ -398,7 +398,7 @@ module.exports = {
 
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying role is valid");
-        var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
+        var role = server_roles.cache.find(_role => _role.name === targetRole.trim());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             throw ("Invalid role -> "+targetRole);
@@ -473,7 +473,7 @@ module.exports = {
 
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying role is valid");
-        var role = server_roles.cache.find(_role => _role.name.toLowerCase() === targetRole.toLowerCase());
+        var role = server_roles.cache.find(_role => _role.name === targetRole.trim());
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             throw ("Invalid role -> "+targetRole);

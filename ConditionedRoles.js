@@ -17,7 +17,6 @@ module.exports = {
     giveRoles: async function(globals, msg, content){
         //{"give-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
 
-        var client = globals.client;
 
         utils.botLogs(globals,  "--parsing request");
         const args = JSON.parse(content);
@@ -46,7 +45,7 @@ module.exports = {
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying all roles are valid");
         for (role of roles){
-            if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
+            if ( !server_roles.cache.find(_role => _role.name === role.trim()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
                 throw ("Invalid role -> "+role);
             }
@@ -55,7 +54,7 @@ module.exports = {
         var list;
         if (args.hasOwnProperty("target")){ //use target role as list
             utils.botLogs(globals,  "--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
+            list = server_roles.cache.find(_role => _role.name === args["target"].trim()).members.values(); //verified earlier
         }
         else{  //use entire server users as list
             utils.botLogs(globals,  "--using server users list");
@@ -69,7 +68,7 @@ module.exports = {
             var skip = false;
             if (args.hasOwnProperty("has-role")){
                 for (role of args['has-role']){ //check if member doesn't have role, if so skiptrue and break
-                    if ( !member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
+                    if ( !member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id ) ){
                         skip = true;
                         break;
                     }
@@ -78,7 +77,7 @@ module.exports = {
             }
             if(args.hasOwnProperty("missing-role")){
                 for (role of args["missing-role"]){ //check if member has role, if so skiptrue and break
-                    if ( member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
+                    if ( member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id ) ){
                         skip = true;
                         break;
                     }
@@ -87,7 +86,7 @@ module.exports = {
             }
             //give role(s)
             for (role of args["give-role"]){
-                var role_to_add = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
+                var role_to_add = server_roles.cache.find(_role => _role.name === role.trim());
                 if (member.roles.cache.has(role_to_add.id)){ 
                     utils.botLogs(globals,  "----user ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
                     continue; 
@@ -111,7 +110,6 @@ module.exports = {
     removeRoles: async function(globals, msg, content){
         //{"remove-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": ['roleName', ...]> <,  "missing-role": ['roleName', ...]>  }
 
-        var client = globals.client;
 
         utils.botLogs(globals,  "--parsing request");
         const args = JSON.parse(content);
@@ -140,7 +138,7 @@ module.exports = {
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying all roles are valid");
         for (role of roles){
-            if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
+            if ( !server_roles.cache.find(_role => _role.name === role.trim()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
                 throw ("Invalid role -> "+role);
             }
@@ -149,7 +147,7 @@ module.exports = {
         var list;
         if (args.hasOwnProperty("target")){ //use target role as list
             utils.botLogs(globals,  "--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
+            list = server_roles.cache.find(_role => _role.name === args["target"].trim()).members.values(); //verified earlier
         }
         else{  //use entire server users as list
             utils.botLogs(globals,  "--using server users list");
@@ -163,7 +161,7 @@ module.exports = {
             var skip = false;
             if (args.hasOwnProperty("has-role")){
                 for (role of args['has-role']){ //check if member doesn't have role, if so skiptrue and break
-                    if ( !member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
+                    if ( !member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id ) ){
                         skip = true;
                         break;
                     }
@@ -172,7 +170,7 @@ module.exports = {
             }
             if(args.hasOwnProperty("missing-role")){
                 for (role of args["missing-role"]){ //check if member has role, if so skiptrue and break
-                    if ( member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id ) ){
+                    if ( member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id ) ){
                         skip = true;
                         break;
                     }
@@ -181,7 +179,7 @@ module.exports = {
             }
             //remove role(s)
             for (role of args["remove-role"]){
-                var role_to_remove = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
+                var role_to_remove = server_roles.cache.find(_role => _role.name === role.trim());
                 if (!member.roles.cache.has(role_to_remove.id)){ 
                     utils.botLogs(globals,  "----user ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
                     continue; 
@@ -206,7 +204,6 @@ module.exports = {
     giveRoles_v2: async function(globals, msg, content){
         //{"give-role": ['roleName', ...] <, "target": "roleName"> <,  "missing-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
 
-        var client = globals.client;
 
         utils.botLogs(globals,  "--parsing request");
         const args = JSON.parse(content);
@@ -237,7 +234,7 @@ module.exports = {
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying all roles are valid");
         for (role of roles){
-            if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
+            if ( !server_roles.cache.find(_role => _role.name === role.trim()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
                 throw ("Invalid role -> "+role);
             }
@@ -246,7 +243,7 @@ module.exports = {
         var list;
         if (args.hasOwnProperty("target")){ //use target role as list
             utils.botLogs(globals,  "--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
+            list = server_roles.cache.find(_role => _role.name === args["target"].trim()).members.values(); //verified earlier
         }
         else{  //use entire server users as list
             utils.botLogs(globals,  "--using server users list");
@@ -262,7 +259,7 @@ module.exports = {
                 for (rolegroup of args["missing-role"]){
                     var noSkip = false;
                     for (role of rolegroup){ //check if member is missing at least one of this role group
-                        var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id );
+                        var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id );
                         noSkip = noSkip || (!has); //if any is true then noSkip is true, if all false then noSkip is false
                     }
                     if (!noSkip) break;
@@ -271,7 +268,7 @@ module.exports = {
             }
             //give role(s)
             for (role of args["give-role"]){
-                var role_to_add = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
+                var role_to_add = server_roles.cache.find(_role => _role.name === role.trim());
                 if (member.roles.cache.has(role_to_add.id)){ 
                     utils.botLogs(globals,  "----user ["+member.displayName+":"+member.id+"] already has role ["+role_to_add.name+":"+role_to_add.id+"]"); 
                     continue; 
@@ -295,7 +292,6 @@ module.exports = {
     removeRoles_v2: async function(globals, msg, content){
         //{"remove-role": ['roleName', ...] <, "target": "roleName"> <,  "has-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
 
-        var client = globals.client;
 
         utils.botLogs(globals,  "--parsing request");
         const args = JSON.parse(content);
@@ -325,7 +321,7 @@ module.exports = {
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying all roles are valid");
         for (role of roles){
-            if ( !server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()) ){
+            if ( !server_roles.cache.find(_role => _role.name === role.trim()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
                 throw ("Invalid role -> "+role);
             }
@@ -334,7 +330,7 @@ module.exports = {
         var list;
         if (args.hasOwnProperty("target")){ //use target role as list
             utils.botLogs(globals,  "--using ["+args["target"]+"] role users list");
-            list = server_roles.cache.find(_role => _role.name.toLowerCase() === args["target"].toLowerCase()).members.values(); //verified earlier
+            list = server_roles.cache.find(_role => _role.name === args["target"].trim()).members.values(); //verified earlier
         }
         else{  //use entire server users as list
             utils.botLogs(globals,  "--using server users list");
@@ -349,7 +345,7 @@ module.exports = {
                 for (rolegroup of args["has-role"]){
                     var noSkip = false;
                     for (role of rolegroup){ //check if member has at least one of this role group
-                        var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase()).id );
+                        var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id );
                         noSkip = noSkip || has; //if any is true then noSkip is true, if all false then noSkip is false
                     }
                     if (!noSkip) break;
@@ -358,7 +354,7 @@ module.exports = {
             }
             //remove role(s)
             for (role of args["remove-role"]){
-                var role_to_remove = server_roles.cache.find(_role => _role.name.toLowerCase() === role.toLowerCase());
+                var role_to_remove = server_roles.cache.find(_role => _role.name === role.trim());
                 if (!member.roles.cache.has(role_to_remove.id)){ 
                     utils.botLogs(globals,  "----user ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 
                     continue; 
