@@ -11,21 +11,62 @@ Made by JiJae (ruestgeo)
 --feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
 */
 
+
+// Do NOT add or modify (unless bugged) this file.  
+//  If a file for common functions is needed see the _utils/README.txt
+
+
 const fs = require('fs'); 
+const luxon = require('luxon');
+const EventEmitter = require('events');
+
+
+const workLockEmitter = new EventEmitter();
+
+function work_Lock(globals){ 
+    //console.log("**work lock**");
+    globals.busy = true;
+    workLockEmitter.emit('locked');
+}
+function work_Unlock(globals){
+    //console.log("**work unlock**");
+    globals.busy = false;
+    workLockEmitter.emit('unlocked');
+}
+
+const DateTime = luxon.DateTime;
+var _dateTime = undefined;
+const _date = new Date();
 
 
 module.exports = {
-    work_Lock: function(globals){ //lock if busy and await 
-        console.log("**work lock**");
-        globals.busy = true;
-        globals.workLockEmitter.emit('locked');
+
+    acquire_work_lock: async function(globals, requester){
+        // await acquire_work_lock or  acquire_work_lock(~~).then(_ => { do stuff })
+        console.log("* attempting to acquire work lock for "+requester+" *");
+        while (globals.busy) {
+            console.log("* work lock still active, waiting for unlock for "+requester+" *");
+            await new Promise(resolve => workLockEmitter.once('unlocked', resolve));
+        }
+        work_Lock(globals);
+        this.botLogs(globals, "* acquired work lock for "+requester+" *");
     },
-    work_Unlock: function(globals){
-        console.log("**work unlock**");
-        globals.busy = false;
-        globals.workLockEmitter.emit('unlocked');
+    
+    release_work_lock: function(globals, holder){
+        if (!globals.busy) return;
+        this.botLogs(globals, "* releasing work lock for "+holder+" *");
+        work_Unlock(globals);
     },
 
+    botLogs: function (globals, content, timestamp, prefix){
+        if (timestamp){ //if defined and true
+            if (!prefix) prefix = "";
+            content = prefix+"("+this.getTime()+")  "+content; 
+        }
+        if (globals.LogsToFile)
+            { fs.appendFileSync(globals.logsPath+globals.logsFileName, content+"\n"); }
+        console.log(content);
+    },
 
     sleep: function (ms) { //example:  await sleep(1000);
         return new Promise((resolve) => {
@@ -33,36 +74,70 @@ module.exports = {
         });
     },
 
+    getTime: function(){
+        return _dateTime.toLocaleString({hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    },
+
     getDateTime: function(globals){
-        var configs = globals.configs;
-        const DateTime = globals["luxon"].DateTime;
-        if (DateTime.local().setZone(configs.IANAZoneTime).isValid) {
-            _date = DateTime.fromISO(DateTime.utc(), {zone: configs.IANAZoneTime});
+        var zone = globals.configs.IANAZoneTime;
+        if (DateTime.local().setZone(zone).isValid) {
+            return DateTime.fromISO(DateTime.utc(), {zone: zone});
         }
         else { //invalid IANA zone identifier, use UTC as default
             console.log("## invalid IANA zone identifier, assuming UTC");
-            _date = DateTime.utc();
+            return DateTime.utc();
         }
-        return _date;
+        
     },
-
 
     getDateTimeString: function (globals) {
-        var _date = this.getDateTime(globals);
-        var date = _date.toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', timeZoneName: "short" });
-        return date;
+        if (!_dateTime) _dateTime = this.getDateTime(globals);
+        return _dateTime.toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
     },
 
+    checkMemberAuthorized: async function(globals, _member, requiredAuthLevel, printlog){
+        try {
+            if( !printlog ) printlog = false;
+            var configs = globals.configs;
+            var authorizedRole = null;
+            var isAuthorized = false;
+            var memberAuthLevel = 0;
 
-
-    botLogs: function (globals, content){
-        if (globals.LogsToFile)
-            fs.appendFileSync(globals.logsPath+globals.logsFileName, content+"\n");
-        console.log(content);
+            var member =  await _member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
+            if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
+                memberAuthLevel = configs.authorization.authorizedUsers[member.id];
+            }
+            if ( memberAuthLevel < requiredAuthLevel ){ 
+                for ( roleID in configs.authorization.authorizedRoles ){
+                    var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
+                    if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
+                        memberAuthLevel = roleAuthLevel;
+                        authorizedRole = member.roles.cache.get(roleID);
+                    }                
+                }
+            } 
+            isAuthorized = (memberAuthLevel >= requiredAuthLevel);
+            if (!isAuthorized){
+                if (printlog)
+                    this.botLogs(globals,"-- ["+member.displayName+"#"+member.user.discriminator+":"+member.id+"] doesn't have sufficient authorization level");
+                return false;
+            }
+            else if ( !authorizedRole ){ //user Authorized
+                if (printlog) 
+                    this.botLogs(globals,"-- ["+member.displayName+"#"+member.user.discriminator+":"+member.id+"] is authorized through user authorization");
+                return true;
+            }
+            else if ( authorizedRole ) { //role Authorized
+                if (printlog) 
+                    this.botLogs(globals,"-- ["+member.displayName+"#"+member.user.discriminator+":"+member.id+"] is authorized through the ["+authorizedRole.name+":"+authorizedRole.id+"] role authorization");
+                return true;
+            }
+            else throw new Error("error occured during authorization checking");
+        }
+        catch (err){
+            throw (err);
+        }
     },
-    
-    
-
 
 
     change_status: async function(client, status, text, type){ //type is optional, defaults to PLAYING
@@ -76,7 +151,6 @@ module.exports = {
 
     status_blink: async function(globals){
         var client = globals.client;
-        var configs = globals.configs;
         //console.log("blink online");
         await client.user.setStatus('online') //blink 1
         .catch(err => { console.log("## err in status_blink ::  "+err); });
@@ -98,12 +172,51 @@ module.exports = {
         //console.log("blink pause");
         await this.sleep(1000) //sleep 4
         //console.log("blink return");
-        await this.change_status(client, 'idle', configs.idleStatusText)
+        await this.change_status(client, 'idle', globals.configs.idleStatusText)
         .catch(err => { this.botLogs(globals,"## err occured on returning status in status_blink: "+err); })
         return;
     },
 
 
+
+    dumpToSheet: async (msg, globals, sheet_title, list, rowStart, rowEnd, colStart, colEnd) => {
+        var doc = globals.doc;
+        var configs = globals.configs;
+        var rowSize;
+        var colSize;
+        if (configs.autoSheetSize){
+            rowSize = rowEnd-rowStart;
+            colSize = colEnd-colStart;
+        }
+        else { //take the default, or the min necessary amount of rows/cols to fit the data
+            rowSize = Math.min(configs.defaultSheetRows , rowEnd-rowStart);
+            colSize = Math.min(configs.defaultSheetCols , colEnd-colStart);
+        }
+        const sheet = await doc.addSheet({ title: sheet_title, gridProperties: { rowCount: rowSize, columnCount: colSize, frozenRowCount: (rowStart == 0 ? 1 : 0) } });
+        await sheet.loadCells({
+            startRowIndex: rowStart, endRowIndex: rowEnd, startColumnIndex: colStart, endColumnIndex: colEnd
+        }).catch (err => { throw (err); });
+        
+        for (var i=colStart; i<colEnd; i++){ //load headers with bold
+            const cell = sheet.getCell(rowStart, i); 
+            cell.textFormat = { bold: true };
+            cell.value = list[i][0];
+            cell.wrapStrategy = configs.sheetCellWrap;
+        }
+        for (var j=rowStart+1; j<rowEnd; j++){
+            for (var i=colStart; i<colEnd; i++){
+                const cell = sheet.getCell(j, i);
+                cell.value = list[i][j];
+                cell.wrapStrategy = configs.sheetCellWrap;
+            }
+        }
+        await sheet.saveUpdatedCells()  // save all updates in one call
+        .catch (err => { 
+            this.botLogs(globals, err.toString()); 
+            throw new Error("  (first line of error) ::   "+err.toString().split('\n', 1)[0]); 
+        });  
+        msg.reply("Data has been dumped to doc "+"<https://docs.google.com/spreadsheets/d/"+doc.spreadsheetId+"#gid="+sheet.sheetId+">");
+    },
 
 
 

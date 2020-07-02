@@ -18,103 +18,526 @@ Made by JiJae (ruestgeo)
 --requires google sheets setup to use DocumentDump functions
 */
 
-const logsPath = "logs/"; //should end with '/'
-
-const package = require('./package.json');
+const logsPath = "./logs/"; //should end with '/'
+const commandsPath = "./_commands/";
+const reactablesPath = "./_reactables/";
+//const customUtilsPath = "./_utils/"; 
+const startupPath = "./_startup/";
 
 const Discord = require('discord.js');
-//const client = new Discord.Client();
-const { promisify } = require('util');
-
-
-const token = require('./auth.json').token;
-const configs = require('./configs.json');
-const prefix = configs.prefix;
-const googleEnabled = configs.googleEnabled;
-
-
-const utils = require('./utils.js');
 const fs = require('fs'); 
 const EventEmitter = require('events');
 const luxon = require('luxon');
-const reactroles_functions = require('./ReactRoles.js');
-const condroles_functions = require('./ConditionedRoles.js');
-const dump_functions = require('./DocumentDump.js');
 
-if (googleEnabled) {
-    require("./googleClientSecret.json"); //fixed name
-    require('google-spreadsheet');
+const package = require('./package.json');
+const utils = require('./utils.js');
+const _configs = require('./configs.json'); //original configs
+var configs = undefined; //configs might be added (default) during verifyConfigs if missing
+
+const client = new Discord.Client();
+const workLockEmitter = new EventEmitter();
+const botEventEmitter = new EventEmitter();
+var globals = undefined; //set during verifyConfigs
+var googleEnabled = undefined; //default false but set during verifyConfigs
+var consoleGap = undefined;
+var botReady = undefined;
+var googleDone = undefined;
+var loginDone = undefined;
+
+
+const nonblocking_built_in_funcs = ["--version"];
+const blocking_built_in_funcs = ["--help", "--ping", "--shutdown"];
+
+
+
+
+
+
+function handleRequest(msg){
+    var requestBody = msg.content.substring(configs["prefix"].length);
+    if (requestBody.includes(' ')){
+        var command = requestBody.substr(0,requestBody.indexOf(' ')).trim();
+        var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
+    }
+    else {
+        var command = requestBody.trim();
+        var content = "";
+    }
+       
+    //
+    commandHandler(msg, msg.member, command, content)
+    .catch(err => {
+        msg.react('❌');
+        utils.botLogs(globals,"\nERROR in handling command\nerr ::   "+err+"\nerr.stack ::   "+err.stack);
+        msg.reply("An error occured\n"+err);
+    }); 
 }
 
 
 
 
-var globals = {};
-var reactroles = {};
-globals["client"] = null; //set in initializeClient
-globals["doc"] = null; //set in connectGoogle
-globals["bot_id"] = null; //set on ready
-globals["busy"] = true;
-globals["configs"] = configs;
-globals["logsPath"] = logsPath;
-globals["logsFileName"] = "LOGS.txt"; //default
-globals["timers"] = [];
-globals["luxon"] = luxon;
-globals["reactroles"] = reactroles;
-globals["modularFunctions"] = {};
-globals["modularReplies"] = {}; 
+async function commandHandler(msg, member, command, content){
+    if (command === "--commands") command = "--help";
+    msg.react('👌');
 
-
-/*for (customCommand of configs.modularFunctions){
-    globals.modularFunctions[customCommand] = require("./modularFunctions/"+customCommand+".js");
-}*/
-
-//console.log("modularFuncs");
-fs.readdirSync("./modularFunctions").forEach(file => {
-    //console.log("--  "+file);
-    if (file.endsWith('.js')){
-        var jsFile = require("./modularFunctions/"+file);
-        if (jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual")){
-            globals.modularFunctions[file.substr(0,file.length-3)] = jsFile; 
-            //console.log("----included");
+    /* modular  and  blocking built-in  commands */
+    if ( globals.modularCommands.hasOwnProperty(command) || blocking_built_in_funcs.includes(command) ){
+        var requiredAuthLevel;
+        if ( blocking_built_in_funcs.includes(command) ){
+            requiredAuthLevel = globals.configs.built_in_AuthLevels[command];
         }
-        //else console.log("----not included");
-    }
-    //else console.log("----not included");
-});
+        else  requiredAuthLevel = globals.modularCommands[command].auth_level; 
 
-//console.log("modularReplies");
-fs.readdirSync("./modularReply").forEach(file => {
-    //console.log("--  "+file);
-    if (file.endsWith('.js')){
-        var jsFile = require("./modularReply/"+file);
-        if (jsFile.hasOwnProperty("replies") || jsFile.hasOwnProperty("contains")){
-            globals.modularReplies[file.substr(0,file.length-3)] = jsFile; 
-            //console.log("----included");
+        if ( !(await utils.checkMemberAuthorized(globals, member, requiredAuthLevel, false).catch(err =>{ throw (err) }) ) ){
+            msg.reply("Insufficient permissions to run ["+command+"]");
+            msg.react('❌');
+            return;
         }
-        //else console.log("----not included");
+        //console.log("DEBUG current queue :  "+globals.queueLength+" / "+globals.queueCapacity);
+        if ( globals.queueLength >= globals.queueCapacity ){
+            console.log("## Queue capacity reached, ignoring command ["+command+"] from "+member.displayName+"#"+member.user.discriminator);
+            msg.reply("Too many commands queued, try again later");
+            msg.react('❌');
+            return;
+        }
+        globals.queueLength ++;
+        if ( globals.busy ){
+            msg.reply("I'm busy with something at the moment\n Please wait and I'll get back to your request in a moment");
+        } // else not busy
+        
+        var content_line = content.replace(/\n/g, ' `\\n` ');
+        await utils.acquire_work_lock(globals, "["+command/*+"  "+content_line*/+"] req from "+member.displayName+"#"+member.user.discriminator);
+        if (globals.configs.timestamp)
+            utils.botLogs(globals,"\nReceived command ["+command+"]\n  with args ::   "+content_line, globals.configs.timestamp, "\n\n");
+        else 
+            utils.botLogs(globals,"\n\nReceived command ["+command+"]\n  with args ::   "+content_line);
+        
+        if ( await utils.checkMemberAuthorized(globals, member, requiredAuthLevel, true).catch(err =>{ throw (err) }) ){ //recheck auth in case changed while waiting
+            msg.reply("processing request ["+command+"]");
+            await utils.change_status(client, 'dnd', "[working for "+member.displayName+"#"+member.user.discriminator+"]")
+            .catch(err =>{
+                utils.botLogs(globals,"## err occured on setting status: "+err); //catch but continue on
+            });
+
+            /* handle built-in (blocking) command */
+            if ( blocking_built_in_funcs.includes(command) ){
+                builtInHandler(msg, member, command, content)
+                .then(completionMessage => {
+                    if (globals.configs.timestamp)
+                        utils.botLogs(globals,"\nCompleted request\n", globals.configs.timestamp, "\n");
+                    else
+                        utils.botLogs(globals,"\nCompleted request\n");
+                    if (completionMessage) msg.reply(completionMessage); //send if one is given
+                    msg.react('✅');             
+                })
+                .catch(err => {
+                    msg.react('❌');
+                    utils.botLogs(globals,"\nERROR in handling command\nerr ::   "+err+"\nerr.stack ::   "+err.stack);
+                    msg.reply("An error occured\n"+err);
+                    return;
+                })
+                .finally(_ =>{ 
+                    globals.queueLength --; 
+                    utils.change_status(client, 'idle', configs.idleStatusText)
+                    .catch(err => { 
+                        utils.botLogs(globals,"## err occured on returning status: "+err); 
+                        msg.channel.send("Error ::  "+err + "\n\nMy status should be 'idle'."); 
+                        return;
+                    })
+                    .finally(_ => {
+                        utils.release_work_lock(globals, "["+command/*+"  "+content_line*/+"] req from "+member.displayName+"#"+member.user.discriminator);
+                    });
+                });
+            }    
+
+            /* handle modularCommand */
+            else {
+                globals.modularCommands[command].func(globals, msg, content)
+                .then(completionMessage => {
+                    if (globals.configs.timestamp)
+                        utils.botLogs(globals,"\nCompleted request\n", globals.configs.timestamp, "\n");
+                    else
+                        utils.botLogs(globals,"\nCompleted request\n");
+                    if (completionMessage) msg.reply(completionMessage); //send only if given
+                    msg.react('✅');             
+                })
+                .catch(err => {
+                    msg.react('❌');
+                    utils.botLogs(globals,"\nERROR in handling command\nerr ::   "+err+"\nerr.stack ::   "+err.stack);
+                    msg.reply("An error occured\n"+err);
+                    return;
+                })
+                .finally(_ =>{ 
+                    globals.queueLength --; 
+                    utils.change_status(client, 'idle', configs.idleStatusText)
+                    .catch(err => { 
+                        utils.botLogs(globals,"## err occured on returning status: "+err); 
+                        msg.channel.send("Error ::  "+err + "\n\nMy status should be 'idle'."); 
+                        return;
+                    })
+                    .finally(_ => {
+                        utils.release_work_lock(globals, "["+command/*+"  "+content_line*/+"] req from "+member.displayName+"#"+member.user.discriminator);
+                    });
+                });
+            }
+        }
+        else{ // insufficient permissions when handling the command
+            utils.release_work_lock(globals, "insufficient auth on ["+command+"] req from "+member.displayName+"#"+member.user.discriminator);
+            msg.reply("Insufficient permissions to run ["+command+"]");
+            msg.react('❌');
+        }
     }
-    //else console.log("----not included");
-});
+
+    /* non-blocking built-in commands */
+    else if ( nonblocking_built_in_funcs.includes(command) ){
+        if (command === '--version'){ //non-blocking command
+            utils.botLogs(globals,"\nreceived version query\n["+package.name+"]   version -- "+package.version+"\n\n"); 
+            msg.reply("["+package.name+"]   version -- "+package.version); 
+            return;
+        }
+    }
+
+    /* unknown command */
+    else {
+        msg.react('🤔');
+        msg.reply("`"+configs.prefix+command+"` command unknown, try --help or --commands for a list of commands and short documentation");
+    }
+}
 
 
 
 
-const workLockEmitter = new EventEmitter();
-globals["workLockEmitter"] = workLockEmitter;
+async function builtInHandler (msg, member, command, content){
+    var configs = globals.configs;
+
+    /* Display a post with all available commands */
+    if (command === '--help' || command === '--commands'){
+        utils.botLogs(globals,"received request [help] or [commands]");
+        utils.botLogs(globals,"received request [help] or [commands]");
+        var command_description = "The bot built-in commands are as follows, \n"+
+        ".  ***commandName  ->  arguments*** \n"+
+        ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
+        ".    `...` (ellipsis) implies that you can input more than one\n"+
+        ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
+        ".    do not include elipses, <, >, or single quotations in the command \n"+
+        ".    do not use double quotations in a key value pair as it is used to encapsulate the key or value;  instead use single quotations or escaped double quotations for example, for example\n"+
+        ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
+        ".    `{\"message\": \"i quote, 'something' and it succeeded :>\"}`\n"+
+        ".    `{\"message\": \"i quote, \\\"something\\\" and it succeeded :>\"}`\n"+
+        "================================";
+        var built_in_command_manuals = "" +
+        //"**--**  ->  ``\n" +
+        //".     *description* \n" +
+        //"- - - - - - - - - \n"+
+        "**--shutdown**  ->  \*none\*\n" +
+        ".     *close all listening instances of the discord bot* \n" +
+        "- - - - - - - - - " +
+        "**--ping**  ->  \*none\*\n" +
+        ".     *ping the discord bot which will reply pong and flash its status indicator* \n" +
+        "- - - - - - - - - " +
+        "";
+        msg.channel.send(command_description);
+        msg.channel.send(built_in_command_manuals);
+
+        //TODO better help with searching
+        var all = ""
+        for (var modularCommand of globals.modularCommands){ //obtain from the <command>.js the manual
+            all += modularCommand +"\n";
+            //msg.channel.send(globals.modularCommands[modularCommand].manual+"\n- - - - - - - - - ");
+        }
+        msg.channel.send(all);
+        return; //no completionMessage
+    }
+
+    else if (command === '--ping'){
+        msg.reply("pong");
+        await utils.status_blink(globals).catch(err => { throw (err); });
+        utils.botLogs(globals,  "--blink done");
+        return;
+    }
+
+    /* schedule timed events TODO-later */
+    else if (command === '--repeat'){
+        return repeatEventHandler(msg, member, command, content);
+    }
+
+
+    /* shutdown the bot */
+    else if (command === '--shutdown'){
+        utils.botLogs(globals,'--bot shutting down');
+        await msg.react('👋').catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [react]  \n'+err); });
+        utils.change_status(client, 'dnd', configs.shutdownStatusText)
+        .finally(_ => {
+            msg.channel.send("i must go, my pepol call me!")
+            .finally(async (_) => { 
+                await utils.sleep(2000); 
+                await shutdown();
+                console.log("process exit in 5seconds");
+                await utils.sleep(5000); 
+                console.log("exiting");
+                process.exit(); //hard close
+            } )
+            .catch(err => { console.log('\n\n# ERR shutting down [msg]  \n'+err); throw (err); });
+        })
+        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [status]  \n'+err); throw (err); });
+        
+    }   
+
+    /* unknown command again */
+    else {
+        throw new Error("unknown command somehow made it through");
+    }
+}
+
+
+
+
+function repeatEventHandler(msg, member, command, content){
+    msg.reply("this function is not supported yet");
+}
+
+
+
+
+
+async function handleReactables(msg){
+    for ( _replyFile in globals.modularReplies ){
+        var replyFile = globals.modularReplies[_replyFile];
+        
+        if ( replyFile.hasOwnProperty("exact") ){
+            if ( replyFile.exact.hasOwnProperty(msg.content) || replyFile.exact.hasOwnProperty(msg.content.toLowerCase()) ){
+                var msg_content = msg.content;
+                if ( (msg.content !== msg.content.toLowerCase())
+                && replyFile.exact.hasOwnProperty(msg.content.toLowerCase())
+                && !replyFile.exact.hasOwnProperty(msg.content) ){ //if all lowercase matches and there isn't an exact match
+                    if ( replyFile.exact[msg.content.toLowerCase()]["case_insensitive"] ){ //if not undefined and true
+                        msg_content = msg.content.toLowerCase();
+                    }
+                } 
+
+                if ( replyFile.exact[msg_content].hasOwnProperty("reply") ){
+                    var directed = true;
+                    if ( replyFile.exact[msg_content].hasOwnProperty("directed") )
+                        directed = replyFile.exact[msg_content].directed;
+                    if ( directed )
+                        await msg.reply(replyFile.exact[msg_content].reply);
+                    else 
+                        await msg.channel.send(replyFile.exact[msg_content].reply);
+                }
+                if ( replyFile.exact[msg_content].hasOwnProperty('reactions') ){
+                    for ( reaction of replyFile.exact[msg_content].reactions ){
+                        await msg.react(reaction);
+                    }
+                }
+                return; //if msg.content in exact then no need to check contains
+            }
+        }
+
+        if ( replyFile.hasOwnProperty("contains") ){
+            for ( subphrase in replyFile.contains ){
+                var case_insensitive = replyFile.contains[subphrase].hasOwnProperty("case_insensitive") ? replyFile.contains[subphrase].case_insensitive : false;
+                if ( case_insensitive ? msg.content.toLowerCase().includes(subphrase) : msg.content.includes(subphrase) ){
+                    if ( replyFile.contains[subphrase].hasOwnProperty("reply") ){
+                        var directed = true;
+                        if ( replyFile.contains[subphrase].hasOwnProperty("directed") )
+                            directed = replyFile.contains[subphrase].directed;
+                        if ( directed )
+                            await msg.reply(replyFile.contains[subphrase].reply);
+                        else 
+                            await msg.channel.send(replyFile.contains[subphrase].reply);
+                    }
+                    if ( replyFile.contains[subphrase].hasOwnProperty('reactions') ){
+                        for ( reaction of replyFile.contains[subphrase].reactions ){
+                            await msg.react(reaction);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function clientSetup(){
+    console.log("\nSetting up client event handlers");
+    client.on('ready', () => {
+        //console.log(client);
+        utils.change_status(client, 'idle', configs.startupStatusText).catch();
+
+        console.log(`\nLogged in as ${client.user.tag}!`);
+        globals.bot_id = client.user.id;
+        console.log("  bot client id: "+globals["bot_id"]); //bot_id);
+        console.log("  -- use the '--help' or '--commands' command for info");
+        botReady = true;
+        if (consoleGap && (botReady && googleDone && loginDone)) { BotReady(); }
+        else if (!googleEnabled &&  consoleGap && (botReady && loginDone))  { BotReady(); }
+        globals["busy"] = false;
+    });
+
+    client.on('message', async (msg) => {        
+        if (msg.content === 'ping')
+            msg.reply('pong\ni see ping, i send pong!');
+
+        /*** bot commands ***/
+        else if (msg.content.startsWith(configs.prefix)) {
+            handleRequest(msg);
+        }
+
+        /***  bot reactables  ***/
+        else 
+            await handleReactables(msg);
+
+
+    });
+
+
+    client.on('error', err => {
+        utils.botLogs(globals,"\n\n________________________________________________________________________________\n"
+        +"BOT ERROR OCCURRED\n\n"+err
+        +"\n________________________________________________________________________________\n\n");
+    });
+
+    /*
+    client.on( => {
+        //
+    });
+    */
+}
+
+
+
+
+async function initializeClient(){
+    console.log("\nInitializing client");
+    clientSetup();
+
+    await runStartupFunctions();
+
+    console.log("\nLogging in to client via token");
+    client.login(require(configs.DiscordAuthFilePath).token)
+    .then(used_token => {
+        console.log("--login complete");
+        globals["client"] = client;
+        loginDone = true;
+        if (googleEnabled && consoleGap && (botReady && googleDone && loginDone)) { BotReady(); }
+        else if (!googleEnabled &&  consoleGap && (botReady && loginDone))  { BotReady(); }
+    })
+    .catch(err => {console.log("--ERROR [LOGIN] ::  "+err); throw new Error("\nError occurred during login");});
+}
+
+
+
+/***   google connect   ***/
+async function connectGoogle(){
+    if (!googleEnabled)
+        return null;
+    const { GoogleSpreadsheet } = require('google-spreadsheet');
+    const googleAuth = require(configs.GoogleAuthFilePath);
+    const doc = new GoogleSpreadsheet(configs.googleSheetsId);
+    await doc.useServiceAccountAuth(googleAuth)
+    .then(async (x) => {
+        console.log("\nSuccessfully connected to Google Sheets");
+        await doc.loadInfo()
+        .then(x => {
+            console.log("Sheets title: ["+doc.title+"]");
+            googleDone = true;
+            if (consoleGap && (botReady && googleDone && loginDone)) { BotReady(); }
+        })
+        .catch(err => {
+            console.log("Error loading info :-: "+err);
+        });
+    })
+    .catch(err => {
+        console.log("Error connecting to Sheets :-: "+err);
+    });
+    return doc;
+}
+
+
+
+async function runStartupFunctions(){
+    console.log("\nRunning _startup functions");
+    if (fs.existsSync(startupPath)) {
+        console.log("--scanning directory: ");
+        for ( file of fs.readdirSync(startupPath) ){
+            if ((file === "disabled") ||  (file === "README.txt"))  continue;
+            if (file.endsWith('.js')){
+                var jsFile = require(startupPath+file);
+                if ( jsFile.hasOwnProperty("func")){
+                    console.log("    running  \""+file+"\"");
+                    await jsFile.func(globals);
+                }
+            }
+        }
+    }
+    else 
+        console.log("--directory not found");
+}
+
+
+function acquireJS (){
+    console.log("\nAcquiring _commands");
+    if (fs.existsSync(commandsPath)) {
+        console.log("--scanning directory: ");
+        for ( file of fs.readdirSync(commandsPath) ){
+            if ((file === "disabled") ||  (file === "README.txt"))  continue;
+            if (file.endsWith('.js')){
+                var jsFile = require(commandsPath+file);
+                if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
+                    globals.modularCommands[file.substr(0,file.length-3)] = jsFile; 
+                    console.log("    \""+file+"\"  included");
+                }
+                else console.log("    \""+file+"\"  not included");
+            }
+            else console.log("    \""+file+"\"  not included");
+        }
+    }
+    else 
+        console.log("--directory not found");
+    
+    console.log("\nAcquiring _reactables");
+    if (fs.existsSync(reactablesPath)) {
+        console.log("--scanning directory: ");
+        for ( file of fs.readdirSync(reactablesPath) ){
+            if ((file === "disabled") ||  (file === "README.txt"))  continue;
+            if (file.endsWith('.js')){
+                var jsFile = require(reactablesPath+file);
+                if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
+                    globals.modularReplies[file.substr(0,file.length-3)] = jsFile; 
+                    console.log("    \""+file+"\" included");
+                }
+                else console.log("    \""+file+"\" not included");
+            }
+            else console.log("    \""+file+"\" not included");
+        }
+    }
+    else 
+        console.log("--directory not found");
+}
+
 
 
 
 async function logInterval(globals){
     try{
-        //check if busy, if so wait till free
-        while (globals.busy) {
-            utils.botLogs(globals,"* work lock still active, waiting for unlock to fufill log newfile *");
-            await new Promise(resolve => workLockEmitter.once('unlocked', resolve));
-        }
-        utils.work_Lock(globals);
-        utils.botLogs(globals,"* obtaining work lock for log newfile *");
-
+        await utils.acquire_work_lock(globals, "log_newfile");
+        
         var date = utils.getDateTime(globals);
         var oldLogsFileName = globals.logsFileName;
         var newLogsFileName = "LOGS_"+date.toISO()+".txt";
@@ -128,18 +551,16 @@ async function logInterval(globals){
         utils.botLogs(globals,"## ERR occurred during 24hour new logs file interval");
     }
     finally {
-        if (globals.busy){
-            utils.botLogs(globals,"* releasing work lock for log newfile *");
-            utils.work_Unlock(globals);
-        }
+        if (globals.busy)
+            utils.release_work_lock(globals, "log_newfile");
     }
 }
 
 function setupLogs(){
     if ((configs.logsFileMode !== "none") || (configs.logsFileMode !== "")){
-        console.log("--logsFileMode:  "+configs.logsFileMode);
+        console.log("\nlogsFileMode:  "+configs.logsFileMode);
         if (!fs.existsSync(logsPath)){
-            console.log("----creating ["+logsPath+"] dir(s)");
+            console.log("--creating ["+logsPath+"] dir(s)");
             fs.mkdirSync(logsPath, { recursive: true });
         }
     
@@ -152,18 +573,18 @@ function setupLogs(){
             globals["logsFileName"] = fileName;
             var log_interval = setInterval(logInterval, 24*60*60*1000, globals);
             globals["timers"].push(log_interval);
-            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n\n\n");
+            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n");
         }
         else if (configs.logsFile === "overwrite"){
-            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n\n\n");
+            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n");
         }
         else {
             if (configs.logsFile !== "append"){
                 console.log("--invalid logsFileMode; defaulting to [append] mode");
             }
-            fs.appendFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n\n\n");
+            fs.appendFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n");
         }
-        fs.appendFileSync(logsPath+globals.logsFileName, "--logsFileMode:  "+configs.logsFileMode);
+        fs.appendFileSync(logsPath+globals.logsFileName, "logsFileMode:  "+configs.logsFileMode);
     }
     else globals["LogsToFile"] = false;
 }
@@ -171,910 +592,273 @@ function setupLogs(){
 
 
 
-function clientSetup(){
-    console.log("Setting up client event handlers");
-    client.on('ready', () => {
-        //console.log(client);
-        utils.change_status(client, 'idle', configs.startupStatusText).catch();
 
-        console.log(`Logged in as ${client.user.tag}!`);
-        globals.bot_id = client.user.id;
-        console.log("  bot client id: "+globals["bot_id"]); //bot_id);
-        console.log("  -- use the '--help' or '--commands' command for info");
-        botReady = true;
-        if (consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
-        globals["busy"] = false;
-    });
-
-
-    client.on('message', async (msg) => {
-        //console.log(msg);
-        
-        if (msg.content === 'ping') {
-            if (!globals.busy){ //MAYBE consider simplifying
-                msg.member.fetch()
-                .then(member => {
-                    if (configs.authorizedRoles.length > 0)
-                        if (checkMemberAuthorized(member, false)){
-                            utils.botLogs(globals,'\n\ni ponged, i big bot now!');
-                            utils.work_Lock(globals);
-                            msg.reply('pong\ni see ping, i send pong!');
-                            utils.status_blink(globals).then(_ => { utils.botLogs(globals,  "ping --blink done"); utils.work_Unlock(globals); });
-                        }
-                })
-                .catch(err => { utils.botLogs(globals,"## Err in member fetch [ping] ::  "+err); utils.work_Unlock(globals); });   
-            }
-        } 
-        
-        //to get emotes post "\:emote:" and copy the resulting unicode char
-        if (msg.content === '👍') 
-            msg.react('👍');
-
-        else if (msg.content.toLowerCase() === 'ook')
-            msg.react('🍌');
-
-        else if (msg.content === "┬─┬ノ(ಠ_ಠノ)")
-            msg.channel.send("(╯°Д°）╯︵ /(.□ . \\\\)  ┻━┻");
-
-
-        
-        
-        /*** bot commands ***/
-        else if (msg.content.startsWith(prefix)) {
-            msg.member.fetch()
-            .then(member => {
-                //there is a role restriction
-                if (configs.authorizedRoles.length > 0){
-                    if (checkMemberAuthorized(member, true))
-                        handleRequest(msg, member);
-                }
-
-                // no role restrictions
-                else handleRequest(msg, member);
-            })
-            .catch(err => { 
-                console.logs(globals,"## ERR during member fetch [command] ::  "+err); 
-                msg.reply("An error occurred ::  "+err);
-            });
-        }
-
-        
-        else {
-            for (_replyFile in globals.modularReplies){
-                var replyFile = globals.modularReplies[_replyFile];
-                if (replyFile.hasOwnProperty("replies")){
-                    if (replyFile.replies.hasOwnProperty(msg.content)){
-                        if (replyFile.replies[msg.content].hasOwnProperty("reply")){
-                            var directed = true;
-                            if (replyFile.replies[msg.content].hasOwnProperty("directed"))
-                                directed = replyFile.replies[msg.content].directed;
-                            if (directed)
-                                await msg.reply(replyFile.replies[msg.content].reply);
-                            else 
-                                await msg.channel.send(replyFile.replies[msg.content].reply);
-                        }
-                        if (replyFile.replies[msg.content].hasOwnProperty('reactions')){
-                            for (reaction of replyFile.replies[msg.content].reactions){
-                                await msg.react(reaction);
-                            }
-                        }
-                        return; //if msg.content in replies then no need to check contains
-                    }
-                }
-
-                if (replyFile.hasOwnProperty("contains")){
-                    for (subphrase in replyFile.contains){
-                        if (msg.content.includes(subphrase)){
-                            if (replyFile.contains[subphrase].hasOwnProperty("reply")){
-                                var directed = true;
-                                if (replyFile.contains[subphrase].hasOwnProperty("directed"))
-                                    directed = replyFile.contains[subphrase].directed;
-                                if (directed)
-                                    await msg.reply(replyFile.contains[subphrase].reply);
-                                else 
-                                    await msg.channel.send(replyFile.contains[subphrase].reply);
-                            }
-                            if (replyFile.contains[subphrase].hasOwnProperty('reactions')){
-                                for (reaction of replyFile.contains[subphrase].reactions){
-                                    await msg.react(reaction);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-    });
-
-
-
-
-    client.on('error', err => {
-        utils.botLogs(globals,"\n\n________________________________________________________________________________\n"
-        +"BOT ERROR OCCURRED\n\n"+err
-        +"\n________________________________________________________________________________\n\n");
-    });
-
-
-
-
-    /*
-    client.on( => {
-        //
-    });
-    */
-}
-
-
-function checkMemberAuthorized(member, printlog){
-    if(!printlog) printlog = false;
-    var authorizedRole = null;
-    var isAuthorized = false;
-    for (roleID of configs.authorizedRoles){
-        //check if any is authorized
-        var hasRole = member.roles.cache.has(roleID);
-        isAuthorized = isAuthorized || hasRole; //if member has any authorized role, then they can use commands
-        if (hasRole) authorizedRole = member.roles.cache.get(roleID);
-    }
-    if (isAuthorized) {
-        if (printlog && !globals.busy) 
-            utils.botLogs(globals,"\n\n\n-- ["+member.displayName+"#"+member.user.discriminator+":"+member.id+"] has permission to use commands through the ["+authorizedRole.name+":"+authorizedRole.id+"] role");
-        return true;
-    }
-    else {
-        if (printlog && !globals.busy)
-            utils.botLogs(globals,"\n\n\n-- ["+member.displayName+"#"+member.user.discriminator+":"+member.id+"] doesn't have permission to use commands");
-        return false;
-    }
-}
-
-
-function handleRequest(msg, member){
-    var requestBody = msg.content.substring(prefix.length);
-    if (requestBody.includes(' ')){
-        var command = requestBody.substr(0,requestBody.indexOf(' '));
-        var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
-    }
-    else {
-        var command = requestBody.trim();
-        var content = "{}";
-    }
-
-    if (!globals.busy)
-        utils.botLogs(globals,"\nrequestBody:: "+requestBody+"\n__command:: "+command+"\n__content:: "+content);
-
-    commandHandler(msg, member, command, content, false); 
-}
-
-
-function commandHandler(msg, member, command, content, isRepeat){
-    //console.log("isRepeat? "+isRepeat);
-
-    if (command === '--version'){
-        utils.botLogs(globals,"\nreceived version query\n["+package.name+"]   version -- "+package.version+"\n\n"); 
-        msg.reply("["+package.name+"]   version -- "+package.version); 
-        return;
-    }
-
-
-
-
-    //commands lower than this block further requests and set status to busy
-
-    if (globals.busy){
-        msg.react('❌');
-        msg.reply("I'm currently busy working on something.  Please try again later");
-        return;
-    }
-    else { //request received
-        msg.react('👌');
-    }
-
-    utils.work_Lock(globals);
-    utils.change_status(client, 'dnd', "[working for "+member.displayName+"#"+member.user.discriminator+"]")
-    .then(_ => {
-        try{
-
-            /* Display a post with all available commands */
-            if (command === '--help' || command === '--commands'){
-                utils.botLogs(globals,"received request [help] or [commands]");
-                utils.botLogs(globals,"received request [help] or [commands]");
-                var reply = "The bot built-in commands are as follows, \n"+
-                ".  ***commandName  ->  arguments*** \n"+
-                ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
-                ".    `...` (ellipsis) implies that you can input more than one\n"+
-                ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
-                //".    encapsulating with single quotations like `\'(args)\'` implies the argument is what is mentioned.\n"+
-                ".    do not include elipses, <, >, or single quotations in the command \n"+
-                ".    do not use double quotations in a key value pair as it is used to encapsulate the key or value;  instead use single quotations or escaped double quotations for example, for example\n"+
-                ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
-                ".    `{\"message\": \"i quote, 'something' and it succeeded :>\"}`\n"+
-                ".    `{\"message\": \"i quote, \\\"something\\\" and it succeeded :>\"}`\n"+
-                "================================";
-            var reply2 = "" +
-                //"**--**  ->  ``\n" +
-                //".     *description* \n" +
-                //"- - - - - - - - - \n"+
-                "**--shutdown**  ->  \*none\*\n" +
-                ".     * close all listening instances of the discord bot* \n" +
-                "- - - - - - - - - ";
-            var reply3 = "" +
-                "**--create-reactrole-any**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
-                ".     *Create a post with reactions that will assign roles like checkboxes.  Each reaction can freely assign/remove a role.  However newlines must be entered as \\n.* \n" +
-                "*--create-reactrole-any*  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
-                ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
-                "- - - - - - - - - \n"+
-                "**--create-reactrole-switch**  ->  `{\"message\": \"*the post text*\" ,  \"reactions\": {\"emote\": \"roleName\" ,  ...} }` \n" +
-                ".     *Create a post with reactions that will assign roles like a radio button (switching logic).  Only one reaction at a time, reacting to any others in this group will result in removal of the existing role and reaction then adding the new role (react on B removes role A and react on A, then gives role B)* \n" +
-                "*--create-reactrole-switch*  ->  `{\"reactions\": {\"emote\": \"roleName\" ,  ...} } --+o+--MessageText--+o+-- '`message_to_post`'` \n" +
-                ".     *Similar to above, but the message if parsed separately, so literal newlines can be used. (no need for \\n)* \n" +
-                "- - - - - - - - - ";
-            var reply4 = "" +
-                "**--give-role-conditioned**  ->  `{\"give-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
-                ".     *Give role(s) to a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"give-role\", but \"has-role\" and \"missing-role\" are optional. Give a target role for better performance.*  \n" +
-                "- - - - - - - - - \n"+
-                "**--give-role-conditioned2**  ->  `{\"give-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
-                ".     *Similar to the prior, but checks if the member is missing at least* ***one*** *role from each role-group from 'missing-role'*  \n" +
-                "- - - - - - - - - \n"+
-                "**--remove-role-conditioned**  ->  `{\"remove-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"has-role\": [\"roleName\", ...]> <,  \"missing-role\": [\"roleName\", ...]>  }` \n" +
-                ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give a target role for better performance.*  \n" +
-                "- - - - - - - - - \n"+
-                "**--remove-role-conditioned2**  ->  `{\"remove-role\": [\"roleName\", ...] <, \"target\": \"roleName\"> <,  \"has-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
-                ".     *Similar to the prior, but checks if the member has at least* ***one*** *role from each role-group from 'has-role'*  \n" +
-                "- - - - - - - - - \n";
-            var reply5 = "" +
-                "**--document-reacts**  ->  `message_link` \n" +
-                ".     *Dumps the reaction information of a specified post (via message link) into a specified google sheet* \n" +
-                "- - - - - - - - - \n"+
-                "**--document-reacts2**  ->  `message_link` `roleName` \n" +
-                ".     *Similar to above but lists all of roleName with true/false values for each reaction and another column for no reaction.  A role must be specified* \n" +
-                "- - - - - - - - - \n"+
-                "**--document-reacts3**  ->  `message_link` `roleName` \n" +
-                ".     *Similar to v2 but instead lists names for each reaction column.  A role must be specified* \n" +
-                "- - - - - - - - - \n";
-                var reply6 = "" +
-                "**--document-voice**  ->  `channel_id` \n" +
-                ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet* \n" +
-                "- - - - - - - - - \n"+
-                "**--document-voice2**  ->  `channel_id` `roleName` \n" +
-                ".     *Similar to above but lists all of roleName with true/false values for voice channel participation.  A role must be specified* \n" +
-                "- - - - - - - - - \n"+
-                "**--document-voice3**  ->  `channel_id` `roleName` \n" +
-                ".     *Similar to v2 instead lists names for participation or not.  A role must be specified* \n" +
-                "- - - - - - - - - ";
-                //TODO repeat events for schedule,  maybe --schedule-repeat {time} --*event to repeat* *event args*
-                msg.channel.send(reply);
-                msg.channel.send(reply2);
-                msg.channel.send(reply3);
-                msg.channel.send(reply4);
-                msg.channel.send(reply5);
-                msg.channel.send(reply6);
-
-                if (configs.modularFunctions.length > 0){
-                    msg.channel.send("__\n__\n================================\n"
-                        +"---= modular command manual =---\n"
-                        +"================================\n__\n__");
-                    for (var customCommand of configs.modularFunctions){
-                        //obtain from the <command>.js the manual
-                        msg.channel.send(globals.modularFunctions[customCommand].manual);
-                        msg.channel.send("- - - - - - - - - ");
-                    }
-                }
-
-                msg.react('✅');
-                utils.change_status(client, 'idle', configs.idleStatusText)
-                .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                .finally(_ => { utils.work_Unlock(globals); });
-
-            }
-
-            else if (command === '--ping'){
-                utils.botLogs(globals,"received request [ping]");
-                msg.reply("pong");
-                utils.status_blink(globals).then(_ => { utils.botLogs(globals,  "--blink done"); utils.work_Unlock(globals); msg.react('✅'); });
-            }
-
-            else if (command === '--sleep'){ //in seconds
-                utils.botLogs(globals,"received request [sleep]");
-                msg.react('😴');
-                msg.react('🛌');
-                var sleepTime = parseInt(content)
-                if (isNaN(sleepTime) || sleepTime > 30) sleepTime = 10; //max of 30sec
-                utils.botLogs(globals,"--sleeping for "+sleepTime+" seconds");
-                utils.sleep(sleepTime*1000).then(_ => { 
-                    msg.react('😪');
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .then(_ => { msg.react('✅'); })
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* "checkbox" reactions post */
-            else if (command === '--create-reactrole-any'){
-                utils.botLogs(globals,"received request [create-reactrole-any]");
-                msg.reply("received and processing request [create-reactrole-any]");
-                reactroles_functions.reactRoles_Any(globals, msg, content, reactroles)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-                //console.log(reactroles);
-            }
-
-
-
-            /* "radio button" reactions post */
-            else if (command === '--create-reactrole-switch'){
-                utils.botLogs(globals,"received request [create-reactrole-switch]");
-                msg.reply("received and processing request [create-reactrole-switch]");
-                reactroles_functions.reactRoles_Switch(globals, msg, content, reactroles)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-                //console.log(reactroles);
-            }
-
-
-
-            /* give a role if members have certain roles or are missing certain roles */
-            else if (command === '--give-role-conditioned'){ //for all users
-                utils.botLogs(globals,"received request [give-role-conditioned]");
-                msg.reply("received and processing request [give-role-conditioned]");
-                condroles_functions.giveRoles(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* remove a role if members have certain roles or are missing certain roles */
-            else if (command === '--remove-role-conditioned'){ //for all users
-                utils.botLogs(globals,"received request [remove-role-conditioned]");
-                msg.reply("received and processing request [remove-role-conditioned]");
-                condroles_functions.removeRoles(globals, msg , content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* give a role if members have certain roles or are missing certain roles */
-            else if (command === '--give-role-conditioned2'){ //for all users
-                utils.botLogs(globals,"received request [give-role-conditioned2]");
-                msg.reply("received and processing request [give-role-conditioned2]");
-                condroles_functions.giveRoles_v2(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  });
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* remove a role if members have certain roles or are missing certain roles */
-            else if (command === '--remove-role-conditioned2'){ //for all users
-                utils.botLogs(globals,"received request [remove-role-conditioned2]");
-                msg.reply("received and processing request [remove-role-conditioned2]");
-                condroles_functions.removeRoles_v2(globals, msg , content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* dump reacts of a post to a doc */
-            else if (command === '--document-reacts'){
-                utils.botLogs(globals,"received request [document-reacts]");
-                msg.reply("received and processing request [document-reacts]");
-                if (!googleEnabled){
-                    utils.botLogs(globals,"---google not enabled");
-                    msg.reply("Google has not been enabled, contact sys-admin to set up");
-                    utils.work_Unlock(globals);
-                    return;
-                }
-                dump_functions.documentReactions(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* dump names of members in voice channel to a doc */
-            else if (command === '--document-voice'){
-                utils.botLogs(globals,"received request [document-voice]");
-                msg.reply("received and processing request [document-voice]");
-                if (!googleEnabled){
-                    utils.botLogs(globals,"---google not enabled");
-                    msg.reply("Google has not been enabled, contact sys-admin to set up");
-                    utils.work_Unlock(globals);
-                    return;
-                }
-                dump_functions.documentVoice(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* dump reacts of a post to a doc */
-            else if (command === '--document-reacts2'){
-                utils.botLogs(globals,"received request [document-reacts2]");
-                msg.reply("received and processing request [document-reacts2]");
-                if (!googleEnabled){
-                    utils.botLogs(globals,"---google not enabled");
-                    msg.reply("Google has not been enabled, contact sys-admin to set up");
-                    utils.work_Unlock(globals);
-                    return;
-                }
-                dump_functions.documentReactions_v2(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* dump names of members in voice channel to a doc */
-            else if (command === '--document-voice2'){
-                utils.botLogs(globals,"received request [document-voice2]");
-                msg.reply("received and processing request [document-voice2]");
-                if (!googleEnabled){
-                    utils.botLogs(globals,"---google not enabled");
-                    msg.reply("Google has not been enabled, contact sys-admin to set up");
-                    utils.work_Unlock(globals);
-                    return;
-                }
-                dump_functions.documentVoice_v2(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* dump reacts of a post to a doc */
-            else if (command === '--document-reacts3'){
-                utils.botLogs(globals,"received request [document-reacts3]");
-                msg.reply("received and processing request [document-reacts3]");
-                if (!googleEnabled){
-                    utils.botLogs(globals,"---google not enabled");
-                    msg.reply("Google has not been enabled, contact sys-admin to set up");
-                    utils.work_Unlock(globals);
-                    return;
-                }
-                dump_functions.documentReactions_v3(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* dump names of members in voice channel to a doc */
-            else if (command === '--document-voice3'){
-                utils.botLogs(globals,"received request [document-voice3]");
-                msg.reply("received and processing request [document-voice3]");
-                if (!googleEnabled){
-                    utils.botLogs(globals,"---google not enabled");
-                    msg.reply("Google has not been enabled, contact sys-admin to set up");
-                    utils.work_Unlock(globals);
-                    return;
-                }
-                dump_functions.documentVoice_v3(globals, msg, content)
-                .then(_ => {
-                    utils.botLogs(globals,"\nCompleted request\n");
-                    msg.react('✅');
-                })
-                .catch(err => {  
-                    utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                    msg.reply("An error occured\n"+err);
-                    msg.react('❌'); 
-                })
-                .finally(_ => {
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                });
-            }
-
-
-
-            /* schedule timed events TODO-later */
-            /*else if (command === '--repeat'){  // !! ENSURE no lock or scope errors
-                //--repeat mode time +--event_to_schedule args
-                utils.botLogs(globals,"received request [repeat]");
-                msg.reply("received and processing request [repeat]");
-                if (isRepeat){//shouldn't repeat a repeat!
-                    utils.botLogs(globals,"--double repeat -> invalid");
-                    msg.reply("repeating a repeat is not allowed!");
-                    return;
-                }
-                repeatEventHandler(msg, member, command, content);
-            }*/
-
-
-
-            /*  *//*
-            else if (command === '--'){
-                //
-                //JSON.parse(content)
-            }*/
-
-
-
-            /* shutdown the bot */
-            else if (command === '--shutdown'){
-                msg.react('👋').then(_ => {
-                    utils.change_status(client, 'dnd', configs.shutdownStatusText)
-                    .then(_ => {
-                        msg.channel.send("i must go, my pepol call me!")
-                        .then(_ => { client.destroy(); utils.sleep(5000); } )
-                        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [0]  \n'+err); });
-                    })
-                    .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [1]  \n'+err); });
-                })
-                .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [2]  \n'+err); });
-                
-                utils.botLogs(globals,'--bot shutting down');
-            }   
-
-
-
-            else {
-                if(globals.modularFunctions.hasOwnProperty(command)){
-                //if (configs.modularFunctions.includes(command)){  //custom command (modular)
-                    utils.botLogs(globals,"received request for modular function ["+command+"]");
-                    globals.modularFunctions[command].func(globals, msg, content)
-                    .then(_ => {
-                        utils.botLogs(globals,"\nCompleted request\n");
-                        msg.react('✅');
-                    })
-                    .catch(err => {  
-                        utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-                        msg.reply("An error occured\n"+err);
-                        msg.react('❌'); 
-                    })
-                    .finally(_ => {
-                        utils.change_status(client, 'idle', configs.idleStatusText)
-                        .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'.");  })
-                        .finally(_ => { utils.work_Unlock(globals); });
-                    });
-                }
-
-                else{ //unknown command
-                    msg.react('🤔');
-                    msg.reply("`"+prefix+command+"` command unknown, try --help or --commands for a list of commands and short documentation");
-                    utils.change_status(client, 'idle', configs.idleStatusText)
-                    .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); msg.channel.send("Error ::  "+err + ";   my status should be 'idle'."); })
-                    .finally(_ => { utils.work_Unlock(globals); });
-                }
-            }
-        }
-
-
-        catch (err){
-            utils.botLogs(globals,"\nERROR in handling command\n"+err.stack);
-            msg.reply("An error occured\n"+err);
-            msg.react('❌'); 
-            utils.work_Unlock(globals); 
-        }
-    })
-    .catch(err => { msg.channel.send("\nERR occurred when changing status: "+err); msg.react('❌'); utils.work_Unlock(globals); });
-}
-
-
-
-
-function repeatEventHandler(msg, member, command, content){
-    //--repeat configs +--event_to_schedule args
-    /* configs {mode: x, settings: {~~}}
-    *
-    * modes: < seconds || minutes || days || weekly > 
-    *  \seconds: repeat
-    *       settings= {}
-    *  \minutes:  
-    *       settings= {}
-    *  \days:  repeat after an amount of days.  can set a preferred time
-    *       settings= {}
-    *  \weekly:  repeat weekly at a certain time of day 
-    *       settings= {schedule: [0~6, ...], timeOfDay: "HH:MM"}
-    *         [0-6] where 0 is sunday, 1 is monday ... 6 is saturday
-    *         timeOfDay must be 24hour clock, 12hour clock isn't supported
-    *  
-    * 
-    * */
-    
-    /*
-    if seconds or minutes then just create interval event 
-    otherwise if days or weekly
-    create an timeout event from time of creation to the event time of day (like noon)
-     then create interval event 
-     */
-
-    //commandHandler(msg, member, command, content, true);
-    //var set = new Set(A);
-    /*
-    var requestBody = msg.content.substring(prefix.length);
-    utils.botLogs(globals,"\nrequestBody:: "+requestBody);
-    if (requestBody.includes(' ')){
-        var command = requestBody.substr(0,requestBody.indexOf(' '));
-        var content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
-    }
-    else {
-        var command = requestBody.trim();
-        var content = "{}";
-    }
-    utils.botLogs(globals,"__command:: "+command);
-    utils.botLogs(globals,"__content:: "+content);
-    */
-   msg.reply("this function is not supported yet");
-}
-
-
-
-/***   scheduled reactroles garbage collection   ***/
-var maintenance_interval = 24*60*60*1000; // 24 hours
-setInterval(garbage_collection, maintenance_interval); 
-async function garbage_collection(){ //(not tested)
-    while (globals.busy) {
-        utils.botLogs(globals,"* work lock still active, waiting for unlock to fufill maintenance interval *");
-        await new Promise(resolve => workLockEmitter.once('unlocked', resolve));
-    }
-    utils.work_Lock(globals);
-    utils.botLogs(globals,"* obtaining work lock for maintenance interval *");
-
-    utils.change_status(client, 'dnd', "[doing maintenance]")
-    .then(async (_) => {
-        utils.botLogs(globals,"\nBeginning reactrole garbage collection");
-        try{
-            for(_server in reactroles){
-                var server = client.guilds.resolve(_server);
-                if (server.deleted){
-                    utils.botLogs(globals,"--server "+server.name+":"+server.id+" DELETED");
-                    delete reactroles[_server];
-                }
-                else {
-                    utils.botLogs(globals,"--server "+server.name+":"+server.id+" \\");
-                    for (_channel in reactroles[_server]){
-                        var channel = server.channels.resolve(_channel);
-                        if (channel.deleted){
-                            utils.botLogs(globals,"----channel "+channel.name+":"+channel.id+" DELETED");
-                            delete reactroles[_server][_channels];
-                        }
-                        else {
-                            utils.botLogs(globals,"----channel "+channel.name+":"+channel.id+" \\");
-                            for (_message in reactroles[_server][_channel]){
-                                await channel.messages.fetch(_message)
-                                .then(message => {
-                                    if (message.deleted){
-                                        utils.botLogs(globals,"------message "+message.id+" DELETED");
-                                        delete reactroles[_server][_channels][_message];
-                                    } else utils.botLogs(globals,"------message "+message.id+" >>|");
-                                })
-                                .catch(err => utils.botLogs("### ERR during maintenance ::  "+ err));
-                            }
-                            utils.botLogs(globals,"--completed all message entries for reactroles in server ["+server.name+":"+server.id+"] channel ["+channel.name+":"+channel.id+"]\n");
-                        }
-                    }
-                    utils.botLogs(globals,"--completed all channel entries for reactroles in server ["+server.name+":"+server.id+"]\n");        
-                }
-            }
-            utils.botLogs(globals,"--completed all servers entries for reactroles\nMaintenance Complete\n");
-            utils.change_status(client, 'idle', configs.idleStatusText)
-            .catch(err => { utils.botLogs(globals,"## err occured on returning status: "+err); })
-            .finally(_ => { utils.work_Unlock(globals); });
-        }
-        catch (err){
-            utils.botLogs(globals,"\n\n\nAn Error occurred\n"+err+"\n\n\n");
-            utils.work_Unlock(globals);
-        }
-    })
-    .catch(err => { utils.work_Unlock(globals); msg.channel.send("ERR occurred when changing status: "+err); });
-}
-
-
-/***   google connect   ***/
-async function connectGoogle(configs){
-    if (!googleEnabled)
-        return null;
-    const { GoogleSpreadsheet } = require('google-spreadsheet');
-    const doc = new GoogleSpreadsheet(configs.googleSheetsId);
-    await doc.useServiceAccountAuth(require("./googleClientSecret.json"))
-    .then(x => {
-        console.log("successfully connected to Google Sheets");
-        doc.loadInfo()
-        .then(x => {
-            console.log("Sheets title: ["+doc.title+"]");
-            googleDone = true;
-            if (consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
-        })
-        .catch(err => {
-            console.log("Error loading info :-: "+err);
-        });
-    })
-    .catch(err => {
-        console.log("Error connecting to Sheets :-: "+err);
-    });
-    return doc;
-}
-
-
-function checkBotAlreadyOnline(){
+function checkBotAlreadyOnline(){ //doesn't seem like it can be done, at least not easily :<
     //client  configs.bot_id
     return false;
 }
 
-function initializeClient(){
-    console.log("Initializing client");
-    clientSetup();
-    console.log("Logging in to client via token");
-    client.login(token)
-    .then(used_token => {
-        console.log("--login complete");
-        loginDone = true;
-        if (googleEnabled && consoleGap && (botReady && googleDone && loginDone)) { consoleGap = false; console.log("\n\n\n"); }
-        else if (!googleEnabled)  console.log("\n\n\n");
+
+
+
+
+
+function verifyConfigs(){
+    //TODO add type checking and validation
+
+    googleEnabled = false;
+    consoleGap = true;
+    botReady = false;
+    googleDone = false;
+    loginDone = false;
+
+    console.log("\nParsing configs.json");
+    configs = require('./configs.json');
+    var invalid = false;
+    var missing = [];
+    if ( !configs.hasOwnProperty("prefix") ){
+        invalid = true;
+        missing.push("prefix");
+    }
+    if ( !configs.hasOwnProperty("authorization") ){
+        invalid = true;
+        missing.push("authorization");
+    }
+    else { 
+        if ( !configs.authorization.hasOwnProperty("authorizedRoles") ){
+            invalid = true;
+            missing.push("authorization.authorizedRoles");
+        }
+        if ( !configs.authorization.hasOwnProperty("authorizedUsers") ){
+            invalid = true;
+            missing.push("authorization.authorizedUsers");
+        }
+    }
+    if ( !configs.hasOwnProperty("built_in_AuthLevels") ){
+        missing.push("built_in_AuthLevels");
+        invalid = true;
+    }
+    else {
+        for (built_in of blocking_built_in_funcs){
+            if ( !configs.built_in_AuthLevels.hasOwnProperty(built_in) ){
+                missing.push("built_in_AuthLevels."+built_in);
+                invalid = true;
+            }
+        }
+    }
+    if ( !configs.hasOwnProperty("DiscordAuthFilePath") ){
+        invalid = true;
+        missing.push("DiscordAuthFilePath");
+    }
+    if ( !configs.hasOwnProperty("workQueueCapacity") ){
+        configs["workQueueCapacity"] = 10; //default 10
+        missing.push("workQueueCapacity");
+    }
+    else if ( configs.workQueueCapacity < 1 )   configs.workQueueCapacity = 1;
+    if ( !configs.hasOwnProperty("timestamp") ){
+        configs["timestamp"] = false; //default false
+        missing.push("timestamp");
+    }
+    if ( !configs.hasOwnProperty("IANAZoneTime") ){
+        configs["IANAZoneTime"] = "America/Toronto"; //default Eastern time
+        missing.push("IANAZoneTime");
+    }
+    if ( !configs.hasOwnProperty("logsFileMode") ){
+        configs["logsFileMode"] = "newfile"; //default newfile
+        missing.push("logsFileMode");
+    }
+    if ( !configs.hasOwnProperty("startupStatusText") ){
+        configs["startupStatusText"] = "[started]" //default "[started]"
+        missing.push("startupStatusText");
+    }
+    if ( !configs.hasOwnProperty("idleStatusText") ){
+        configs["idleStatusText"] = "[idle]" //default "[idle]"
+        missing.push("idleStatusText");
+    }
+    if ( !configs.hasOwnProperty("shutdownStatusText") ){
+        configs["shutdownStatusText"] = "[shutdown]" //default "[shutdown]"
+        missing.push("shutdownStatusText");
+    }
+    
+    if ( configs.hasOwnProperty("googleEnabled") ){ //else assumed false
+        googleEnabled = configs.googleEnabled;
+        if ( googleEnabled ){
+            if ( !configs.hasOwnProperty("GoogleAuthFilePath") ){
+                invalid = true;
+                missing.push("GoogleAuthFilePath");
+            }
+            if ( !configs.hasOwnProperty("googleSheetsId") ){
+                invalid = true;
+                missing.push("googleSheetsId");
+            }
+            if ( !configs.hasOwnProperty("defaultSheetRows") ){
+                configs["defaultSheetRows"] = 100; //default 100
+                missing.push("defaultSheetRows");
+            }
+            if ( !configs.hasOwnProperty("defaultSheetCols") ){
+                configs["defaultSheetCols"] = 10; //default 10
+                missing.push("defaultSheetCols");
+            }
+            if ( !configs.hasOwnProperty("autoSheetSize") ){
+                configs["autoSheetSize"] = true; //default true
+                missing.push("autoSheetSize");
+            }
+            if ( !configs.hasOwnProperty("sheetCellWrap") ){
+                configs["sheetCellWrap"] = "CLIP"; //default "CLIP"
+                missing.push("sheetCellWrap");
+            }
+        }
+    }
+
+    if (invalid){
+        throw new Error("Invalid configs.json ::  missing or undefined configs:  ["+missing.toString()+"]");
+    }
+        
+    if (missing.length > 0)
+        console.log("--configs.json missing and used defaults for: "+missing.toString());
+
+    globals = {};
+    globals["client"] = null; //set in initializeClient
+    globals["doc"] = null; //set in connectGoogle
+    globals["bot_id"] = null; //set on ready
+    globals["busy"] = true; //initially busy setting up
+    globals["configs"] = configs;
+    globals["logsPath"] = logsPath;
+    globals["logsFileName"] = "LOGS.txt"; //default
+    globals["timers"] = [];
+    globals["luxon"] = luxon;
+    globals["modularCommands"] = {};
+    globals["modularReplies"] = {}; 
+    globals["queueCapacity"] = configs.workQueueCapacity;
+    globals["queueLength"] = 0;
+    globals["botEventEmitter"] = botEventEmitter;
+    globals["_shutdown"] = []; //add functions (params: (globals)) to run on shutdown
+}
+
+function BotReady(){
+    consoleGap = false; 
+    console.log("\nBot Ready\n    "+utils.getDateTimeString(globals)+"\n\n"); 
+    globals.botEventEmitter.emit('botReady');
+}
+
+
+
+async function init (){
+    console.log("\n\n["+package.name+"]   version -- "+package.version+"\n");
+    try{
+        verifyConfigs();
+        if (googleEnabled) {
+            require(configs.GoogleAuthFilePath);
+            require('google-spreadsheet');
+        }
+        setupLogs();
+        acquireJS();
+    }
+    catch (err){
+        console.log(err);
+        process.exit();
+    }
+    connectGoogle()
+    .then(async (_doc) => {
+        globals["doc"] = _doc;
+        await initializeClient();
     })
-    .catch(err => {console.log("--ERROR [LOGIN] ::  "+err); throw new Error("\nError occurred during login");});
-    globals["client"] = client;
+    .catch(err => {
+        console.log(err.stack);
+        throw new Error("\nError occurred during Google Sheets connection");   
+    });
+}
+
+
+
+async function shutdown(){
+    //?? consider waiting until not busy
+
+    if (!globals) return;
+
+    utils.botLogs(globals, "Shutdown requested\n--destroying existing intervals");
+    for (interval of globals["timers"]){
+        clearInterval(interval);
+    }
+    utils.botLogs(globals, "--running _shutdown commands")
+    if (globals._shutdown){
+        for (shutdown_func of globals._shutdown){
+            try{
+                await shutdown_func(globals);
+            }
+            catch(err){
+                console.log("----error ::   "+err);
+            }
+        }
+    }
+    
+
+    try {
+        client.destroy();
+    }
+    catch (err){
+        utils.botLogs(globals, "ERROR when destroying client\n"+err);
+    }
+    utils.botLogs(globals,"Bot Shutdown\n    "+utils.getDateTimeString(globals)+"\n");
+    globals.botEventEmitter.emit('botShutdown');
+    globals = undefined; //delete globals on shutdown 
+}
+
+async function reset(){
+    if (!globals) return;
+    await shutdown();
+    console.log("\n\n\nResetting\n\n\n");
+    globals.botEventEmitter.emit('botReset');
+    init();
 }
 
 
 
 
-const client = new Discord.Client();
-var doc = null;
-var consoleGap = true;
-var botReady = false;
-var googleDone = false;
-var loginDone = false;
+function set_exit_handler(){
+    if (process.platform === "win32") {
+        var rl = require("readline").createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+      
+        rl.on("SIGINT", function () {
+          process.emit("SIGINT");
+        });
+    }
+      
+    process.on("SIGINT", async function () {
+        await shutdown();
+        process.exit();
+    });
+    process.on('SIGHUP', async function() {
+        console.log('\n\nWindow about to close [SIGHUP]\n\n');
+        await shutdown();
+        console.log("\n\nWindow will close in 5 seconds.\n\n");
+        await utils.sleep(5000);
+        process.exit();
+    });
+    process.on('SIGTERM', async function() { 
+        console.log('\n\nProcess about to terminate [SIGTERM]\n\n');
+        await shutdown();
+        process.exit();
+    });
+}
 
 
 
-console.log("\n\n["+package.name+"]   version -- "+package.version+"\n\n");
-setupLogs();    
 
-connectGoogle(configs)
-.then(_doc => {
-    doc = _doc;
-    globals["doc"] = doc;
-    initializeClient();
-})
-.catch(err => {
-    console.log(err.stack);
-    throw new Error("\nError occurred during Google Sheets connection");   
-});
+
+//set_exit_handler();
+//init(); 
+
+module.exports = {
+    init, 
+    reset,
+    shutdown,
+    set_exit_handler,
+    globals
+}
 
 
 

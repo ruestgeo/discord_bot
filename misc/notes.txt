@@ -1,0 +1,151 @@
+node version 12.16.2
+discord.js version 12.2.0
+
+--NOTE: auth.json and googleClientSecret.json  have sensitive data and are confidential, do not share them with anyone.  It may also be of interest to not share configs.json  although the data is less sensitive
+
+
+https://discord.js.org/#/docs/main/stable/general/welcome
+
+
+https://www.youtube.com/watch?v=UGN6EUi4Yio
+https://www.npmjs.com/package/google-spreadsheet  //used
+https://developers.google.com/sheets/api/quickstart/nodejs  //not used
+https://console.developers.google.com/   //for setup (enable drive and sheets API and obtain clientSecret)
+
+https://www.sqlitetutorial.net/sqlite-nodejs/
+
+https://moment.github.io/luxon/index.html
+
+
+
+
+npm install discord.js --save
+npm install google-spreadsheet --save
+npm install sqlite3 --save
+npm install luxon --save
+
+
+https://docs.microsoft.com/en-us/windows/nodejs/setup-on-windows
+https://github.com/coreybutler/nvm-windows/releases/download/1.1.7/nvm-setup.zip
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+================================
+
+console.log(globals.queue);
+console.log("isEmpty? "+globals.queue.isEmpty());
+console.log("capacity: "+globals.queue.capacity());
+globals.queue.enqueue(7);
+globals.queue.enqueue(9);
+globals.queue.enqueue(3);
+console.log("first: "+globals.queue.peek());
+console.log(globals.queue.dequeue());
+console.log(globals.queue.dequeue());
+console.log(globals.queue.dequeue());
+globals.queue.dequeue();
+================================
+
+//appendFileSync should be fine to use multiple times (js is single-thread exec)
+
+var printLock = false;
+const printLockEmitter = new EventEmitter();
+
+    botLogs: function (globals, content){
+        if (globals.LogsToFile){
+            while (printLock){
+                await new Promise(resolve => printLockEmitter.once('unlocked', resolve));
+            }
+            printLock = true;
+            fs.appendFileSync(globals.logsPath+globals.logsFileName, content+"\n");
+            printLock = false;
+            printLockEmitter.emit("printUnlocked");
+        }
+        console.log(content);
+    },
+
+================================
+
+//globals["queue"] =  new utils.Queue(configs.workQueueCapacity);
+exports.Queue = Queue;
+function Queue (capacity){
+    if (!Number.isInteger(capacity))
+        throw new Error("Invalid arg given:  ["+capacity+"] is not an integer");
+    if (capacity < 1)
+        throw new Error("Invalid arg given:  capacity less than 1");
+
+    this._elements = [];
+    this._capacity = capacity;
+}
+Queue.prototype.enqueue = function (element){
+    if (this._elements.length == this._capacity)
+        throw new Error("Queue is full ( "+this._elements.length+" / "+this._capacity+" )");
+    this._elements.push(element);     
+}
+Queue.prototype.dequeue = function (){
+    if (this._elements.length < 1)
+        throw new Error("Queue is empty ( "+this._elements.length+" / "+this._capacity+" )");
+    return this._elements.shift();
+}
+Queue.prototype.isEmpty = function (){
+    return this._elements.length == 0;
+}
+Queue.prototype.peek = function (){
+    return (this.isEmpty() ? undefined : this._elements[0]);
+}
+Queue.prototype.length = function (){
+    return this._elements.length;
+}
+Queue.prototype.capacity = function(){
+    return this._capacity;
+}
+
+================================
+
+//if (!globals) throw new Error("'globals' undefined");
+
+================================
+================================
+================================
+================================
+================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

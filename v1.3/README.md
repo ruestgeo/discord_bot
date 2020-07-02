@@ -6,7 +6,6 @@ discord.js version 12.2.0
 
 
 This bot is intended for use on a single server (for now).
-The code for the bot is fully open-sourced, available at https://github.com/ruestgeo/discord_bot
 
 
 To set up the bot an auth.json  and configs.json must be made, examples have been provided.
@@ -15,10 +14,10 @@ If using the google sheets functions then additional setup is required and a goo
 You can see https://www.youtube.com/watch?v=UGN6EUi4Yio  for some instructions on the process if needed.
 Once obtained, set the following in the configs.json ::   "googleEnabled": true
 
---NOTE: auth.json and googleClientSecret.json  have sensitive data and are confidential, do not share them with anyone.  It may also be of interest to not share configs.json  although the data is less sensitive. 
+--NOTE: auth.json and googleClientSecret.json  have sensitive data and are confidential, do not share them with anyone.  It may also be of interest to not share configs.json  although the data is less sensitive
 
 
-You can launch the bot using the command "node main.js" when in the discord_bot main directory.
+You can launch the bot using the command "node bot.js" when in the discord_bot main directory.
 Alternatively you can use a compiler such as Nexe (https://github.com/nexe/nexe) to compile it all into an executable (.exe) for ease of use.
 
 
