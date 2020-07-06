@@ -1,0 +1,8 @@
+{
+    "GoogleAuthFilePath": "_private/googleClientSecret.json",
+    "googleSheetsId": "14LZDD1J_Jn6h6yBAznkU7Q9DLWJtyX80MPTs98TFQks",
+    "defaultSheetRows": 100,
+    "defaultSheetCols": 10,
+    "autoSheetSize": true,
+    "sheetCellWrap": "CLIP"
+}

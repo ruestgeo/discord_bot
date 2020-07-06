@@ -12,7 +12,7 @@ https://www.npmjs.com/package/google-spreadsheet  //used
 https://developers.google.com/sheets/api/quickstart/nodejs  //not used
 https://console.developers.google.com/   //for setup (enable drive and sheets API and obtain clientSecret)
 
-https://www.sqlitetutorial.net/sqlite-nodejs/
+
 
 https://moment.github.io/luxon/index.html
 
@@ -21,7 +21,7 @@ https://moment.github.io/luxon/index.html
 
 npm install discord.js --save
 npm install google-spreadsheet --save
-npm install sqlite3 --save
+
 npm install luxon --save
 
 
@@ -52,17 +52,23 @@ https://github.com/coreybutler/nvm-windows/releases/download/1.1.7/nvm-setup.zip
 
 ================================
 
-console.log(globals.queue);
-console.log("isEmpty? "+globals.queue.isEmpty());
-console.log("capacity: "+globals.queue.capacity());
-globals.queue.enqueue(7);
-globals.queue.enqueue(9);
-globals.queue.enqueue(3);
-console.log("first: "+globals.queue.peek());
-console.log(globals.queue.dequeue());
-console.log(globals.queue.dequeue());
-console.log(globals.queue.dequeue());
-globals.queue.dequeue();
+//botVerifyConfigs --
+//botConfigsVerified 10% [10/100]
+//botLogsSetup --
+//botLogsReady 10% [20/100]
+//botAcquiringCommands --  (emit # of files)
+//botAcquiredCommands 25% [45/100]
+//botAcquiringReactables --  (emit # of files)
+//botAcquiredReactables 10% [55/100]
+//botRunningStartup -- (emit # of funcs)
+//botStartupDone 30% [85/100]
+//BotLogin --
+//botReady 15% [100/100]
+
+//botRunningShutdown -- (emit # of funcs)
+//botShutdownDone 80%  [80/100]
+//botExit 20% [100/100]
+
 ================================
 
 //appendFileSync should be fine to use multiple times (js is single-thread exec)
@@ -124,6 +130,7 @@ Queue.prototype.capacity = function(){
 //if (!globals) throw new Error("'globals' undefined");
 
 ================================
+
 ================================
 ================================
 ================================

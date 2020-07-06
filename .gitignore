@@ -1,10 +1,7 @@
-auth.json
-configs.json
-googleClientSecret.json
 **/auth.json
 **/configs.json
 **/googleClientSecret.json
-node_modules/*
-*.exe
+**/node_modules
 **/*.exe
-logs
+**/logs
+**/*.db

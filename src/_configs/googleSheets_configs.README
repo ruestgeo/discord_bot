@@ -1,0 +1,9 @@
+This will explain the properties in googleSheets_configs.json
+{
+    "GoogleAuthFilePath": "_private/googleClientSecret.json",  //the path to the google sheets authentication json, which should be relative to the bots base directory
+    "googleSheetsId": "id from sheets URL",
+    "defaultSheetRows": 100,   //an Integer  indicating how many rows a newly created sheet will have (ignored if autoSheetSize enabled)
+    "defaultSheetCols": 10,   //an Integer  indicating how many rows a newly created sheet will have (ignored if autoSheetSize enabled)
+    "autoSheetSize": false,  //a Boolean  indicating whether a newly created sheet should adjust to the bare minimum amount of cells needed
+    "sheetCellWrap": "CLIP  /  OVERFLOW_CELL  /  WRAP    (defaults to overflow)",
+}
