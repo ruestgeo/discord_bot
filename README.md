@@ -6,7 +6,8 @@ using:
 - discord.js version 12.2.0
 
 
-This bot is intended for use on a single server (for now;  it will still function when dealing with multiple servers, but some commands may not work as expected).
+This bot is intended for light use and is primarily intended for single server use.  It can be used across multiple servers, however some included commands  may not behave as expected in a multi-server setup.  
+
 The code for the bot is fully open-sourced, available at https://github.com/ruestgeo/discord_bot
 
 Feel free to use or distribute the code as you like, however according to the license you must not privatize the source code, modifications, or additions.  
@@ -15,6 +16,7 @@ Feel free to use or distribute the code as you like, however according to the li
 ## Setup
 
 Provide **auth.json** in the **_private** directory, an example has been provided.
+
 Provide **configs.json** in the base directory (same location as bot.js and main.js).
 
 If using the google sheets functions then additional setup is required and a **googleClientSecret.json** must be obtained and placed in **_private**, as well as a **googleSheets_configs.json** in the **configs** directory where an example has been provided.
@@ -27,22 +29,29 @@ It is possible to change the names of these files, just change the path in the c
 ## Launching
 ### node and npm
 You can launch the bot using the command `node main.js` when in the code base directory (**src**).
+
 Node.js version 12.16.2 or fully compatable versions are required when launching through `node`.
 
 ### executable
 Alternatively you can use a compiler such as Nexe (https://github.com/nexe/nexe) to compile it all (except the modular parts) into an executable (.exe) for ease of use.
+
 `npm uninstall -g nexe`
 `nexe main.js -r "bot.js" -r "utils.js" -r "node_modules/**/*"` or `nexe main.js -r "node_modules/**/*"`
+
 This will enable use of the executable (.exe) without the **node_modules** directory, nor installing **npm** or **node**.
+
 Note that this means the created exe will only have access to the currently installed packages, and any additional packages that are required in the modular javascript files will require recompiling the executable with all required modules installed in order to function.  
 The currently installed node_modules can be found in **package.json**
+
 **bot.js** and **utils.js** are included by default.
 
 
 ## Source Code 
 
-As of v1.4, most of the files are modular. 
+As of v1.4, most of the files are modular or dynamically obtained at runtime. 
+
 `configs.json` and all files within directories prefixed with an underscore are modular in that they can be modified and the next time the bot is launched it will reflect those changes.  
+
 This allows a host to add more functionality to the bot (even if using the executable method of launching)
 
 #### main.js
