@@ -139,7 +139,7 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
         var content_line = content.replace(/\n/g, ' `\\n` ');
         await utils.acquire_work_lock(globals, "["+command/*+"  "+content_line*/+"] req from "+member.displayName+"#"+member.user.discriminator);
         if (globals.configs.timestamp)
-            utils.botLogs(globals,"\nProcessing command ["+command+"]\n  with args ::   "+content_line, globals.configs.timestamp, "\n\n");
+            utils.botLogs(globals,"\n\n("+utils.getTime(globals)+")\nProcessing command ["+command+"]\n  with args ::   "+content_line);
         else 
             utils.botLogs(globals,"\n\nProcessing command ["+command+"]\n  with args ::   "+content_line);
         
@@ -155,7 +155,7 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
                 builtInHandler(msg, member, command, content)
                 .then(completionMessage => {
                     if (globals.configs.timestamp)
-                        utils.botLogs(globals,"\nCompleted request\n", globals.configs.timestamp, "\n");
+                        utils.botLogs(globals,"\n("+utils.getTime(globals)+")\nCompleted request\n");
                     else
                         utils.botLogs(globals,"\nCompleted request\n");
                     if (completionMessage) msg.reply(completionMessage); //send if one is given
@@ -186,7 +186,7 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
                 globals.modularCommands[command].func(globals, msg, content)
                 .then(completionMessage => {
                     if (globals.configs.timestamp)
-                        utils.botLogs(globals,"\nCompleted request\n", globals.configs.timestamp, "\n");
+                        utils.botLogs(globals,"\n("+utils.getTime(globals)+")\nCompleted request\n");
                     else
                         utils.botLogs(globals,"\nCompleted request\n");
                     if (completionMessage) msg.reply(completionMessage); //send only if given

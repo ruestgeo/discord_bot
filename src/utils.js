@@ -24,8 +24,6 @@ const workLockEmitter = new EventEmitter();
 
 
 const DateTime = luxon.DateTime;
-var _dateTime = undefined;
-const _date = new Date();
 
 
 module.exports = {
@@ -50,11 +48,7 @@ module.exports = {
         workLockEmitter.emit('unlocked');
     },
 
-    botLogs: function (globals, content, timestamp, prefix){
-        if (timestamp){ //if defined and true
-            if (!prefix) prefix = "";
-            content = prefix+"("+this.getTime()+")  "+content; 
-        }
+    botLogs: function (globals, content){
         if (globals.LogsToFile)
             { fs.appendFileSync(globals.logsPath+globals.logsFileName, content+"\n"); }
         console.log(content);
@@ -66,8 +60,8 @@ module.exports = {
         });
     },
 
-    getTime: function(){
-        return _dateTime.toLocaleString({hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    getTime: function(globals){
+        return this.getDateTime(globals).toLocaleString({hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit'});
     },
 
     getDateTime: function(globals){
@@ -76,15 +70,13 @@ module.exports = {
             return DateTime.fromISO(DateTime.utc(), {zone: zone});
         }
         else { //invalid IANA zone identifier, use UTC as default
-            console.log("## invalid IANA zone identifier, assuming UTC");
             return DateTime.utc();
         }
         
     },
 
     getDateTimeString: function (globals) {
-        if (!_dateTime) _dateTime = this.getDateTime(globals);
-        return _dateTime.toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
+        return this.getDateTime(globals).toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
     },
 
     getMemberAuthorizationLevel: async function(configs, member){
