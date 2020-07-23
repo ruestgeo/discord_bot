@@ -14,7 +14,7 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../dev_utils.js'); 
+const utils = require('../utils.js'); 
 
 const localStorage = require('../_utils/localStorage_utils.js');
 

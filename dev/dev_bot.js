@@ -21,7 +21,7 @@ const reactablesPath = "./_reactables/";
 //const customConfigsPath = "./_configs/";
 //const privatePath = "./_private/";
 const startupPath = "./_startup/";
-const configsPath = './dev_configs.json'
+const configsPath = './configs.json'
 
 const fs = require('fs'); 
 const EventEmitter = require('events');
@@ -32,7 +32,7 @@ const { DateTime } = require('luxon');
 
 
 const package = require('./package.json');
-const utils = require('./dev_utils.js');
+const utils = require('./utils.js');
 //const _configs = require(configsPath); //original configs
 var configs = undefined; //configs might be added (default) during acquireConfigs if missing
 

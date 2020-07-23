@@ -14,7 +14,7 @@ Made by JiJae (ruestgeo)
 //NOTE: only string  keys and values for localstorage
 
 
-const utils = require('../dev_utils.js');
+const utils = require('../utils.js');
 
 const fs = require('fs'); 
 const { LocalStorage } = require('node-localstorage');

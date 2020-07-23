@@ -16,7 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../dev_utils.js');
+const utils = require('../utils.js');
 
 
 
