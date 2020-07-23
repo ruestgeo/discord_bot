@@ -1,14 +1,16 @@
 {
   "name": "discord_bot",
-  "version": "dev_1.4",
+  "version": "000.1.4",
   "description": "A Discord Bot",
-  "main": "main.js",
-  "bin": "./main.js",
+  "main": "dev.js",
+  "bin": "./dev.js",
   "author": "JiJae",
   "dependencies": {
+    "async-mutex": "^0.2.4",
     "discord.js": "^12.2.0",
     "google-spreadsheet": "^3.0.11",
-    "luxon": "^1.24.1"
+    "luxon": "^1.24.1",
+    "node-localstorage": "^2.1.6"
   },
   "devDependencies": {
     "nexe": "^3.3.7"

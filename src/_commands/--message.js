@@ -46,7 +46,7 @@ module.exports = {
             throw ("Invalid user_ID.  No member with user ID ["+target+"] within the server");
         }
 
-        member.send(message_to_echo);
+        await member.send(message_to_echo);
     }
 
     

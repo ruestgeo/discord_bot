@@ -80,7 +80,7 @@ module.exports = {
 
             var list = [];
             var longest_col = 0;
-            for (msg_react of msg_reacts){
+            for (var msg_react of msg_reacts){
                 var col = [];
                 try{
                     var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
@@ -88,7 +88,7 @@ module.exports = {
                     utils.botLogs(globals,  "  "+emote);
                     var _react_users = await msg_react.users.fetch();
                     var react_users = _react_users.values();
-                    for (user of react_users){
+                    for (var user of react_users){
                         var _member = message.guild.members.resolve(user.id);
                         var display_name = _member  ?  _member.displayName+"#"+user.discriminator  :  "[NOT_IN_SERVER]__"+user.username+"#"+user.discriminator;
                         col.push(display_name);

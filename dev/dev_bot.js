@@ -23,7 +23,6 @@ const reactablesPath = "./_reactables/";
 const startupPath = "./_startup/";
 const configsPath = './dev_configs.json'
 
-
 const fs = require('fs'); 
 const EventEmitter = require('events');
 const readline = require('readline'); //for enterToExit()
@@ -34,18 +33,20 @@ const { DateTime } = require('luxon');
 
 const package = require('./package.json');
 const utils = require('./dev_utils.js');
-const _configs = require(configsPath); //original configs
-var configs = undefined; //configs might be added (default) during verifyConfigs if missing
+//const _configs = require(configsPath); //original configs
+var configs = undefined; //configs might be added (default) during acquireConfigs if missing
 
 
-const client = new Discord.Client();
+//const client = new Discord.Client();
+var client = undefined;
 const botEventEmitter = new EventEmitter();
 
-var globals = undefined; //set during verifyConfigs
+var globals = {};
+var initArg = undefined;
 
 
 const nonblocking_built_in_funcs = ["--version"];
-const blocking_built_in_funcs = ["--help", "--commands", "--ping", "--shutdown"];
+const blocking_built_in_funcs = ["--help", "--commands", "--ping", "--shutdown", "--reimport", "--restart"];
 
 //"**--**  ->  ``\n" +
 //".     *description* \n" +
@@ -59,24 +60,24 @@ const built_in_manuals = {
                     ".     *ping the discord bot which will reply pong and flash its status indicator*",
     "--shutdown":   "**--shutdown**  ->  \\*none\\*\n" +
                     ".     *close all listening instances of the discord bot*",
+    "--restart":   "**--restart**  ->  \\*none\\*\n" +
+                    ".     *soft restart all listening instances of the discord bot*",
     "--help":       "**--help**  ->  \\*none\\* ~~  *or* ~~  all ~~  *or*  ~~ \\*commandName\\* ~~  *or*  ~~ \\**keywords*\\*\n" +
                     ".     *if \\*none\\* is given then it will send the help command manual*\n"+
                     ".     *if* **all** *is given then it will send a list of all commands*\n"+
                     ".     *if \\*commandName\\* is given then it will send the manual for that command*\n"+
                     ".     *if \\**keywords*\\* (split by a single empty space) are given then it will try to send a list of all commands that contain all of those keywords*\n",
     "--commands":   "**--commands** ->  \\*none\\*   *or*   all   *or*   \\*commandName\\*   *or*   \\**keywords*\\*\n" +
-                    ".     *an alias for the \"--help\" command*"
+                    ".     *an alias for the \"--help\" command*",
+    "--reimport":   "**--reimport** ->  all   *or*   configs   *and/or*   reactables   *and/or*   commands\n"+
+                    ".     *will reimport all of or some of configs, reactables, and/or commands depending on given arguments (separated by empty space)*"+
+                    ".     *for example `--reimport reactables commands`*"
 }
-var command_description = "The bot built-in commands are as follows, \n"+
-        ".  ***commandName  ->  arguments*** \n"+
-        ".    any quotation marks, curly brackets, or square brackets are necessary are necessary\n"+
+var command_description = "The bot commands are as follows, \n"+
+        ".  **commandName**  ->  ***arguments*** \n"+
+        ".    any quotation marks, curly brackets, or square brackets are necessary\n"+
         ".    `...` (ellipsis) implies that you can input more than one\n"+
         ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
-        ".    do not include elipses, <, >, or single quotations in the command \n"+
-        ".    do not use double quotations in a key value pair as it is used to encapsulate the key or value;  instead use single quotations or escaped double quotations for example, for example\n"+
-        ".    `{\"message\": \"i quote, \"something\" and it failed :<\"}`\n"+
-        ".    `{\"message\": \"i quote, 'something' and it succeeded :>\"}`\n"+
-        ".    `{\"message\": \"i quote, \\\"something\\\" and it succeeded :>\"}`\n"+
         "================================";
 
 
@@ -97,20 +98,22 @@ function handleRequest(msg){
     }
     msg.react('👌');
 
-    commandHandler(msg, msg.member, command, content)
+    commandHandler(msg, command, content)
     .catch(err => {
         msg.react('❌');
         utils.botLogs(globals,"\nERROR in handling command\nerr ::   "+err+"\nerr.stack ::   "+err.stack);
-        msg.reply("An error occured\n"+err);
+        msg.reply("\n"+err);
     }); 
 }
 
 
 
 
-async function commandHandler(msg, member, command, content, ignoreQueue){
+async function commandHandler(msg, command, content, ignoreQueue){
     if (!globals) return;
     if (!ignoreQueue) ignoreQueue = false;
+
+    var member = msg.member;
 
     /* modular  and  blocking built-in  commands */
     if ( globals.modularCommands.hasOwnProperty(command) || blocking_built_in_funcs.includes(command) ){
@@ -140,9 +143,9 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
         var content_line = content.replace(/\n/g, ' `\\n` ');
         await utils.acquire_work_lock(globals, "["+command/*+"  "+content_line*/+"] req from "+member.displayName+"#"+member.user.discriminator);
         if (globals.configs.timestamp)
-            utils.botLogs(globals,"\nProcessing command ["+command+"]\n  with args ::   "+content_line, globals.configs.timestamp, "\n\n");
+            utils.botLogs(globals,"\n\n("+utils.getTime(globals)+")\nProcessing command ["+command+"]\n  from "+member.displayName+"#"+member.user.discriminator+"\n    in channel #"+msg.channel.name+":"+msg.channel.id+" of server ["+msg.guild.name+":"+msg.guild.id+"]\n  with args ::   "+content_line);
         else 
-            utils.botLogs(globals,"\n\nProcessing command ["+command+"]\n  with args ::   "+content_line);
+            utils.botLogs(globals,"\n\nProcessing command ["+command+"]\n  from "+member.displayName+"#"+member.user.discriminator+"\n    in channel #"+msg.channel.name+":"+msg.channel.id+" of server ["+msg.guild.name+":"+msg.guild.id+"]\n  with args ::   "+content_line);
         
         if ( await utils.checkMemberAuthorized(globals, member, requiredAuthLevel, true).catch(err =>{ throw (err) }) ){ //recheck auth in case changed while waiting
             msg.reply("processing request ["+command+"]");
@@ -156,7 +159,7 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
                 builtInHandler(msg, member, command, content)
                 .then(completionMessage => {
                     if (globals.configs.timestamp)
-                        utils.botLogs(globals,"\nCompleted request\n", globals.configs.timestamp, "\n");
+                        utils.botLogs(globals,"\n("+utils.getTime(globals)+")\nCompleted request\n");
                     else
                         utils.botLogs(globals,"\nCompleted request\n");
                     if (completionMessage) msg.reply(completionMessage); //send if one is given
@@ -165,11 +168,12 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
                 .catch(err => {
                     msg.react('❌');
                     utils.botLogs(globals,"\nERROR in handling command\nerr ::   "+err+"\nerr.stack ::   "+err.stack);
-                    msg.reply("An error occured\n"+err);
+                    msg.reply("\n"+err);
                     return;
                 })
                 .finally(_ =>{ 
                     globals.queueLength --; 
+                    if (globals.queueLength < 0){ globals.botLogs(globals, "\nERROR ::  queueLength less than 0:  ["+globals.queueLength+"]\n")}
                     utils.change_status(client, 'idle', configs.idleStatusText)
                     .catch(err => { 
                         utils.botLogs(globals,"## err occured on returning status: "+err); 
@@ -187,7 +191,7 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
                 globals.modularCommands[command].func(globals, msg, content)
                 .then(completionMessage => {
                     if (globals.configs.timestamp)
-                        utils.botLogs(globals,"\nCompleted request\n", globals.configs.timestamp, "\n");
+                        utils.botLogs(globals,"\n("+utils.getTime(globals)+")\nCompleted request\n");
                     else
                         utils.botLogs(globals,"\nCompleted request\n");
                     if (completionMessage) msg.reply(completionMessage); //send only if given
@@ -196,7 +200,7 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
                 .catch(err => {
                     msg.react('❌');
                     utils.botLogs(globals,"\nERROR in handling command\nerr ::   "+err+"\nerr.stack ::   "+err.stack);
-                    msg.reply("An error occured\n"+err);
+                    msg.reply("\n"+err);
                     return;
                 })
                 .finally(_ =>{ 
@@ -241,9 +245,8 @@ async function commandHandler(msg, member, command, content, ignoreQueue){
 
 async function builtInHandler (msg, member, command, content){
     if (!globals) return;
-    var configs = globals.configs;
 
-    /* Display a post with all available commands */
+    /* Display a post with command info */
     if (command === '--help' || command === '--commands'){
         utils.botLogs(globals,"received request [help] or [commands]");
         
@@ -259,13 +262,13 @@ async function builtInHandler (msg, member, command, content){
             for (var modularCommand in globals.modularCommands){ all += modularCommand +"\n"; }
             if (all.length > 2000){
                 var parts = [];
-                while (all > 2000){
+                while (all.length > 2000){
                     var split_index = all.substr(1800, all.length).indexOf("\n")+1800;
                     parts.push(all.substr(0,split_index));
                     all = all.substr(split_index, all.length);
                 }
-                for (part of parts){ msg.channel.send(part); }
-                msg.channel.send(all); //last part
+                for (var part of parts){ msg.channel.send(part); }
+                if (all.trim() !== "") msg.channel.send(all); //last part
             }
             else  msg.channel.send(all);
             return;
@@ -301,7 +304,7 @@ async function builtInHandler (msg, member, command, content){
         allList = allList.concat(Object.keys(built_in_manuals), Object.keys(globals.modularCommands));
 
         var keyword = remaining_keywords.shift();
-        for (cmd of allList){
+        for (var cmd of allList){
             if ( cmd.includes(keyword) ) matches[cmd] = undefined; //globals.modularCommands[cmd].manual;
         }
         if (Object.keys(matches).length == 0){
@@ -310,25 +313,25 @@ async function builtInHandler (msg, member, command, content){
         
         while (remaining_keywords.length > 0){ 
             var keyword = remaining_keywords.shift();
-            for (command_match in matches){
+            for ( var command_match in matches ){
                 if ( !command_match.includes(keyword) ) { delete matches[command_match]; }
             }
         }
         var command_matches = Object.keys(matches).toString().replace(/,/g, "\n");
         if (command_matches.length > 2000){
             var parts = [];
-            while (command_matches > 2000){
+            while (command_matches.length > 2000){
                 var split_index = command_matches.substr(1800, command_matches.length).indexOf("\n")+1800;
                 parts.push(command_matches.substr(0,split_index));
                 command_matches = command_matches.substr(split_index, command_matches.length);
             }
-            for (part of parts){ msg.channel.send(part); }
-            msg.channel.send(command_matches); //last part
+            for ( var part of parts ){ msg.channel.send(part); }
+            if (command_matches.trim() !== "")  msg.channel.send(command_matches); //last part
         }
         else  msg.channel.send(command_matches);
     }
 
-
+    /* fancy ping */
     else if (command === '--ping'){
         msg.reply("pong");
         var blink_time = 1000;
@@ -345,6 +348,68 @@ async function builtInHandler (msg, member, command, content){
         utils.botLogs(globals,  "--blink done");
         return;
     }
+
+
+    /* reimport assets */
+    else if (command === '--reimport'){ //TODO
+        console.log("reimporting")
+        var args = content.split(" ");
+        args = [...new Set(args)]; //remove duplicates
+        utils.botLogs(globals, "--reimporting:  "+args);
+        for (arg of args){
+            if (arg !== "all" && arg !== "reactables" && arg !== "commands" && arg !== "configs")
+                throw new Error(`invalid arg: [${arg}]`);
+        }
+        if (args.includes("all")){
+            var old_configs = globals.configs;
+            configs = {};
+            globals.configs = {};
+            try { acquireConfigs(); }
+            catch (err){ 
+                utils.botLogs("---- error on configs reimport (retaining old configs)\n"+err);
+                globals.configs = old_configs;
+                configs = old_configs;
+                msg.reply("An error occured when reimporting configs.  Previous configs will be retained.\n"+err); 
+            }
+
+            for (var modCmd in globals.modularCommands){ delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
+            globals["modularCommands"] = {};
+            acquireCommands();
+
+            for (var modReact in globals.modularReactables){ delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
+            globals["modularReactables"] = {}; 
+            acquireReactables();
+            return "Request complete.  Reimported all (commands, reactables, configs)";
+        }
+
+        if (args.includes("commands")) {
+            for (var modCmd in globals.modularCommands) { delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
+            globals["modularCommands"] = {};
+            acquireCommands();
+        }
+
+        if (args.includes("reactables")) {
+            for (var modReact in globals.modularReactables) { delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
+            globals["modularReactables"] = {}; 
+            acquireReactables();
+        }
+        if (args.includes("configs")) {
+            var old_configs = globals.configs;
+            //console.log("DEBUG_old "+JSON.stringify(configs,null,'  '));
+            configs = {};
+            globals.configs = {};
+            //console.log("DEBUG2 "+JSON.stringify(configs,null,'  '));
+            try { acquireConfigs(); }
+            catch (err){ 
+                globals.configs = old_configs;
+                configs = old_configs;
+                utils.botLogs(globals, "---- error on configs reimport (retaining old configs)\n"+err);
+                msg.reply("An error occured when reimporting configs.  Previous configs will be retained.\n"+err); 
+            }
+        }
+        return "Request complete.  Reimported "+args;
+    }
+
 
 
     /* shutdown the bot */
@@ -364,9 +429,17 @@ async function builtInHandler (msg, member, command, content){
             } )
             .catch(err => { console.log('\n\n# ERR shutting down [msg]  \n'+err); throw (err); });
         })
-        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [status]  \n'+err); throw (err); });
-        
+        .catch(err => { utils.botLogs(globals,'\n\n# ERR shutting down [status]  \n'+err); throw (err); });        
     }   
+
+
+    /* shutdown and reboot */
+    else if (command === '--restart'){
+        utils.botLogs(globals,'--bot restarting');
+        await soft_restart(msg);
+        return "Restart complete";
+    }
+
 
     /* unknown command again */
     else {
@@ -382,8 +455,12 @@ async function builtInHandler (msg, member, command, content){
 
 async function handleReactables(msg){
     if (!globals) return;
-    for ( _replyFile in globals.modularReplies ){
-        var replyFile = globals.modularReplies[_replyFile];
+    for ( var _replyFile in globals.modularReactables ){
+        const replyFile = globals.modularReactables[_replyFile];
+
+        if ( replyFile.hasOwnProperty("targetServers") ){
+            if ( !replyFile.targetServers.includes(msg.guild.id) ) return;
+        }
         
         if ( replyFile.hasOwnProperty("exact") ){
             if ( replyFile.exact.hasOwnProperty(msg.content) || replyFile.exact.hasOwnProperty(msg.content.toLowerCase()) ){
@@ -406,7 +483,7 @@ async function handleReactables(msg){
                         await msg.channel.send(replyFile.exact[msg_content].reply);
                 }
                 if ( replyFile.exact[msg_content].hasOwnProperty('reactions') ){
-                    for ( reaction of replyFile.exact[msg_content].reactions ){
+                    for ( var reaction of replyFile.exact[msg_content].reactions ){
                         await msg.react(reaction);
                     }
                 }
@@ -415,20 +492,20 @@ async function handleReactables(msg){
         }
 
         if ( replyFile.hasOwnProperty("contains") ){
-            for ( subphrase in replyFile.contains ){
+            for ( var subphrase in replyFile.contains ){
                 var case_insensitive = replyFile.contains[subphrase].hasOwnProperty("case_insensitive") ? replyFile.contains[subphrase].case_insensitive : false;
                 if ( case_insensitive ? msg.content.toLowerCase().includes(subphrase) : msg.content.includes(subphrase) ){
                     if ( replyFile.contains[subphrase].hasOwnProperty("reply") ){
                         var directed = true;
                         if ( replyFile.contains[subphrase].hasOwnProperty("directed") )
-                            directed = replyFile.contains[subphrase].directed;
+                            { directed = replyFile.contains[subphrase].directed; }
                         if ( directed )
-                            await msg.reply(replyFile.contains[subphrase].reply);
+                            { await msg.reply(replyFile.contains[subphrase].reply); }
                         else 
-                            await msg.channel.send(replyFile.contains[subphrase].reply);
+                            { await msg.channel.send(replyFile.contains[subphrase].reply); }
                     }
-                    if ( replyFile.contains[subphrase].hasOwnProperty('reactions') ){
-                        for ( reaction of replyFile.contains[subphrase].reactions ){
+                    if ( replyFile.contains[subphrase].hasOwnProperty("reactions") ){
+                        for ( var reaction of replyFile.contains[subphrase].reactions ){
                             await msg.react(reaction);
                         }
                     }
@@ -452,15 +529,17 @@ async function handleReactables(msg){
 
 
 
+
 function onReady (){
     //console.log(client);
     utils.change_status(client, 'idle', configs.startupStatusText).catch();
+    process.title = `${client.user.tag}  [${package.name}]   version -- ${package.version}`;
 
     console.log(`\nLogged in as ${client.user.tag}!`);
     globals.bot_id = client.user.id;
     console.log("  bot client id: "+globals["bot_id"]); //bot_id);
     console.log("  -- use the '--help' or '--commands' command for info");
-    globals["busy"] = false;
+    //globals["busy"] = false;
 
     console.log("\nBot Ready\n    "+utils.getDateTimeString(globals)+"\n\n"); 
     botEventEmitter.emit('botReady');
@@ -487,7 +566,7 @@ function onError (err){
 
 function clientSetup(){
     console.log("\nSetting up client event handlers");
-    client.on('ready', onReady);
+    client.once('ready', onReady);
     client.on('message', onMessage);
     client.on('error', onError);
 }
@@ -504,7 +583,7 @@ async function runStartupFunctions(){
         console.log("--scanning directory: ");
         var startup_Dir = fs.readdirSync(startupPath);
         botEventEmitter.emit('botRunningStartup', startup_Dir.length);
-        for ( file of startup_Dir ){
+        for ( var file of startup_Dir ){
             if ((file === "disabled") ||  (file === "README.txt"))  continue;
             if (file.endsWith('.js')){
                 var jsFile = require(startupPath+file);
@@ -523,13 +602,13 @@ async function runStartupFunctions(){
 
 
 
-function acquireJS (){
+function acquireCommands (){
     console.log("\nAcquiring _commands");
     if (fs.existsSync(commandsPath)) {
         console.log("--scanning directory: ");
         var commands_Dir = fs.readdirSync(commandsPath);
         botEventEmitter.emit('botAcquiringCommands', commands_Dir.length);
-        for ( file of commands_Dir ){
+        for ( var file of commands_Dir ){
             if ((file === "disabled") ||  (file === "README.txt"))  continue;
             if (file.endsWith('.js')){
                 var jsFile = require(commandsPath+file);
@@ -542,21 +621,21 @@ function acquireJS (){
             else console.log("    \""+file+"\"  not included");
         }
     }
-    else 
-        console.log("--directory not found");
+    else console.log("--directory not found");
     botEventEmitter.emit('botAcquiredCommands');
-    
+}
+function acquireReactables (){
     console.log("\nAcquiring _reactables");
     if (fs.existsSync(reactablesPath)) {
         console.log("--scanning directory: ");
         var reactables_Dir = fs.readdirSync(reactablesPath);
         botEventEmitter.emit('botAcquiringCommands', reactables_Dir.length);
-        for ( file of reactables_Dir ){
+        for ( var file of reactables_Dir ){
             if ((file === "disabled") ||  (file === "README.txt"))  continue;
             if (file.endsWith('.js')){
                 var jsFile = require(reactablesPath+file);
                 if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
-                    globals.modularReplies[file.substr(0,file.length-3)] = jsFile; 
+                    globals.modularReactables[file.substr(0,file.length-3)] = jsFile; 
                     console.log("    \""+file+"\" included");
                 }
                 else  console.log("    \""+file+"\" not included");
@@ -645,10 +724,16 @@ function checkBotAlreadyOnline(){
 
 
 
-function verifyConfigs(){ 
-    console.log("\nParsing configs.json");
+function acquireConfigs(){ 
+    
+    if (!fs.existsSync(configsPath)){
+        console.log("invalid configs path");
+        throw ("configs not found on path ["+configsPath+"]");
+    }
     configs = require(configsPath);
+    delete require.cache[require.resolve(configsPath)]; //prevent configs caching
     botEventEmitter.emit('botVerifyConfigs');
+    console.log("\nParsing configs.json");
     var invalid = false;
     var missing = [];
     var incorrect = [];
@@ -665,7 +750,7 @@ function verifyConfigs(){
     if ( !configs.hasOwnProperty("built_in_AuthLevels") ){ missing.push("built_in_AuthLevels"); invalid = true; }
     else if ( typeof configs.built_in_AuthLevels !== "object" ){ invalid = true; incorrect.push("built_in_AuthLevels"); }
     else {
-        for (built_in of blocking_built_in_funcs){
+        for (var built_in of blocking_built_in_funcs){
             if ( !configs.built_in_AuthLevels.hasOwnProperty(built_in) ){ invalid = true; missing.push("built_in_AuthLevels."+built_in); }
         }
     }
@@ -737,56 +822,63 @@ async function initializeClient(){
 
 
 async function init (press_enter_to_exit){
+    if (!client) client = new Discord.Client();
     console.log("\n\n["+package.name+"]   version -- "+package.version+"\n");
+    process.title = "["+package.name+"]   version -- "+package.version;
+    
+    if (press_enter_to_exit !== undefined) initArg = press_enter_to_exit;
+    else if (press_enter_to_exit === undefined) press_enter_to_exit = initArg;
+    
     try{
-        globals = {};
+        clearGlobals();
         globals["client"] = client;
         globals["bot_id"] = null; //set on ready
-        globals["busy"] = true; //initially busy setting up
+        globals["busy"] = false; 
         globals["logsPath"] = logsPath;
         globals["logsFileName"] = "LOGS.txt"; //default
         globals["timers"] = {};
         globals["modularCommands"] = {};
-        globals["modularReplies"] = {}; 
+        globals["modularReactables"] = {}; 
         globals["blocking_built_in_funcs"] = blocking_built_in_funcs;
         globals["nonblocking_built_in_funcs"] = nonblocking_built_in_funcs;
         globals["queueLength"] = 0;
         globals["botEventEmitter"] = botEventEmitter;
         globals["_shutdown"] = []; //add functions (params: (globals)) to run on shutdown
 
-        verifyConfigs();
+        acquireConfigs();
         setupLogs();
-        acquireJS();
+        acquireCommands();
+        acquireReactables();
         await initializeClient();
+        await new Promise(resolve => botEventEmitter.once('botReady', resolve));
     }
     catch (err){
         console.log(err);
         if (press_enter_to_exit)  await enterToExit();
-        else  process.exit();
+        process.exit();
     }    
 }
 
 
 
 async function shutdown(){
-    //?? consider waiting until not busy
     if (!globals) process.exit();
 
     utils.botLogs(globals, "Shutdown requested\n--destroying existing intervals");
-    for (interval in globals["timers"]){
+    for (var interval in globals["timers"]){
         clearInterval(globals.timers[interval]);
     }
     utils.botLogs(globals, "--running _shutdown commands")
     if (globals._shutdown){
         botEventEmitter.emit('botRunningShutdown', globals._shutdown.length);
-        for (shutdown_func of globals._shutdown){
+        for (var shutdown_func of globals._shutdown){
             try{ await shutdown_func(globals); }
             catch(err){ console.log("----error ::   "+err); }
         }
         botEventEmitter.emit('botShutdownDone');
     }
     try { 
-        client.off('ready', onReady);
+        //client.off('ready', onReady);
         client.off('message', onMessage);
         client.off('error', onError);
         client.destroy(); 
@@ -794,15 +886,72 @@ async function shutdown(){
     catch (err){ utils.botLogs(globals, "ERROR when destroying client\n"+err); }
     utils.botLogs(globals,"Bot Shutdown\n    "+utils.getDateTimeString(globals)+"\n");
     botEventEmitter.emit('botExit');
-    globals = undefined; //delete globals on shutdown 
+    clearGlobals();
 }
 
-async function reset(){
+
+
+async function restart(){
     if (globals) {
         await shutdown();
-        console.log("\n\n\nResetting\n\n\n");
+        console.log("\n\n\nRestarting\n\n\n");
     }
-    init();
+    await init();
+}
+
+
+
+async function soft_restart(msg){
+    //dont destroy the client, but shutdown and init (if msg provided, return reply on failure)
+    botEventEmitter.emit('botSoftRestart0');
+    utils.botLogs(globals, "Soft restart requested\n--destroying existing intervals");
+    for (var interval in globals["timers"]){
+        clearInterval(globals.timers[interval]);
+    }
+    utils.botLogs(globals, "--running _shutdown commands")
+    if (globals._shutdown){
+        botEventEmitter.emit('botRunningShutdown', globals._shutdown.length);
+        for (var shutdown_func of globals._shutdown){
+            //console.log("---- (DEBUG) running "+shutdown_func);
+            try{ await shutdown_func(globals); }
+            catch(err){ console.log("----error ::   "+err); }
+        }
+        botEventEmitter.emit('botShutdownDone');
+    }
+    var temp_globals = globals;
+    clearGlobals(); 
+    botEventEmitter.emit('botSoftRestart1');
+    
+    var press_enter_to_exit = initArg;
+    try{
+        globals["client"] = client;
+        globals["bot_id"] = temp_globals.bot_id;
+        globals["busy"] = temp_globals.busy;
+        globals["logsPath"] = logsPath;
+        globals["logsFileName"] = temp_globals.logsFileName;
+        globals["timers"] = {};
+        globals["modularCommands"] = {};
+        globals["modularReactables"] = {}; 
+        globals["blocking_built_in_funcs"] = blocking_built_in_funcs;
+        globals["nonblocking_built_in_funcs"] = nonblocking_built_in_funcs;
+        globals["queueLength"] = temp_globals.queueLength;
+        globals["botEventEmitter"] = botEventEmitter;
+        globals["_shutdown"] = []; //add functions (params: (globals)) to run on shutdown
+        acquireConfigs();
+        acquireCommands();
+        acquireReactables();
+        await runStartupFunctions();
+        botEventEmitter.emit('botSoftRestart2');
+    }
+    catch (err){
+        console.log(err);
+        if (msg) {
+            msg.react('❌');
+            msg.reply("An error occured during restart, bot will shutdown.  Please contact sys-admin");
+        }
+        if (press_enter_to_exit)  await enterToExit();
+        process.exit();
+    }
 }
 
 
@@ -821,7 +970,7 @@ function set_exit_handler(){
     }
       
     process.on("SIGINT", async function () {
-        console.log('\n\nProcess interrupted [SIGTERM]\n\n');
+        console.log('\n\nProcess interrupted [SIGINT]\n\n');
         await shutdown();
         //console.log("\n\nProcess will exit in 2 seconds.\n\n");
         //await utils.sleep(2000);
@@ -847,15 +996,21 @@ function enterToExit() {
         input: process.stdin,
         output: process.stdout,
     });
-    return new Promise(resolve => rl.question("Press Enter to exit.", ans => {
+    return new Promise(resolve => rl.question("Press Enter to exit.", _ => {
         console.log("EXITING");
         rl.close();
-        resolve(ans);
-        process.exit();
+        resolve();
+        //process.exit();
     }));
 }
 
 
+
+function clearGlobals(){ //to maintain reference to object
+    for (var key in globals) {
+        delete globals[key];
+    }
+}
 
 
 
@@ -864,7 +1019,8 @@ function enterToExit() {
 
 module.exports = {
     init, 
-    reset,
+    restart,
+    soft_restart,
     shutdown,
     set_exit_handler,
     commandHandler,

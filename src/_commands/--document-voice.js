@@ -22,13 +22,13 @@ const gs_utils = require('../_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     auth_level: 3,
 
 
 
-    manual: "**--document-voice**  ->  `channel_id` \n" +
-            ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet*",
+    manual: "**--document-voice**  ->  `channel_id`   *or*   \\``channel_name`\\` \n" +
+            ".     *Dumps the member information (names) that are in a specified voice channel (via ID, or by name if encapsulated with grave accents) into a specified google sheet*",
 
 
 
@@ -39,11 +39,25 @@ module.exports = {
             throw ("Google Sheets has not been enabled, contact sys-admin to set up");
 
         utils.botLogs(globals,  "--fetching channel ["+content+"]");
-        var channel = await client.channels.fetch(content.trim())
-        .catch(err => {
-            utils.botLogs(globals,  err.stack)
-            throw ("An error occurred, couldn't complete the request\n`"+err+"`");
-        });
+        var server = await msg.guild.fetch();
+        var channel;
+        var targetChannel;
+        content = content.trim();
+        
+        if (content.startsWith("`") && content.endsWith("`")){ //check if channel can be resolved by name via cache search
+            targetChannel = content.substring(1,content.length-1).trim();
+            channel = server.channels.cache.find(_channel => _channel.name === targetChannel);
+        }
+        else  {
+            targetChannel = content;
+            channel = server.channels.resolve(targetChannel); //else resolve by ID
+        }
+
+        if (!channel) throw ("Channel ["+targetChannel+"] not found in server");
+        if ( channel.type !== "voice" ){
+            throw new Error("Invalid given voice channel.  Given channel ["+targetChannel+"] is type: '"+channel.type+"'");
+        }
+
 
         var voice_members = channel.members.values();
             
@@ -54,7 +68,7 @@ module.exports = {
         var list = [];
         var col = [];
         col.push("#"+channel.name);
-        for (member of voice_members){
+        for (var member of voice_members){
             utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
             col.push(member.displayName+"#"+member.user.discriminator);
         }

@@ -28,14 +28,16 @@ var connection;
 var voiceChannelName;
 var controlChannelName;
 
+//TODO add support for multi-server use
+
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
 
-    manual: "**--log-voicechannel-activity-to-textchannel**  ->  `{\"voice\": \"channel_ID\", \"text\": \"channel_ID\"}`"
+    manual: "**--log-voicechannel-activity-to-textchannel**  ->  `{\"voice\": \"channel_ID\", \"text\": \"channel_ID\"  <,\"control\": \"channel_ID\">}`"
             +"\n.     *Logs voice channel activity (join/leave) to text channel.*"
             +"\n.     *If the bot leaves the control channel then it will stop watching and logging activity*",
 
@@ -49,11 +51,9 @@ module.exports = {
             args = JSON.parse(content);
         }
         catch (err){
-            alreadyListening = false;
             throw ("Incorrect request body ::  "+err);
         }
         if (!args.hasOwnProperty('voice') || !args.hasOwnProperty('text')){
-            alreadyListening = false;
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         var voice_channel_ID = args.voice;
@@ -80,6 +80,8 @@ module.exports = {
             utils.botLogs("----invalid channel type");
             throw new Error("Incorrect voice channel id.  Given channel ["+voice_channel_ID+"] is type: '"+voiceChannel.type+"'");
         }
+        voiceChannelName = voiceChannel.name+":"+voiceChannel.id;
+
         utils.botLogs(globals,  "--fetching text channel ["+text_channel_ID+"]");
         textChannel = await client.channels.fetch(text_channel_ID.trim())
         .catch(err => {
@@ -92,7 +94,6 @@ module.exports = {
             utils.botLogs("----invalid channel type");
             throw new Error("Incorrect text channel id.  Given channel ["+text_channel_ID+"] is type: '"+textChannel.type+"'");
         }
-        voiceChannelName = voiceChannel.name+":"+voiceChannel.id;
 
 
         if (!args.hasOwnProperty('control') ){ 
@@ -116,22 +117,29 @@ module.exports = {
             controlChannelName = controlChannel.name+":"+controlChannel.id;
         }
         connection = await controlChannel.join()
-            .catch(err => { 
-                alreadyListening = false;
-                throw ("error when joining voice channel ::  "+err); 
-            });
-            utils.botLogs(globals, "Joined voice channel ["+controlChannelName+"]"); 
+        .catch(err => { 
+            alreadyListening = false;
+            throw ("error when joining voice channel ::  "+err); 
+        });
+        utils.botLogs(globals, "Joined voice channel ["+controlChannelName+"]"); 
         
 
         textChannel.send("**Logging voice activity from ["+voiceChannelName+"]**\n***"+utils.getDateTimeString(globals)+"***");
         
         client.on('voiceStateUpdate', listenToVoiceChannelActivity);
-        if (globals._shutdown) {
+        if (globals._shutdown) { //add shutdown command
             globals._shutdown.push( async (globals) => {
                 if (alreadyListening){
                     console.log("    __[lvcattc] shutdown");
                     await textChannel.send("**Bot Shutting down, ending voice activity listener**");
                     client.off('voiceStateUpdate', listenToVoiceChannelActivity);
+                    alreadyListening = false;
+                    voiceChannel = undefined;
+                    textChannel = undefined;
+                    controlChannel = undefined;
+                    connection = undefined;
+                    voiceChannelName = undefined;
+                    controlChannelName = undefined;
                 }
             });
         }
@@ -158,6 +166,12 @@ async function listenToVoiceChannelActivity(oldState, newState){
         client.off('voiceStateUpdate', listenToVoiceChannelActivity);
         textChannel.send("**Bot disconnected from control channel**\n**Ending voice activity listener**");
         alreadyListening = false;
+        voiceChannel = undefined;
+        textChannel = undefined;
+        controlChannel = undefined;
+        connection = undefined;
+        voiceChannelName = undefined;
+        controlChannelName = undefined;
     }
     else if ( !controlChannel.members.has(globals.bot_id) ){
         /* bot isn't in channel (missed disconnect event) */
@@ -165,6 +179,12 @@ async function listenToVoiceChannelActivity(oldState, newState){
         client.off('voiceStateUpdate', listenToVoiceChannelActivity);
         textChannel.send("**Bot was ghosted from control channel...**👻\n**Ending voice activity listener**").catch(err => {console.log("--unable to send disconnect notification");});
         alreadyListening = false;
+        voiceChannel = undefined;
+        textChannel = undefined;
+        controlChannel = undefined;
+        connection = undefined;
+        voiceChannelName = undefined;
+        controlChannelName = undefined;
     }
     else if ( oldChannelName !== newChannelName ){ //( oldChannel ? (newChannel ? (newChannel.id !== oldChannel.id) : true) : newChannel ){ 
         /* not the same channel */

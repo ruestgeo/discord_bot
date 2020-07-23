@@ -22,7 +22,7 @@ const utils = require('../utils.js');
 
 module.exports = {
     version: 1.0,
-    auth_level: 3,
+    auth_level: 4,
 
 
 
@@ -41,15 +41,15 @@ module.exports = {
         var server = msg.guild;
         var roles = [];
         if (args.hasOwnProperty("remove-role")){
-            for (role of args["remove-role"])
+            for (var role of args["remove-role"])
                 roles.push(role);
         } else {
             utils.botLogs(globals,  "----incorrect request body");
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         if (args.hasOwnProperty("has-role")){
-            for (rolegroup of args["has-role"])
-                for (role of rolegroup)
+            for (var rolegroup of args["has-role"])
+                for (var role of rolegroup)
                     roles.push(role);
         }
         if (args.hasOwnProperty("missing-role")){
@@ -62,7 +62,7 @@ module.exports = {
         }
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying all roles are valid");
-        for (role of roles){
+        for (var role of roles){
             if ( !server_roles.cache.find(_role => _role.name === role.trim()) ){
                 utils.botLogs(globals,  "----invalid role ::  "+role);
                 throw ("Invalid role -> "+role);
@@ -81,12 +81,12 @@ module.exports = {
         }
 
         utils.botLogs(globals,  "--searching user list for candidates");
-        for (_member of list){
+        for (var _member of list){
             var member = await _member.fetch();
             if(args.hasOwnProperty("has-role")){
-                for (rolegroup of args["has-role"]){
+                for (var rolegroup of args["has-role"]){
                     var noSkip = false;
-                    for (role of rolegroup){ //check if member has at least one of this role group
+                    for (var role of rolegroup){ //check if member has at least one of this role group
                         var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id );
                         noSkip = noSkip || has; //if any is true then noSkip is true, if all false then noSkip is false
                     }
@@ -95,7 +95,7 @@ module.exports = {
                 if (!noSkip) continue;
             }
             //remove role(s)
-            for (role of args["remove-role"]){
+            for (var role of args["remove-role"]){
                 var role_to_remove = server_roles.cache.find(_role => _role.name === role.trim());
                 if (!member.roles.cache.has(role_to_remove.id)){ 
                     utils.botLogs(globals,  "----user ["+member.displayName+":"+member.id+"] already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]"); 

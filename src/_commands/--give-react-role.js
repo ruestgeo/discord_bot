@@ -23,7 +23,7 @@ const utils = require('../utils.js');
 
 module.exports = {
     version: 1.0,
-    auth_level: 3,
+    auth_level: 4,
 
 
 
@@ -54,7 +54,7 @@ module.exports = {
         }
 
         //check args validity
-        for (emote_key in args){
+        for (var emote_key in args){
             var emote_args = args[emote_key];
             if (!emote_args.hasOwnProperty("addRole") && !emote_args.hasOwnProperty("removeRole")){
                 throw ("Invalid request args:  neither a role to add nor a role to remove have been given\nargs ::   "+args);
@@ -63,7 +63,7 @@ module.exports = {
 
         //check roles validity
         var roles = [];
-        for (emote_key in args){
+        for (var emote_key in args){
             var emote_args = args[emote_key];
             if (emote_args.hasOwnProperty("addRole"))
                 roles.push(...emote_args["addRole"]);
@@ -72,7 +72,7 @@ module.exports = {
         }
         //console.log(roles);
         var server_roles = await server.roles.fetch();
-        for (role of roles){
+        for (var role of roles){
             //validate
             if ( !server_roles.cache.find(_role => _role.name === role.trim()) ){ //trim
                 utils.botLogs(globals,  "----invalid role ::  "+role);
@@ -104,17 +104,17 @@ module.exports = {
             else {
                 /* //DEBUG
                 console.log("args");
-                for (emote_key in args){
+                for (var emote_key in args){
                     console.log("    "+emote_key);
                 }
                 var msg_reacts = message.reactions.cache.values();
                 console.log("msg_reacts");
-                for (msg_react of msg_reacts){
+                for (var msg_react of msg_reacts){
                     var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
                     console.log("    "+emote+"   ----   "+msg_react.emoji.identifier);
                 }
                 console.log("resolve args in msg");
-                for (emote_key in args){
+                for (var emote_key in args){
                     var resolved = message.reactions.resolve(emote_key.trim());
                     console.log("    "+emote_key+" :  "+(resolved ? "true" : "false")+"    resolved = "+resolved);
                 }
@@ -122,7 +122,7 @@ module.exports = {
 
 
                 //for each arg in args, check if arg in msg 
-                for (emote_key in args){
+                for (var emote_key in args){
                     if (!message.reactions.resolve(emote_key.trim())){
                         utils.botLogs(globals,  "----invalid emote ::  "+emote_key);
                         throw ("Invalid emote; no reaction using this emote -> "+emote_key);
@@ -133,13 +133,13 @@ module.exports = {
                 //for each arg, apply role add/remove
                 var date = utils.getDateTimeString(globals);
                 utils.botLogs(globals,  "\nmessage ["+message.id+"] reactions   ("+date+")");
-                for (emote_key in args){
+                for (var emote_key in args){
                     utils.botLogs(globals,  "  "+emote_key);
                     var emote_args = args[emote_key];
                     var msg_react = message.reactions.resolve(emote_key.trim())
                     var _react_users = await msg_react.users.fetch();
                     var react_users = _react_users.values();
-                    for (user of react_users){
+                    for (var user of react_users){
                         var _member = message.guild.members.resolve(user.id);
                         if (!_member){ //member reacted but is no longer in the guild server
                             utils.botLogs(globals,  "    "+user.username+":"+user.id+" not found in guild ["+message.guild.name+":"+message.guild.id+"]");  
@@ -150,7 +150,7 @@ module.exports = {
                         utils.botLogs(globals,  "    "+display_name+":"+user.id);
                         
                         if (emote_args.hasOwnProperty("addRole")){
-                            for (role of emote_args.addRole){
+                            for (var role of emote_args.addRole){
                                 var role_to_add = server_roles.cache.find(_role => _role.name === role.trim());
                                 if (member.roles.cache.has(role_to_add.id)){ 
                                     utils.botLogs(globals,  "        already has role ["+role_to_add.name+":"+role_to_add.id+"]");
@@ -168,7 +168,7 @@ module.exports = {
                             }
                         }
                         if (emote_args.hasOwnProperty("removeRole")){
-                            for (role of emote_args.removeRole){
+                            for (var role of emote_args.removeRole){
                                 var role_to_remove = server_roles.cache.find(_role => _role.name === role.trim());
                                 if (!member.roles.cache.has(role_to_remove.id)){ 
                                     utils.botLogs(globals,  "        already missing role ["+role_to_remove.name+":"+role_to_remove.id+"]");

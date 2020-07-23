@@ -21,14 +21,16 @@ const utils = require('../utils.js');
 
 
 module.exports = {
-    version: 1.0,
-    auth_level: 1,
+    version: 1.1,
+    auth_level: 2,
 
 
 
-    manual: "--auth-level  ->  \\*none\\* ~~  or  ~~ \\*commandName\\*"+
+    manual: "--auth-level  ->  \\*none\\* ~~  or  ~~ \\*commandName\\* ~~  or  ~~ \\*userID\\*"+
             ".     *if \\*none\\* is given then it reply with your highest authorization level*\n"+
-            ".     *if \\*commandName\\* is given then reply with the authorization level required for that command*\n",
+            ".     *if \\*commandName\\* is given then reply with the authorization level required for that command*\n"+
+            ".     *if \\*userID\\* is given then it reply with that users highest authorization level*",
+
 
 
 
@@ -41,7 +43,30 @@ module.exports = {
             if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
                 memberAuthLevel = configs.authorization.authorizedUsers[member.id];
             }
-            for ( roleID in configs.authorization.authorizedRoles ){
+            for ( var roleID in configs.authorization.authorizedRoles ){
+                var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
+                if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
+                    memberAuthLevel = roleAuthLevel;
+                    authorizedRole = member.roles.cache.get(roleID);
+                }                
+            }
+            if ( !authorizedRole ){ //user Authorized
+                return "Authorization level ["+memberAuthLevel+"] through user authorization";
+            }
+            else { //role Authorized
+                return "Authorization level ["+memberAuthLevel+"] through role authorization or the role ["+authorizedRole.name+":"+authorizedRole.id+"]";
+            }
+        }
+
+        var resolved = msg.guild.members.resolve(args);
+        if ( resolved ){
+            var member = resolved;
+            var memberAuthLevel = 0;
+            var authorizedRole = null;
+            if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
+                memberAuthLevel = configs.authorization.authorizedUsers[member.id];
+            }
+            for ( var roleID in configs.authorization.authorizedRoles ){
                 var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
                 if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
                     memberAuthLevel = roleAuthLevel;
@@ -56,7 +81,7 @@ module.exports = {
             }
         }
         
-        if ( globals.nonblocking_built_in_funcs.includes(args) ){
+        else if ( globals.nonblocking_built_in_funcs.includes(args) ){
             return ("Command ["+args+"] has an authorization level of [0]");
         }
         else if ( globals.blocking_built_in_funcs.includes(args) ){
@@ -65,7 +90,7 @@ module.exports = {
         else if ( globals.modularCommands.hasOwnProperty(args) ){
             return ("Command ["+args+"] has an authorization level of ["+globals.modularCommands[args].auth_level+"]");
         }
-        else { return ("command ["+args+"] doesn't exist"); }
+        else { return ("command or user_ID ["+args+"] doesn't exist"); }
         
     }   
 }

@@ -18,9 +18,9 @@ Made by JiJae (ruestgeo)
 
 const fs = require('fs'); 
 const luxon = require('luxon');
-const EventEmitter = require('events');
-
-const workLockEmitter = new EventEmitter();
+const { Mutex } = require('async-mutex');
+const work_lock = new Mutex();
+var release;
 
 
 const DateTime = luxon.DateTime;
@@ -31,21 +31,18 @@ module.exports = {
     acquire_work_lock: async function(globals, requester){
         // await acquire_work_lock or  acquire_work_lock(~~).then(_ => { do stuff })
         console.log("* attempting to acquire work lock for "+requester+" *");
-        while (globals.busy) {
-            console.log("* work lock still active, waiting for unlock for "+requester+" *");
-            await new Promise(resolve => workLockEmitter.once('unlocked', resolve));
-        }
+        if ( work_lock.isLocked() )  console.log("* work lock still active, waiting for unlock for "+requester+" *");
+        release = await work_lock.acquire();
         globals.busy = true;
-        workLockEmitter.emit('locked');
         this.botLogs(globals, "* acquired work lock for "+requester+" *");
-        
     },
     
     release_work_lock: function(globals, holder){
-        if (!globals.busy) return;
+        if ( !work_lock.isLocked() ) {console.log("*not locked DEBUG*"); return;}
         this.botLogs(globals, "* releasing work lock for "+holder+" *");
         globals.busy = false;
-        workLockEmitter.emit('unlocked');
+        release();  //work_lock.release();
+        //console.log("DEBUG isLocked: "+work_lock.isLocked());
     },
 
     botLogs: function (globals, content){
@@ -79,12 +76,17 @@ module.exports = {
         return this.getDateTime(globals).toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
     },
 
+    memberHasRole: async function(member, role_id){
+        var member =  await member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
+        return member.roles.cache.has(role_id);
+    },
+
     getMemberAuthorizationLevel: async function(configs, member){
         var memberAuthLevel = 0;
         if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
             memberAuthLevel = configs.authorization.authorizedUsers[member.id];
         }
-        for ( roleID in configs.authorization.authorizedRoles ){
+        for ( var roleID in configs.authorization.authorizedRoles ){
             var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
             if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
                 memberAuthLevel = roleAuthLevel;
@@ -106,7 +108,7 @@ module.exports = {
                 memberAuthLevel = configs.authorization.authorizedUsers[member.id];
             }
             if ( memberAuthLevel < requiredAuthLevel ){ 
-                for ( roleID in configs.authorization.authorizedRoles ){
+                for ( var roleID in configs.authorization.authorizedRoles ){
                     var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
                     if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
                         memberAuthLevel = roleAuthLevel;
@@ -170,4 +172,226 @@ module.exports = {
         }
         return {'emote': emote, 'type': type};
     },
+
+
+
+    Queue
 }
+
+
+
+
+
+
+
+//exports.Queue = Queue;
+/***
+ * Basic queue.
+ * if given capacity then there is a limit to the size, otherwise no limit.
+ * if given an array then the queue is created using that array
+ ***/
+function Queue (capacity, array){
+    if (capacity){
+        if (!Number.isInteger(capacity))
+            throw new Error("Invalid arg given:  ["+capacity+"] is not an integer");
+        if (capacity < 1)
+            throw new Error("Invalid arg given:  capacity less than 1");
+        if (array){
+            if (array.length > capacity) 
+                throw new Error("Invalid args:  Array is larger than given capacity");
+        }
+    }
+    if (array !== undefined && !Array.isArray(array)) 
+        throw new Error("Invalid arg for array");
+    
+    this._elements = (array!==undefined ? array : []);
+    this._capacity = capacity;
+}
+/**
+ * add element to the end of the queue
+ **/
+Queue.prototype.enqueue = function (element){ //
+    if (this._capacity && this._elements.length == this._capacity)
+        throw new Error(`Queue is full ( ${this._elements.length} / ${this._capacity} )`);
+    this._elements.push(element);     
+}
+/**
+ * return and remove the first element of the queue
+ **/
+Queue.prototype.dequeue = function (){ 
+    if (this._elements.length < 1)
+        throw new Error( this._capacity ? `Queue is empty ( ${this._elements.length} / ${this._capacity} )` : "Queue is empty");
+    return this._elements.shift();
+}
+/**
+ * alias for enqueue
+ **/
+Queue.prototype.push = function(element){ 
+    try { this.enqueue(element); }
+    catch (err) { throw (err); }
+}
+/**
+ * alias for dequeue
+ **/
+Queue.prototype.pop = function(){ 
+    try { return this.dequeue(); }
+    catch (err) { throw (err); }
+}
+/**
+ * return true if empty
+ **/
+Queue.prototype.isEmpty = function (){ 
+    return this._elements.length == 0;
+}
+/**
+ * return the first element of the queue without removing, or undefined
+ **/
+Queue.prototype.peek = function (){ 
+    return (this.isEmpty() ? null : this._elements[0]);
+}
+/**
+ * return current size of the queue
+ **/
+Queue.prototype.length = function (){ 
+    return this._elements.length;
+}
+/**
+ * return current size of the queue
+ **/
+Queue.prototype.size = function (){ 
+    return this._elements.length;
+}
+/**
+ * return capacity (might be undefined)
+ **/
+Queue.prototype.capacity = function(){ 
+    return this._capacity;
+}
+/**
+ * remove first instance of element from queue and returns it
+ **/
+Queue.prototype.remove = function(element){ 
+    var index = this._elements.indexOf(element);
+    if (index < 0 ) throw new Error("element not found in Queue");
+    return this._elements.splice(index, 1);
+}
+/**
+ * remove the first element to satisfy the conditionFunction
+ */
+Queue.prototype.removeOneConditioned = function(conditionFunction){
+    var index = this._elements.findIndex(conditionFunction);
+    if (index < 0 ) throw new Error("element not found in Queue");
+    return Array.from(this._elements).splice(index, 1);
+}
+/**
+ * remove element at index of queue
+ **/
+Queue.prototype.removeIndex = function(index){ 
+    return this._elements.splice(index, 1);
+}
+/**
+ * remove element at index of queue
+ **/
+Queue.prototype.removePosition = function(index){ 
+    return this._elements.splice(index, 1);
+}
+/**
+ * remove all instances of element from queue
+ **/
+Queue.prototype.removeAll = function(element){ 
+    this._elements = this._elements.filter(Q_item => Q_item !== element);
+}
+/**
+ * clear the queue
+ **/
+Queue.prototype.clear = function(){ 
+    this._elements = [];
+}
+/**
+ * insert element into the queue at position
+ **/
+Queue.prototype.insert = function(element, index){ 
+    if (this._capacity && this._elements.length == this._capacity)
+        throw new Error("Queue is full ( "+this._elements.length+" / "+this._capacity+" )");
+    this._elements = this._elements.splice(index, 0, element);
+}
+/**
+ * return whether queue contains element
+ **/
+Queue.prototype.has = function(element){ 
+    return this._elements.includes(element);
+}
+/**
+ * return whether queue contains element
+ **/
+Queue.prototype.includes = function(element){ 
+    return this._elements.includes(element);
+}
+/**
+ * return index of first occurence of element (optional startIndex and endIndex)
+ **/
+Queue.prototype.indexOf = function(element, startIndex, endIndex){ 
+    if (endIndex) return this._elements.substring(startIndex, endIndex).indexOf(element)+startIndex;
+    if (startIndex) return this._elements.substring(startIndex).indexOf(element)+startIndex;
+    return this._elements.indexOf(element);
+}
+/**
+ * return queue as string
+ **/
+Queue.prototype.toString = function(){ 
+    return this._elements.toString();
+}
+/**
+ * return number of occurences of element in queue
+ **/
+Queue.prototype.count = function(element){ 
+    return this._elements.filter(Q_item => Q_item === element).length;
+}
+/**
+ * return a key-value copy of queue with indices as keys
+ **/
+Queue.prototype.toKeyValue = function(){ 
+    var keyval = {};
+    for (var idx = 0; idx < this._elements.length; idx++){
+        keyval[idx] = this._elements[idx];
+    }
+    return keyval;
+}
+/**
+ * apply a map function on a copy of the queue and return the result
+ */
+Queue.prototype.map = function(mappingFunction){
+    return this._elements.map(mappingFunction);
+}
+/**
+ * apply a filter function on a copy of the queue and return the result
+ */
+Queue.prototype.filter = function(filterFunction){
+    return this._elements.filter(filterFunction);
+}
+/**
+ * return a shallow copy of queue
+ **/
+Queue.prototype.copy = function(){
+    return Array.from(this._elements);
+}
+/**
+ * return queue array as a string
+ **/
+Queue.prototype.toString = function(){
+    return `[${this._elements.toString()}]`;
+}
+/**
+ *  stringify the queue
+ **/
+Queue.prototype.stringify = function(){
+    return JSON.stringify(this._elements);
+}
+/**
+ * create a new Queue from the array with a given capacity
+ **/
+Queue.from = function(array, capacity){ 
+    try{ return new Queue(capacity, array); }
+    catch (err) { throw (err); }
+}
+

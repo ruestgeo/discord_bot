@@ -55,7 +55,7 @@ async function garbage_collection(globals){
                 }
                 else {
                     utils.botLogs(globals,"--server "+server.name+":"+server.id+" \\");
-                    for (_channel in reactroles[_server]){
+                    for (var _channel in reactroles[_server]){
                         var channel = server.channels.resolve(_channel);
                         if (channel.deleted){
                             utils.botLogs(globals,"----channel "+channel.name+":"+channel.id+" DELETED");
@@ -63,7 +63,7 @@ async function garbage_collection(globals){
                         }
                         else {
                             utils.botLogs(globals,"----channel "+channel.name+":"+channel.id+" \\");
-                            for (_message in reactroles[_server][_channel]){
+                            for (var _message in reactroles[_server][_channel]){
                                 await channel.messages.fetch(_message)
                                 .then(message => {
                                     if (message.deleted){

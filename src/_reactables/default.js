@@ -42,21 +42,19 @@ Made by JiJae (ruestgeo)
 
 module.exports = {
     exact: {
-        "👍" : {
-            reactions: ['👍']
-        },
         "ook" : {
             case_insensitive: true,
             reactions: ['🍌']
         },
         "OOK" : {
             reactions: ['🐒','🍌']
-        },
-        "┬─┬ノ(ಠ_ಠノ)" : {
-            reply: "(╯°Д°）╯︵ /(.□ . \\\\)  ┻━┻"
         }
     },
     contains: {
+        "┬─┬ノ(ಠ_ಠノ)" : {
+            reply: "(╯°Д°）╯︵ /(.□ . \\\\)  ┻━┻",
+            directed: false
+        }
     }
 }
 

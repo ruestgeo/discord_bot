@@ -16,7 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
-/* Must include "exact",  "contains" is optional.
+/* Should include "exact" or "contains" to do something meaningful, while "targetServers" is optional.
    Limit the reply string to 2000 chars as per Discord post restrictions; preferably keep it short.
 
    The key is the actuating string.
@@ -35,10 +35,15 @@ Made by JiJae (ruestgeo)
    also be all lowercase (for example "testreply" rather than "testReply")
 
 
+   TARGETSERVERS can be specified by list of server_IDs of which these reactables will apply to,
+   otherwise it will apply to all.
+
+
    to get emotes post "\:emote:" and copy the resulting unicode char
 */
 
 module.exports = {
+    targetServers: [],
     exact: {
         "testReply" : {
             case_insensitive = false,

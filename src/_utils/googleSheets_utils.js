@@ -21,9 +21,10 @@ const utils = require('../utils.js'); //base utils is located in the base dir, i
 
 
 module.exports = {
+    version: 1.2,
     dumpToSheet: async (msg, globals, sheet_title, list, rowStart, rowEnd, colStart, colEnd) => {
         var doc = globals.googleSheets;
-        var configs = globals.configs.googleSheets_configs;
+        var configs = globals.googleSheets_configs;
         var rowSize;
         var colSize;
         if (configs.autoSheetSize){
@@ -57,7 +58,7 @@ module.exports = {
             this.botLogs(globals, err.toString()); 
             throw new Error("  (first line of error) ::   "+err.toString().split('\n', 1)[0]); 
         });  
-        msg.reply("Data has been dumped to doc "+"<https://docs.google.com/spreadsheets/d/"+doc.spreadsheetId+"#gid="+sheet.sheetId+">");
+        msg.reply("Data has been dumped to doc "+"<https://docs.google.com/spreadsheets/d/"+doc.spreadsheetId+"#gid="+sheet.sheetId+">\n"+sheet_title);
     }
 }
 

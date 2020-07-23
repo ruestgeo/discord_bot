@@ -59,14 +59,14 @@ module.exports = {
             text_body = args.message;
         }
         var emotes = Object.keys(args.reactions);
-        for (emote of emotes){
+        for (var emote of emotes){
             if (emote.includes(" ")){
                 throw ("Invalid reaction key:  \""+emote+"\" contains an empty space");
             }
         }
 
         //check if roles and emotes exist
-        for (_emote of emotes){
+        for (var _emote of emotes){
             var emote_info = utils.get_emote_id(_emote.trim());
             var emote = emote_info.emote.trim();
             if (  (emote_info.type === "custom") && 

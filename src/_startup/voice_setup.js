@@ -13,9 +13,10 @@ Made by JiJae (ruestgeo)
 
 
 
+const fs = require('fs'); 
 
-const utils = require('../dev_utils.js'); 
 
+const utils = require('../utils.js');
 
 
 
@@ -25,22 +26,20 @@ module.exports = {
     version: 1.0,
     func: async function (globals){
         var leading_space = "        ";
-        console.log(leading_space + "Setting up local storage");
-
-        const storage = undefined; 
-        //INIT the storage
-
-        globals["storage"] = storage;
-
+        console.log(leading_space + "Setting up voice cleanup");
         
-    }
+        //disconnect from all voice
+        globals._shutdown.push( async (globals) => {
+            console.log("    [voice] shutdown");
+            var connections = Array.from(globals.client.voice.connections.values());
+            for (var connection of connections){
+                var channel = connection.channel;
+                console.log(`    --disconnected from [${channel.name}:${channel.id}] of [${channel.guild.name}:${channel.guild.id}]`);
+                connection.disconnect();
+            }         
+        });
         
+    }        
 }
-
-
-
-
-
-
 
 

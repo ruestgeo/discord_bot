@@ -28,22 +28,27 @@ const googleSheetsConfigsPath = "../_configs/googleSheets_configs.json";
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     func: async function (globals){
         var leading_space = "        ";
         console.log(leading_space + "Setting up Google Sheets");
         
-        if ( globals.configs.googleSheets ){
-            throw ("Error in google sheets setup ::  property globals.configs.googleSheets already used");
+        if ( globals.googleSheets_configs ){
+            throw ("Error in google sheets setup ::  property globals.googleSheets_configs already used");
         }
-        globals.configs.googleSheets = undefined;
+        globals.googleSheets_configs = null;
+        
+        if ( globals.googleSheets ){
+            throw ("Error in google sheets setup ::  property globals.googleSheets already used");
+        }
+        globals.googleSheets = null;
 
         console.log(leading_space + "-- verifying configs");
         await verifyConfigs(globals);
 
         console.log(leading_space + "-- connecting to Google Sheets");
-        const googleAuth = require("../"+globals.configs.googleSheets_configs.GoogleAuthFilePath);
-        const doc = new GoogleSpreadsheet(globals.configs.googleSheets_configs.googleSheetsId);
+        const googleAuth = require("../"+globals.googleSheets_configs.GoogleAuthFilePath);
+        const doc = new GoogleSpreadsheet(globals.googleSheets_configs.googleSheetsId);
         
         await doc.useServiceAccountAuth(googleAuth)
         .catch(err => {
@@ -69,11 +74,6 @@ async function verifyConfigs(globals, leading_space){
     var invalid = false;
     var missing = [];
     var incorrect = [];
-
-    
-    if (!globals.configs){
-        throw ("Error in google sheets configs validation:  globals.configs undefined")
-    }
     
     //path should be from the bot base directory
     if ( !gs_configs.hasOwnProperty("GoogleAuthFilePath") ){ invalid = true; missing.push("GoogleAuthFilePath"); }
@@ -110,6 +110,6 @@ async function verifyConfigs(globals, leading_space){
         console.log(leading_space + "---- google sheets configs used defaults for the following incorrect entries ::   ["+incorrect.toString().replace(/,/g, ", ")+"]");
 
 
-    globals.configs["googleSheets_configs"] = gs_configs;    
+    globals["googleSheets_configs"] = gs_configs;    
 }
 

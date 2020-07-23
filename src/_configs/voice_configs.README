@@ -1,0 +1,6 @@
+
+{
+    requiredRole:  [/*role_id*/], //requester should have one of these roles
+    noRestrition:  true, //member has permission regardless of roles
+}
+

@@ -22,13 +22,13 @@ const gs_utils = require('../_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
 
-    manual: "**--document-voice3**  ->  `channel_id` `roleName` \n" +
-            ".     *Dumps the member information (names) that are in a specified voice channel (via ID) into a specified google sheet;  lists all users of roleName for participation or not.*  ***A role must be specified***",
+    manual: "**--document-voice3**  ->  `channel_id` `roleName or roleID` ~~  or  ~~ \\``channel_name`\\` `roleName roleID`\n" +
+            ".     *Dumps the member information (names) that are in a specified voice channel (via ID, or by name if encapsulated with grave accents) into a specified google sheet;  lists all users of roleName for participation or not.*\n  ***A role must be specified***\n  *(cannot use channel name if name includes grave accent)*",
 
 
 
@@ -42,23 +42,47 @@ module.exports = {
             utils.botLogs(globals,  "----incorrect request body");
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
-        var target = content.substr(0, content.indexOf(' ')).trim();
-        var targetRole = content.substr(content.indexOf(' ')+1).trim();
-        utils.botLogs(globals,  "----target:: "+target+"\n----targetRole:: "+targetRole);
-        var server = msg.guild;
+        var targetChannel;
+        var targetRole;
+        content = content.trim();
+        var server = await msg.guild.fetch();
+        var channel;
+        
+        if (content.startsWith("`")){
+            utils.botLogs(globals,  "--resolving channel by name");
+            var idx = content.substring(1).indexOf("`")+1;
+            targetChannel = content.substring(1,idx).trim();
+            targetRole = content.substring(idx+1).trim();
+            channel = server.channels.cache.find(_channel => _channel.name === targetChannel);
+        }
+        else {
+            utils.botLogs(globals,  "--resolving channel by id");
+            targetChannel = content.substr(0, content.indexOf(' ')).trim();
+            targetRole = content.substr(content.indexOf(' ')+1).trim();
+            channel = server.channels.resolve(targetChannel);
+        }
+        utils.botLogs(globals,  "----targetChannel:: "+targetChannel+"\n----targetRole:: "+targetRole);
 
+        if (!channel)  throw ("Channel ["+targetChannel+"] not found in server");
+        if ( channel.type !== "voice" ){
+            throw new Error("Invalid given voice channel.  Given channel ["+targetChannel+"] is type: '"+channel.type+"'");
+        }
+        
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying role is valid");
-        var role = server_roles.cache.find(_role => _role.name === targetRole.trim());
+        var role;
+        role = server_roles.resolve(targetRole);
+        if (!role) role = server_roles.cache.find(_role => _role.name === targetRole);
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             throw ("Invalid role -> "+targetRole);
         }
-        var role = await server.roles.fetch(role.id); //for cache
+        var role = await server_roles.fetch(role.id); //for cache
+
         
         var members = [];
         utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
-        for (member of role.members.values()){
+        for (var member of role.members.values()){
             members.push(member.id);
         }
         utils.botLogs(globals,  "----complete");
@@ -66,12 +90,6 @@ module.exports = {
         var list = [];
         var col_IN = [];
         var col_NOT = [];
-        utils.botLogs(globals,  "--fetching channel ["+target+"]");
-        var channel = await client.channels.fetch(target.trim())
-        .catch(err => {
-            utils.botLogs(globals,  err.stack)
-            throw ("An error occurred, couldn't complete the request\n`"+err+"`");
-        });
         var voice_members = channel.members;
         
         var date = utils.getDateTimeString(globals);
@@ -80,7 +98,7 @@ module.exports = {
         
         col_IN.push("#"+channel.name);
         col_NOT.push("Not in Channel");
-        for (memberID of members){ 
+        for (var memberID of members){ 
             var member = channel.guild.members.resolve(memberID);
             if(voice_members.has(memberID)){
                 col_IN.push(member.displayName+"#"+member.user.discriminator);    

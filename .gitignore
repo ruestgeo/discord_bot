@@ -5,3 +5,7 @@
 **/*.exe
 **/logs
 **/*.db
+**/_configs/**/*.json
+**/_private/**/*.json
+**/_private/**/*.txt
+**/_db

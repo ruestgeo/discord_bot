@@ -148,7 +148,7 @@ module.exports = {
     
 }
 
-
+//TODO add check on inner command authorized
 
 async function repeatHandler(){ //TODO
     var date = Date.now();

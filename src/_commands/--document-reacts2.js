@@ -22,12 +22,12 @@ const gs_utils = require('../_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     auth_level: 3,
 
 
 
-    manual: "**--document-reacts2**  ->  `message_link` `roleName` \n" +
+    manual: "**--document-reacts2**  ->  `message_link` `roleName or roleID` \n" +
             ".     *Dumps the reaction information of a specified post (via message link) into a specified google sheet;  lists all users of roleName with true/false values for each reaction and another column for no reaction.*  ***A role must be specified***",
 
 
@@ -50,7 +50,9 @@ module.exports = {
 
         var server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying role is valid");
-        var role = server_roles.cache.find(_role => _role.name === targetRole.trim());
+        var role;
+        role = server_roles.resolve(targetRole);
+        if (!role) role = server_roles.cache.find(_role => _role.name === targetRole);
         if ( !role ){
             utils.botLogs(globals,  "----invalid role ::  "+targetRole);
             throw ("Invalid role -> "+targetRole);
@@ -63,7 +65,7 @@ module.exports = {
         var noReaction = {}; 
         utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
         col.push("Users");
-        for (member of role.members.values()){
+        for (var member of role.members.values()){
             var member = await server.members.fetch(member);
             col.push(member.displayName+"#"+member.user.discriminator);
             members.push(member.id);
@@ -109,7 +111,7 @@ module.exports = {
             var reacts_title = "reacts "+date+"  "+channel.name+"/"+message.id;
 
             var longest_col = 0;
-            for (msg_react of msg_reacts){
+            for (var msg_react of msg_reacts){
                 var col = [];
                 try{
                     var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
@@ -117,7 +119,7 @@ module.exports = {
                     utils.botLogs(globals,  "  "+emote);
                     var _react_users = await msg_react.users.fetch();
                     var react_users = _react_users;
-                    for (memberID of members){
+                    for (var memberID of members){
                         var hasReacted = react_users.has(memberID);
                         col.push(hasReacted);
                         if(hasReacted){
@@ -139,7 +141,7 @@ module.exports = {
             var col = [];
             col.push("No Reaction");
             var noReacts = Object.keys(noReaction).filter(memberID => noReaction[memberID] == true); // only get the ones that didnt react
-            for (memberID of noReacts){ //for (memberID of members){
+            for (var memberID of noReacts){ //for (var memberID of members){
                 var member = await server.members.fetch(memberID); 
                 var hasNotReacted = noReaction[memberID];
                 col.push(hasNotReacted);
