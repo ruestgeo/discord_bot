@@ -22,7 +22,7 @@ Provide **configs.json** in the base directory (same location as bot.js and main
 If using the google sheets functions then additional setup is required and a **googleClientSecret.json** must be obtained and placed in **_private**, as well as a **googleSheets_configs.json** in the **configs** directory where an example has been provided.
 You can see https://www.youtube.com/watch?v=UGN6EUi4Yio  for some instructions on the process if needed.
 
---NOTE: **auth.json** and **googleClientSecret.json**  have sensitive data and are confidential, do not share them with anyone.  It may also be of interest to not share configs.json  although the data is less sensitive. 
+--NOTE: **auth.json** and **googleClientSecret.json**  have sensitive data and are confidential, do not share them with anyone.  It may also be of interest to not share **configs.json**  although the data is less sensitive. 
 It is possible to change the names of these files, just change the path in the configs file respectively.
 
 
@@ -35,7 +35,7 @@ Node.js version 12.16.2 or fully compatable versions are required when launching
 ### executable
 Alternatively you can use a compiler such as Nexe (https://github.com/nexe/nexe) to compile it all (except the modular parts) into an executable (.exe) for ease of use.
 
-`npm uninstall -g nexe`
+`npm install -g nexe`
 `nexe main.js -r "bot.js" -r "utils.js" -r "node_modules/**/*"` or `nexe main.js -r "node_modules/**/*"`
 
 This will enable use of the executable (.exe) without the **node_modules** directory, nor installing **npm** or **node**.
@@ -44,6 +44,8 @@ Note that this means the created exe will only have access to the currently inst
 The currently installed node_modules can be found in **package.json**
 
 **bot.js** and **utils.js** are included by default.
+
+**If using the  *`ffmpeg-static`* package then you will have to include the *`node_modules`*`* directory and use `nexe main.js` without the "-r" option.**
 
 
 ## Source Code 
@@ -65,6 +67,9 @@ Contains the main utility functions and data used by most other functions (dont 
 
 #### configs.json 
 Contains the main configs for the bot (do not modify this if adding additional configs, see `_configs`).
+
+### _db
+Contains database files (will be created when needed if doesn't exist)
 
 #### _commands
 Contains all command files which contain command logic.
