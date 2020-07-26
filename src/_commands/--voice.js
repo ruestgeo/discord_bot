@@ -22,7 +22,7 @@ const voiceUtils = require('../_utils/voice_utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     auth_level: 1,
 
 
@@ -82,8 +82,8 @@ module.exports = {
 
 
         /* connect and mute */
-        var connection = await voiceChannel.join();
-        connection.voice.setMute(true);
+        var connection = await voiceChannel.join().catch(err => { throw (err); });
+        await connection.voice.setMute(true);
         return "Joined voice channel ["+voiceChannelName+"]";
     }
 

@@ -24,7 +24,7 @@ const { requiredRole, noRestrition } = require('../_configs/voice_configs.json')
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     hasRolePermission: async function(member){
         if (noRestrition) return true;
         for (var role_id of requiredRole){
@@ -33,6 +33,26 @@ module.exports = {
             }
         }
         return false;
+    },
+
+    fetchLatestConnection: function(client, server_id){
+        var connections = Array.from(client.voice.connections.values());
+        for (var connection of connections){
+            if (connection.channel.guild.id === server_id) {
+                return connection;
+            }
+        }
+        return null;
+    },
+
+    fetchChannelConnection: function(client, channel_id){
+        var connections = Array.from(client.voice.connections.values());
+        for (var connection of connections){
+            if (connection.channel.id === channel_id) {
+                return connection;
+            }
+        }
+        return null;
     }
 }
 
