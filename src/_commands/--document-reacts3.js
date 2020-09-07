@@ -23,7 +23,7 @@ const { codePointAt } = require('ffmpeg-static');
 
 
 module.exports = {
-    version: 1.4,
+    version: 1.5,
     auth_level: 3,
 
 
@@ -142,15 +142,19 @@ module.exports = {
             /* print out members without reaction and insert col to doc */
             utils.botLogs(globals,  "\n\nUsers without reaction");
             var col = [];
+            var col2 = [];
             col.push("No Reaction");
+            col2.push("\\\\");
             var noReacts = Object.keys(noReaction).filter(memberID => noReaction[memberID] == true); // only get the ones that didnt react
             for (var memberID of noReacts){
                 var member = await server.members.fetch(memberID);
                 col.push(member.displayName+"#"+member.user.discriminator);
+                col2.push(member.user.username+"#"+member.user.discriminator);
                 utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator);
             }
             longest_col = Math.max(longest_col, col.length);
             list.push(col);
+            list.push(col2);
 
             /**  create new sheet and dump info  **/
             await gs_utils.dumpToSheet(msg, globals, reacts_title, list, 0, longest_col, 0, list.length)
