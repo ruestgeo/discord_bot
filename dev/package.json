@@ -11,8 +11,5 @@
     "google-spreadsheet": "^3.0.13",
     "luxon": "^1.25.0",
     "node-localstorage": "^2.1.6"
-  },
-  "devDependencies": {
-    "nexe": "^3.3.7"
   }
 }
