@@ -2,8 +2,8 @@
 
 ## 
 using:
-- node version 12.16.2
-- discord.js version 12.2.0
+- node version 12(.16.3)
+- discord.js version 12.3.1
 
 
 This bot is intended for light use and is primarily intended for single server use.  It can be used across multiple servers, however some included commands  may not behave as expected in a multi-server setup.  
@@ -30,7 +30,7 @@ It is possible to change the names of these files, just change the path in the c
 ### node and npm
 You can launch the bot using the command `node main.js` when in the code base directory (**src**).
 
-Node.js version 12.16.2 or fully compatable versions are required when launching through `node`.
+Node.js version 12.16.3 or fully compatable versions are required when launching through `node`.
 
 ### executable
 Alternatively you can use a compiler such as Nexe (https://github.com/nexe/nexe) to compile it all (except the modular parts) into an executable (.exe) for ease of use.
@@ -68,14 +68,17 @@ Contains the main utility functions and data used by most other functions (dont 
 #### configs.json 
 Contains the main configs for the bot (do not modify this if adding additional configs, see `_configs`).
 
-### _db
-Contains database files (will be created when needed if doesn't exist)
+### _assets
+Contains additional assets.
 
 #### _commands
 Contains all command files which contain command logic.
 
 #### _configs 
 Contains all the additional config files.
+
+### _db
+Contains database files (will be created when needed if doesn't exist)
 
 #### _private
 Contains all private and sensitive files that are meant to be confidential, including the bot authentication token.
@@ -103,3 +106,4 @@ If it doesn't exist then it will be created assuming logging is enabled in the c
 
 - I don't really wanna use branches for a small project, so I am just naively packing past versions into their own folders in the **VERSIONS** directory, mostly for looking back at what changed.  
 - Only the **src** directory stuff is required to run the bot.
+- The repo is messy cuz i kept trying different things, and will likely continue to

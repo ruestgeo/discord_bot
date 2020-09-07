@@ -18,11 +18,12 @@ Made by JiJae (ruestgeo)
 
 const utils = require('../utils.js'); 
 const gs_utils = require('../_utils/googleSheets_utils'); 
+const { codePointAt } = require('ffmpeg-static');
 
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
@@ -67,12 +68,16 @@ module.exports = {
         utils.botLogs(globals,  "\n\n"+channel_title);
         var list = [];
         var col = [];
+        var col2 = [];
         col.push("#"+channel.name);
+        col2.push("\\\\");
         for (var member of voice_members){
             utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
             col.push(member.displayName+"#"+member.user.discriminator);
+            col2.push(member.user.username+"#"+member.user.discriminator);
         }
         list.push(col);
+        list.push(col2);
 
         /**  create new sheet and dump info  **/
         await gs_utils.dumpToSheet(msg, globals, channel_title, list, 0, col.length, 0, 1)

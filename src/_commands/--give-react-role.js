@@ -22,7 +22,7 @@ const utils = require('../utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     auth_level: 4,
 
 
@@ -33,7 +33,7 @@ module.exports = {
 
 
     func: async function (globals, msg, _args){ 
-        // https://discordapp.com/channels/<server>/<channel>/<message>
+        // https://discordapp.com/channels/<server>/<channel>/<message>  or  https://discord.com/channels/<server>/<channel>/<message>
         var client = globals.client;
 
         if (!_args.includes(' ')){
@@ -61,6 +61,15 @@ module.exports = {
             }
         }
 
+        //check message validity (soft check)
+        if ( !target_msg.startsWith("https://discordapp.com/channels/") && !target_msg.startsWith("https://discord.com/channels/")){
+            utils.botLogs(globals,  "----invalid message link"+target_msg);
+            if ( !target_msg.startsWith("https://discordapp.com/") && !target_msg.startsWith("https://discord.com/"))
+                throw ("Invalid message link (not discord link):  ["+target_msg+"]");
+            else
+                throw ("Invalid message link (invalid discord link):  ["+target_msg+"]");
+        }
+
         //check roles validity
         var roles = [];
         for (var emote_key in args){
@@ -81,7 +90,7 @@ module.exports = {
         }
         
 
-        var ids = target_msg.substring("https://discordapp.com/channels/".length).split("/");
+        var ids = target_msg.startsWith("https://discordapp.com/channels/") ? target_msg.substring("https://discordapp.com/channels/".length).split("/") : target_msg.substring("https://discord.com/channels/".length).split("/");
         var server_id = ids[0];
         var channel_id = ids[1];
         var message_id = ids[2];

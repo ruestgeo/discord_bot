@@ -22,7 +22,7 @@ const gs_utils = require('../_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 1.3,
+    version: 1.4,
     auth_level: 3,
 
 
@@ -90,6 +90,8 @@ module.exports = {
         var list = [];
         var col_IN = [];
         var col_NOT = [];
+        var col_IN_un = [];
+        var col_NOT_un = [];
         var voice_members = channel.members;
         
         var date = utils.getDateTimeString(globals);
@@ -97,21 +99,29 @@ module.exports = {
         utils.botLogs(globals,  "\n\n"+channel_title);
         
         col_IN.push("#"+channel.name);
+        col_IN_un.push("\\\\");
         col_NOT.push("Not in Channel");
+        col_NOT_un.push("\\\\");
         for (var memberID of members){ 
             var member = channel.guild.members.resolve(memberID);
             if(voice_members.has(memberID)){
-                col_IN.push(member.displayName+"#"+member.user.discriminator);    
-                utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator);
-            } else col_NOT.push(member.displayName+"#"+member.user.discriminator);
+                col_IN.push(member.displayName+"#"+member.user.discriminator);
+                col_IN_un.push(member.user.username+"#"+member.user.discriminator);
+                utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
+            } else {
+                col_NOT.push(member.displayName+"#"+member.user.discriminator);
+                col_NOT_un.push(member.user.username+"#"+member.user.discriminator);
+            }
         }
         list.push(col_IN);
+        list.push(col_IN_un);
         list.push(col_NOT);
+        list.push(col_NOT_un);
 
         /* print out members not in channel */
         utils.botLogs(globals,  "\n\nUsers not in channel");
         for (var idx=1; idx < col_NOT.length; idx++){
-            utils.botLogs(globals,  "  "+col_NOT[idx]);
+            utils.botLogs(globals,  "  "+col_NOT[idx]+"    ("+col_NOT_un[idx]+")");
             
         }
 

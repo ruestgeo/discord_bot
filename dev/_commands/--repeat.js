@@ -76,6 +76,7 @@ module.exports = {
         }
 
         // https://discordapp.com/channels/<server>/<channel>/<message>
+        // TODO consider https://discord.com/channels/<server>/<channel>/<message>
         var message_ID = msg.id;
         var channel_ID = msg.channel.id;
         var server_ID = msg.guild.id;

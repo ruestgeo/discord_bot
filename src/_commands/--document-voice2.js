@@ -22,7 +22,7 @@ const gs_utils = require('../_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
@@ -83,15 +83,19 @@ module.exports = {
         
         var list = [];
         var col = [];
+        var col2 = [];
         var members = [];
         var notInChannel = [];
         utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
         col.push(role.name);
+        col2.push("\\");
         for (var member of role.members.values()){
             col.push(member.displayName+"#"+member.user.discriminator);
+            col2.push(member.user.username+"#"+member.user.discriminator);
             members.push(member.id);
         }
         list.push(col);
+        list.push(col2);
         utils.botLogs(globals,  "----complete");
 
 

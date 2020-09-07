@@ -45,12 +45,12 @@ var eventsRemovers = {}; //functions returned from event_once or event_on that d
 var volumes = undefined;
 var dbName = "music";
 var dbNameVolumes = "music_volumes";
-const commands = ["play","pause","stop","next","add","remove","removeAll","clear","list","info","volume"];
+const commands = ["play", "playOne","pause","stop","next","add","insert","remove","removeAll","clear","list","info","volume"];
 
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     auth_level: 1,
 
 
@@ -63,8 +63,11 @@ module.exports = {
             ".     *Supports formats 00:00:00.000, 0ms, 0s, 0m, 0h, or number of milliseconds.*\n"+
             ".     *Example: 1:30, 05:10.123, 10m30s*\n\n"+*/  //ytdl `begin` option is unreliable so not used
             "**--music**  ->  `play`\n" +
-            ".     *play first* ***music_link*** *in the queue.*\n"+
+            ".     *play first* ***music_link*** *in the queue.*\n\n"+
              
+            "**--music**  ->  `playOne <music_link>`\n" +
+            ".     *play first* ***music_link*** *in the queue then stop*\n"+
+            ".     *if a music_link is provided as an arg then it will play that song without adding/inserting it to the queue, then stop*\n\n"+
 
             "**--music**  ->  `pause` \n" +
             ".     *pause the playing music and retain track position*\n\n"+
@@ -76,8 +79,11 @@ module.exports = {
             ".     *move to the next song on the queue (maintains playing/paused)*\n\n"+
 
             "**--music**  ->  `add` *music_link* \n" +
-            ".     *add * ***music_link*** *to the queue*\n"+
+            ".     *add* ***music_link*** *to the queue*\n"+
             ".     *multiple music links on newlines (shift+ENTER) can be given*\n\n"+
+
+            "**--music**  ->  `insert` *position* *music_link* \n" +
+            ".     *insert* ***music_link*** *in the queue starting from 0, or add it to the end of the queue*\n\n"+
 
             "**--music**  ->  `remove` *music_link* \n" +
             ".     *remove first found instance of* ***music_link*** *from the queue*\n\n"+
@@ -125,9 +131,12 @@ module.exports = {
             if ( (command === "pause" || command === "stop" || command === "next" || command === "clear") && (args !== null)) 
                 throw ("Invalid request (given args when no args used)\n```\n"+content+"```");
 
-            if ( (command === "add" || command === "remove" || command === "removeAll" || command === "list") && (args === null) )
+            if ( (command === "add" || command === "insert" || command === "remove" || command === "removeAll" || command === "list") && (args === null) )
                 throw ("Invalid request (given no args when args required)\n```\n"+content+"```");
-
+            
+            if (command === "insert" && !args.includes(" ")){
+                throw ("Invalid insert args: required both a position and youtube link");
+            }
 
             /* check member permissions */
             if ( !(await voiceUtils.hasRolePermission(msg.member)) ){
@@ -135,7 +144,7 @@ module.exports = {
             }
             utils.botLogs(globals, "--fetching voice connection");
             var connection = connections[server.id];
-            if ( command === "play" || command === "pause" || command === "stop" || command === "next" ){ //if commands require bot in voice channel
+            if ( command === "play" || command === "playOne" || command === "pause" || command === "stop" || command === "next" ){ //if commands require bot in voice channel
                 if (!connection){
                     connection = voiceUtils.fetchLatestConnection(globals.client, server.id);
                     //connections[server_id] = connection;
@@ -209,7 +218,13 @@ module.exports = {
 
             /* parse args */
             var info;
+            var position;
             if (args && command !== "list" && command !== "play" && command !== "volume" && command !== "remove"){
+                if (command === "insert"){
+                    position = args.substring(0, args.indexOf(' ')).trim();
+                    args = args.substring(args.indexOf(' ')+1).trim();
+                    if (position < 0) throw ("Invalid insert position: "+position);
+                }
                 try{
                     if (command === "add" && args.includes("\n")){
                         info = []; //array of vids to insert
@@ -287,6 +302,10 @@ module.exports = {
                     await play(msg, connection /*, args*/).catch(err => { throw (err) });
                     break;
                 }
+                case "playOne":{
+                    await playOne(msg, connection, info).catch(err => { throw (err) });
+                    break;
+                }
                 case "pause":{
                     await pause(msg).catch(err => { throw (err) });
                     break;
@@ -301,6 +320,10 @@ module.exports = {
                 }
                 case "add":{
                     await add(msg, info).catch(err => { throw (err) });
+                    break;
+                }
+                case "insert":{
+                    await insert(msg, info, position).catch(err => { throw (err) });
                     break;
                 }
                 case "remove":{
@@ -333,6 +356,10 @@ module.exports = {
             }
         }
         catch (err) { throw (err); }
+    },
+
+    isCurrentlyPlaying: function (server_id){
+        return playing[server_id];
     }
 }
 
@@ -340,12 +367,12 @@ module.exports = {
 
 
 
-//function onFinish(){ next(); }
-function onError(err) { console.log("__[music] error occurerd during audio stream:\n"+err); }
+//function onFinish (){ next(); }
+function onError (err) { console.log("__[music] error occurerd during audio stream:\n"+err); }
 
 
 
-function hasVoicePermission(client, member, connection){
+function hasVoicePermission (client, member, connection){
     var channel = connection.channel;
     var bot_perms = channel.permissionsFor(client.user);
     if ( !bot_perms.has("SPEAK") ) return ("Bot doesn't have permission to connect to ["+channel.name+":"+channel.id+"]");
@@ -355,7 +382,82 @@ function hasVoicePermission(client, member, connection){
 }
 
 
-async function play(msg, connection /*, args*/){
+async function playOne (msg, connection, info){
+    var server_id = msg.guild.id;
+    connections[server_id] = connection; 
+    if (playing[server_id] === true) {
+        console.log("----already playing in server");
+        msg.reply("Already playing. Stop the currently playing audio to use this command");
+        return;
+    }
+    if ( connection.dispatcher ){ 
+        try {
+            playing[server_id] = false;
+            delete connections[server_id];
+            delete playing[server_id];
+            eventsRemovers[server_id](); 
+            connection.dispatcher.destroy(); 
+            await connection.voice.setMute(true);
+        }
+        catch (err) { console.log(`!__[music]  error in destroying stream ::   ${err}`); }
+        msg.channel.send("Stopped the currently paused audio before proceeding");
+    }
+    var currentSong;
+    if (!info){ //link wasn't provided, play the first song in queue
+        currentSong = queues[server_id].peek();
+        if (currentSong === null){
+            console.log("----nothing to play, queue empty");
+            await msg.reply("Queue is empty");
+            return;
+        }
+        console.log("----playing only the first from queue");
+    }
+    else { //play from provided url
+        currentSong = info;
+    }
+    await connection.voice.setMute(false);
+    playing[server_id] = true;
+    var streamDispatcher;
+    try {
+        //var yt_stream = ytdl(currentSong.url, (args === null ? ytdl_options : Object.assign({begin: args}, ytdl_options)));
+        var yt_stream = ytdl(currentSong.url, ytdl_options);
+        streamDispatcher = connection.play(yt_stream, discordStream_options);
+        streamDispatcher.setVolumeLogarithmic(volumes[server_id]);
+    }
+    catch (err){
+        await connection.voice.setMute(true);
+        playing[server_id] = false;
+        throw ("Error in playing youtube stream ::   "+err);
+    }
+    
+    streamDispatcher.once("finish", async () => { 
+        console.log("!__[music]  finish -> stop ["+server_id+"]");
+        try{
+            playing[server_id] = false;
+            delete connections[server_id];
+            delete playing[server_id];
+            eventsRemovers[server_id](); //connection.removeAllListeners('disconnect');
+            await connection.voice.setMute(true);
+        } catch (err) { console.log(err); throw (err); }
+        if (!info) {
+            queues[server_id].dequeue();
+            await ls.put(dbName, server_id, queues[server_id].stringify());
+        }
+    })
+    .once("error", onError);
+    var server_name = connection.channel.guild.name;
+    eventsRemovers[server_id] = utils.event_once(connection, 'disconnect', async () => {
+        console.log("        !__[music]  disconnect event on connection for ["+server_name+":"+server_id+"]");
+        try {
+            delete connections[server_id];
+            delete playing[server_id];
+        } catch (err) {}
+    }); 
+    await msg.reply("Playing:  "+currentSong.title);
+}
+
+
+async function play (msg, connection /*, args*/){
     var server_id = msg.guild.id;
     connections[server_id] = connection; //var connection = connections[server_id];
     //console.log("DEBUG connection: "+connection.channel.name+":"+connection.channel.id+"  ||  status:  "+connection.status+"  ||  dispatcher:  "+connection.dispatcher);
@@ -401,7 +503,7 @@ async function play(msg, connection /*, args*/){
         streamDispatcher.once("finish", () => { console.log("!__[music]  finish -> next ["+server_id+"]");  next(null, server_id); })
         .once("error", onError);
         var server_name = connection.channel.guild.name;
-        eventsRemovers[server_id] = event_once(connection, 'disconnect', async () => {
+        eventsRemovers[server_id] = utils.event_once(connection, 'disconnect', async () => {
             console.log("        !__[music]  disconnect event on connection for ["+server_name+":"+server_id+"]");
             //console.log(`DEBUG playing ::   ${JSON.stringify(playing,null,'  ')}`);
             //console.log(`DEBUG connections ::   ${JSON.stringify(Object.keys(connections).map(item => item+"  ||  status: "+connections[item].status+"  ||  dispatcher: "+connections[item].dispatcher),null,'  ')}`);
@@ -431,7 +533,7 @@ async function play(msg, connection /*, args*/){
 
 
 
-async function pause(msg){
+async function pause (msg){
     var server_id = msg.guild.id;
     if ( !connections[server_id] ){ 
         console.log("----wasn't playing; no connection");
@@ -451,7 +553,7 @@ async function pause(msg){
 
 
 
-async function stop(msg){
+async function stop (msg){
     var server_id = msg.guild.id;
     if (connections[server_id] === undefined){ 
         await msg.reply("Wasn't playing anything nor had anything paused");
@@ -483,7 +585,7 @@ async function stop(msg){
 
 
 
-async function next(msg, server_id){
+async function next (msg, server_id){
     var connection = connections[server_id];
     if (!msg && !connection){ 
         console.log("!__[music]  auto-next -> no connection");
@@ -553,7 +655,7 @@ async function next(msg, server_id){
 
 
 
-async function add(msg, info){
+async function add (msg, info){
     var server_id = msg.guild.id;
     if (Array.isArray(info)){
         console.log("----add multiple");
@@ -596,7 +698,26 @@ async function add(msg, info){
 
 
 
-async function remove(msg, arg){
+
+async function insert (msg, info, position){
+    var server_id = msg.guild.id;
+    var length = queues[server_id].length();
+    position = position > length  ?  length  :  position;
+    try { queues[server_id].insert(info, position); }
+    catch (err){ //queue full
+        console.log(err.message);
+        await msg.reply(err.message);
+        return;
+    }
+    await ls.put(dbName, server_id, queues[server_id].stringify());
+    
+    await msg.reply("Inserted youtube video to queue at position ["+position+"]:  "+info.title);
+}
+
+
+
+
+async function remove (msg, arg){
     var server_id = msg.guild.id;
     var removed;
     if (typeof(arg) === "number"){
@@ -613,7 +734,7 @@ async function remove(msg, arg){
 }
 
 
-async function removeAll(msg, info){
+async function removeAll (msg, info){
     var server_id = msg.guild.id;
     queues[server_id].removeAllByKey("url", info.url);
     await ls.put(dbName, server_id, queues[server_id].stringify());
@@ -622,7 +743,7 @@ async function removeAll(msg, info){
 
 
 
-async function clear(msg){
+async function clear (msg){
     var server_id = msg.guild.id;
     queues[server_id].clear();
     await ls.put(dbName, server_id, queues[server_id].stringify());
@@ -631,7 +752,7 @@ async function clear(msg){
 
 
 
-async function list(msg, amount){
+async function list (msg, amount){
     if (amount > musicQueueCapcity) amount = musicQueueCapcity;
     var server_id = msg.guild.id;
     var copy = queues[server_id].copy();
@@ -656,7 +777,7 @@ async function list(msg, amount){
 
 
 
-async function getInfo(msg, info){
+async function getInfo (msg, info){
     if (info) {
         console.log("----get first in queue info");
         await msg.reply(`title :   ${info.title}`);
@@ -670,7 +791,7 @@ async function getInfo(msg, info){
 
 
 
-async function setVolume(msg, arg){
+async function setVolume (msg, arg){
     var server_id = msg.guild.id;
     if (!arg){ //obtain and reply with the current volume
         console.log("----get volume for bot in server");
@@ -694,7 +815,7 @@ async function setVolume(msg, arg){
 
 
 //extend Queue to MusicQueue 
-function MusicQueue(capacity, array){
+function MusicQueue (capacity, array){
     Queue.call(this, capacity, array);
 }
 /*var prototype = new Function();
@@ -706,7 +827,7 @@ MusicQueue.prototype = Object.create(require('../utils.js').Queue.prototype);
 /**
  * remove first instance of element that contains key with value from queue and returns it
  **/
-MusicQueue.prototype.removeByKey = function(key, value){ 
+MusicQueue.prototype.removeByKey = function (key, value){ 
     var index = this._elements.findIndex(Q_item => Q_item[key] === value);
     if (index < 0 ) throw new Error("element not found in Queue");
     return this._elements.splice(index, 1);
@@ -715,33 +836,19 @@ MusicQueue.prototype.removeByKey = function(key, value){
 /**
  * remove all instances of element that contains key with value from queue
  **/
-MusicQueue.prototype.removeAllByKey = function(key, value){ 
+MusicQueue.prototype.removeAllByKey = function (key, value){ 
     this._elements = this._elements.filter(Q_item => Q_item[key] !== value);
 }
 
 /**
  * create a MusicQueue where if an array is given then it creates the queue from the array;  capacity is optional
  */
-MusicQueue.from = function(array, capacity){ //create a new MusicQueue from the array with a given capacity
+MusicQueue.from = function (array, capacity){ //create a new MusicQueue from the array with a given capacity
     try{ return new MusicQueue(capacity, array); }
     catch (err) { throw (err); }
 }
 
 
-//TODO put these in utils for v1.4.4 or v1.5.0
-function event_once(target, type, func) {
-    target.once(type, func);
-    return function() {
-        if (target.off)
-            target.off(type, func);
-    };
-}
-function event_on(target, type, func) {
-    target.on(type, func);
-    return function() {
-        target.off(type, func);
-    };
-}
 
 
 

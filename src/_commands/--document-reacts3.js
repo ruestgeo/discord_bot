@@ -18,11 +18,12 @@ Made by JiJae (ruestgeo)
 
 const utils = require('../utils.js');
 const gs_utils = require('../_utils/googleSheets_utils'); 
+const { codePointAt } = require('ffmpeg-static');
 
 
 
 module.exports = {
-    version: 1.3,
+    version: 1.4,
     auth_level: 3,
 
 
@@ -33,7 +34,7 @@ module.exports = {
 
 
     func: async function (globals, msg, content){
-        // https://discordapp.com/channels/<server>/<channel>/<message>
+        // https://discordapp.com/channels/<server>/<channel>/<message>  or  https://discord.com/channels/<server>/<channel>/<message>
         var client = globals.client;
 
         if ( !globals.googleSheets )
@@ -70,11 +71,14 @@ module.exports = {
         utils.botLogs(globals,  "----complete");
 
         utils.botLogs(globals,  "--fetching message ["+target+"]");
-        if (! target.startsWith("https://discordapp.com/channels/")){
+        if ( !target.startsWith("https://discordapp.com/channels/") && !target.startsWith("https://discord.com/channels/")){
             utils.botLogs(globals,  "----invalid message link"+target);
-            throw ("Invalid message link: ["+target+"]");
+            if ( !target.startsWith("https://discordapp.com/") && !target.startsWith("https://discord.com/"))
+                throw ("Invalid message link (not discord link):  ["+target+"]");
+            else
+                throw ("Invalid message link (invalid discord link):  ["+target+"]");
         }
-        var ids = target.substring("https://discordapp.com/channels/".length).split("/");
+        var ids = target.startsWith("https://discordapp.com/channels/") ? target.substring("https://discordapp.com/channels/".length).split("/") : target.substring("https://discord.com/channels/".length).split("/");
         var server_id = ids[0];
         var channel_id = ids[1];
         var message_id = ids[2];
@@ -108,9 +112,11 @@ module.exports = {
             var longest_col = 0;
             for (var msg_react of msg_reacts){
                 var col = [];
+                var col2 = [];
                 try{
                     var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
                     col.push(emote);
+                    col2.push("\\\\");
                     utils.botLogs(globals,  "  "+emote);
                     var _react_users = await msg_react.users.fetch();
                     var react_users = _react_users;
@@ -118,8 +124,9 @@ module.exports = {
                         var member = message.guild.members.resolve(memberID);
                         var hasReacted = react_users.has(memberID);
                         if(hasReacted){
-                            utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator);
+                            utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id+"   ("+member.user.username+")");
                             col.push(member.displayName+"#"+member.user.discriminator);
+                            col2.push(member.user.username+"#"+member.user.discriminator);
                         }
                         noReaction[memberID] = ((!hasReacted) && noReaction[memberID]); //only true if NOT hasReacted for all reactions
                     }
@@ -129,6 +136,7 @@ module.exports = {
                 }
                 longest_col = Math.max(longest_col, col.length);
                 list.push(col);
+                list.push(col2);
             }
 
             /* print out members without reaction and insert col to doc */

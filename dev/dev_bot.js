@@ -73,10 +73,10 @@ const built_in_manuals = {
                     ".     *will reimport all of or some of configs, reactables, and/or commands depending on given arguments (separated by empty space)*"+
                     ".     *for example `--reimport reactables commands`*"
 }
-var command_description = "The bot commands are as follows, \n"+
-        ".  **commandName**  ->  ***arguments*** \n"+
+var command_description = "The command manual *should* follow the following conventions: \n"+
+        ".    **commandName**  ->  ***`arguments`*** \n"+
         ".    any quotation marks, curly brackets, or square brackets are necessary\n"+
-        ".    `...` (ellipsis) implies that you can input more than one\n"+
+        ".    `...` (ellipsis) implies that you can input more than one, usually using a comma\n"+
         ".    encapsulating with `<` and `>` like `\"< args >\"` implies the argument is optional\n"+
         "================================";
 
@@ -305,7 +305,7 @@ async function builtInHandler (msg, member, command, content){
 
         var keyword = remaining_keywords.shift();
         for (var cmd of allList){
-            if ( cmd.includes(keyword) ) matches[cmd] = undefined; //globals.modularCommands[cmd].manual;
+            if ( cmd.includes(keyword) ) matches[cmd] = null; //globals.modularCommands[cmd].manual;
         }
         if (Object.keys(matches).length == 0){
             msg.reply("No matches found for the provided keywords");
@@ -351,20 +351,39 @@ async function builtInHandler (msg, member, command, content){
 
 
     /* reimport assets */
-    else if (command === '--reimport'){ //TODO
-        console.log("reimporting")
+    // WARNING using this command may have unforseen consequences
+    else if (command === '--reimport'){
         var args = content.split(" ");
         args = [...new Set(args)]; //remove duplicates
         utils.botLogs(globals, "--reimporting:  "+args);
-        for (arg of args){
+        for (var arg of args){
             if (arg !== "all" && arg !== "reactables" && arg !== "commands" && arg !== "configs")
                 throw new Error(`invalid arg: [${arg}]`);
         }
+
+        //leave all voice connections
+        if ( args.includes("all") || args.includes("commands") )
+        utils.botLogs(globals, "-- disconnecting from voice channels for reimport");
+        var connections = Array.from(globals.client.voice.connections.values());
+        for (var connection of connections){
+            var channel = connection.channel;
+            utils.botLogs(globals, `---- disconnected from [${channel.name}:${channel.id}] of [${channel.guild.name}:${channel.guild.id}]`);
+            connection.disconnect();
+        }
+
         if (args.includes("all")){
             var old_configs = globals.configs;
             configs = {};
             globals.configs = {};
-            try { acquireConfigs(); }
+            try { 
+                acquireConfigs(); 
+                if (old_configs.DiscordAuthFilePath !== configs.DiscordAuthFilePath)
+                    throw new Error("Auth file path was changed, bot should be shutdown and manually restarted.");
+                if (old_configs.logsFileMode !== configs.logsFileMode){
+                    utils.botLogs(globals,"--logfile mode changed from ["+old_configs.logsFileMode+"] to ["+configs.logsFileMode+"]\n----setting up for new logging mode");
+                    setupLogs();
+                }   
+            }
             catch (err){ 
                 utils.botLogs("---- error on configs reimport (retaining old configs)\n"+err);
                 globals.configs = old_configs;
@@ -399,7 +418,15 @@ async function builtInHandler (msg, member, command, content){
             configs = {};
             globals.configs = {};
             //console.log("DEBUG2 "+JSON.stringify(configs,null,'  '));
-            try { acquireConfigs(); }
+            try { 
+                acquireConfigs(); 
+                if (old_configs.DiscordAuthFilePath !== configs.DiscordAuthFilePath)
+                    throw new Error("Auth file path was changed, bot should be shutdown and manually restarted.");
+                if (old_configs.logsFileMode !== configs.logsFileMode){
+                    utils.botLogs(globals,"--logfile mode changed from ["+old_configs.logsFileMode+"] to ["+configs.logsFileMode+"]\n----setting up for new logging mode");
+                    setupLogs();
+                }   
+            }
             catch (err){ 
                 globals.configs = old_configs;
                 configs = old_configs;
@@ -564,7 +591,7 @@ function onError (err){
     //process.exit();
 }
 
-function clientSetup(){
+function clientSetup (){
     console.log("\nSetting up client event handlers");
     client.once('ready', onReady);
     client.on('message', onMessage);
@@ -577,7 +604,7 @@ function clientSetup(){
 
 
 
-async function runStartupFunctions(){
+async function runStartupFunctions (){
     console.log("\nRunning _startup functions");
     if (fs.existsSync(startupPath)) {
         console.log("--scanning directory: ");
@@ -662,10 +689,10 @@ async function logInterval(globals){
         newLogsFileName = newLogsFileName.replace(/:/g,"-");
         globals["logsFileName"] = newLogsFileName;
         fs.appendFileSync(logsPath+oldLogsFileName, "\n\nSwitching to new logs file with name:  "+newLogsFileName);
-        fs.writeFileSync(logsPath+newLogsFileName, "\n\n\n\n\nCreating new logs file  ["+newLogsFileName+"]\n    "+utils.getDateTimeString(globals)+"\n\n\n\n");
+        fs.writeFileSync(logsPath+newLogsFileName, "\n\n\n\n\n["+package.name+"]\nCreating new logs file  ["+newLogsFileName+"]\n    "+utils.getDateTimeString(globals)+"\n\n\n\n");
     }
     catch (err){
-        utils.botLogs(globals,"## ERR occurred during 24hour new logs file interval");
+        utils.botLogs(globals,"## ERR occurred during 24hour new logs file interval ::  "+err);
     }
     finally {
         if (globals.busy)
@@ -673,9 +700,41 @@ async function logInterval(globals){
         botEventEmitter.emit('botLogNewFile_end');
     }
 }
+async function logTimeout(globals){
+    try{
+        await utils.acquire_work_lock(globals, "log_daily");
+        botEventEmitter.emit('botLogDaily_start');
+        
+        var day = utils.getDate(globals);
+        var oldLogsFileName = globals.logsFileName;
+        var newLogsFileName = `LOGS_${day}.txt`;
+        globals["logsFileName"] = newLogsFileName;
+        fs.appendFileSync(logsPath+oldLogsFileName, "\n\nSwitching to new daily logs file with name:  "+newLogsFileName);
+        fs.writeFileSync(logsPath+newLogsFileName, "\n\n\n\n\n["+package.name+"]\nCreating new daily logs file  ["+newLogsFileName+"]\n    "+utils.getDateTimeString(globals)+"\n\n\n\n");
+        
+        //setup next timeout
+        var dateTime = utils.getDateTime(globals);
+        var secondsTillNextDay = (24*60*60) - ((dateTime.hour*60*60) + (dateTime.minute*60) + dateTime.second); //should be nearly 24hour
+        var log_timeout = setTimeout(logTimeout,secondsTillNextDay*1000, globals);
+        globals.timeouts["botLogs"] = log_timeout;
+    }
+    catch (err){
+        utils.botLogs(globals,"## ERR occurred during daily logs file timeout ::  "+err);
+    }
+    finally {
+        if (globals.busy)
+            utils.release_work_lock(globals, "log_daily");
+        botEventEmitter.emit('botLogDaily_end');
+    }
+}
 
-function setupLogs(){
+function setupLogs (){
     botEventEmitter.emit('botLogsSetup');
+    
+    //clear any existing intervals or timeouts
+    if (globals.intervals.hasOwnProperty("botLogs")) clearInterval(globals.intervals["botLogs"]);
+    if (globals.timeouts.hasOwnProperty("botLogs")) clearTimeout(globals.timeouts["botLogs"]);
+
     if ((configs.logsFileMode !== "none") || (configs.logsFileMode !== "")){
         console.log("\nlogsFileMode:  "+configs.logsFileMode);
         if (!fs.existsSync(logsPath)){
@@ -684,26 +743,45 @@ function setupLogs(){
         }
     
         globals["LogsToFile"] = true;
-        if (configs.logsFileMode === "newfile"){ //setup 24hour interval to renew name and make new file
+        if (configs.logsFileMode === "daily"){ // 1 file per day
+            var day = utils.getDate(globals);
+            //console.log("DEBUG day: "+day);
+            var fileName = `LOGS_${day}.txt`;
+            globals["logsFileName"] = fileName;
+            var dateTime = utils.getDateTime(globals);
+            var secondsTillNextDay = (24*60*60) - ((dateTime.hour*60*60) + (dateTime.minute*60) + dateTime.second);
+            //console.log("DEBUG till next day: "+secondsTillNextDay);
+            var log_timeout = setTimeout(logTimeout,secondsTillNextDay*1000, globals);
+            globals.timeouts["botLogs"] = log_timeout;
+            //if file exists, append otherwise create
+            if (fs.existsSync(logsPath+globals.logsFileName)){
+                console.log("----daily log exists: appending");
+                fs.appendFileSync(logsPath+globals.logsFileName, "\n\n\n\ndaily log\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\nlogsFileMode:  "+configs.logsFileMode+"\n\n");
+            }
+            else {
+                console.log("----creating daily log");
+                fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\ndaily log\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\nlogsFileMode:  "+configs.logsFileMode+"\n\n");
+            }
+        }
+        else if (configs.logsFileMode === "newfile"){ //setup 24hour interval to renew name and make new file
             var date = utils.getDateTime(globals);
             var fileName = "LOGS_"+date.toISO()+".txt";
             fileName = fileName.replace(/-/g,"_");
             fileName = fileName.replace(/:/g,"-");
             globals["logsFileName"] = fileName;
             var log_interval = setInterval(logInterval, 24*60*60*1000, globals);
-            globals.timers["botLogs"] = log_interval;
-            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n");
+            globals.intervals["botLogs"] = log_interval;
+            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\nnewfile log\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\nlogsFileMode:  "+configs.logsFileMode+"\n\n");
         }
         else if (configs.logsFile === "overwrite"){
-            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n");
+            fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\noverwrite log\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\nlogsFileMode:  "+configs.logsFileMode+"\n\n");
         }
         else {
             if (configs.logsFile !== "append"){
-                console.log("--invalid logsFileMode; defaulting to [append] mode");
+                console.log("--invalid logsFileMode; defaulting to [append] mode"); //deprec
             }
-            fs.appendFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\n\n");
+            fs.appendFileSync(logsPath+globals.logsFileName, "\n\n\n\n\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\nlogsFileMode:  "+configs.logsFileMode+"\n\n");
         }
-        fs.appendFileSync(logsPath+globals.logsFileName, "logsFileMode:  "+configs.logsFileMode);
     }
     else globals["LogsToFile"] = false;
 
@@ -714,7 +792,7 @@ function setupLogs(){
 
 
 
-function checkBotAlreadyOnline(){ 
+function checkBotAlreadyOnline (){ 
     //doesn't seem like it can be done, at least not easily :<
     return false;
 }
@@ -724,7 +802,7 @@ function checkBotAlreadyOnline(){
 
 
 
-function acquireConfigs(){ 
+function acquireConfigs (){ 
     
     if (!fs.existsSync(configsPath)){
         console.log("invalid configs path");
@@ -768,14 +846,14 @@ function acquireConfigs(){
     if ( !configs.hasOwnProperty("timestamp") ){ missing.push("timestamp (default false)"); configs["timestamp"] = false; }
     else if ( typeof configs.timestamp !== "boolean" ){ incorrect.push("timestamp (default false)"); configs["timestamp"] = false; }
 
-    //default Eastern time
-    if ( !configs.hasOwnProperty("IANAZoneTime") ){ missing.push("IANAZoneTime (default America/Toronto)"); configs["IANAZoneTime"] = "America/Toronto"; }
-    else if ( typeof configs.IANAZoneTime !== "string" ){ incorrect.push("IANAZoneTime (default America/Toronto)"); configs["IANAZoneTime"] = "America/Toronto"; }
-    else if ( !DateTime.local().setZone(configs.IANAZoneTime).isValid ){ incorrect.push("IANAZoneTime (default America/Toronto)"); configs["IANAZoneTime"] = "America/Toronto"; }
+    //default UTC
+    if ( !configs.hasOwnProperty("IANAZoneTime") ){ missing.push("IANAZoneTime (default Etc/UTC)"); configs["IANAZoneTime"] = "Etc/UTC"; }
+    else if ( typeof configs.IANAZoneTime !== "string" ){ incorrect.push("IANAZoneTime (default Etc/UTC)"); configs["IANAZoneTime"] = "Etc/UTC"; }
+    else if ( !DateTime.local().setZone(configs.IANAZoneTime).isValid ){ incorrect.push("IANAZoneTime (default Etc/UTC)"); configs["IANAZoneTime"] = "Etc/UTC"; }
 
     //default newfile
     if ( !configs.hasOwnProperty("logsFileMode") ){ missing.push("logsFileMode (default newfile)"); configs["logsFileMode"] = "newfile"; }
-    else if ( configs.logsFileMode !== "append" && configs.logsFileMode !== "newfile" && configs.logsFileMode !== "overwrite" && configs.logsFileMode !== "none" ){ incorrect.push("logsFileMode (default newfile)"); configs["logsFileMode"] = "newfile"; }
+    else if ( configs.logsFileMode !== "append" && configs.logsFileMode !== "daily" && configs.logsFileMode !== "newfile" && configs.logsFileMode !== "overwrite" && configs.logsFileMode !== "none" ){ incorrect.push("logsFileMode (default newfile)"); configs["logsFileMode"] = "newfile"; }
 
     //default "[started]"
     if ( !configs.hasOwnProperty("startupStatusText") ){ missing.push("startupStatusText (default \"[started]\")"); configs["startupStatusText"] = "[started]"; }
@@ -808,7 +886,7 @@ function acquireConfigs(){
 }
 
 
-async function initializeClient(){
+async function initializeClient (){
     console.log("\nInitializing client");
     clientSetup();
 
@@ -836,7 +914,8 @@ async function init (press_enter_to_exit){
         globals["busy"] = false; 
         globals["logsPath"] = logsPath;
         globals["logsFileName"] = "LOGS.txt"; //default
-        globals["timers"] = {};
+        globals["intervals"] = {};
+        globals["timeouts"] = {}; //may contain arrays of timeouts
         globals["modularCommands"] = {};
         globals["modularReactables"] = {}; 
         globals["blocking_built_in_funcs"] = blocking_built_in_funcs;
@@ -861,12 +940,21 @@ async function init (press_enter_to_exit){
 
 
 
-async function shutdown(){
+async function shutdown (){
     if (!globals) process.exit();
 
-    utils.botLogs(globals, "Shutdown requested\n--destroying existing intervals");
-    for (var interval in globals["timers"]){
-        clearInterval(globals.timers[interval]);
+    utils.botLogs(globals, "Shutdown requested\n--destroying existing intervals and timeouts");
+    for (var _timeout in globals.timeouts){
+        let timeout = globals.timeouts[_timeout];
+        if (Array.isArray(timeout)){
+            for (var t of timeout){
+                clearTimeout(t);
+            }
+        }
+        else  clearTimeout(timeout);
+    }
+    for (var interval_name in globals.intervals){
+        clearInterval(globals.intervals[interval_name]);
     }
     utils.botLogs(globals, "--running _shutdown commands")
     if (globals._shutdown){
@@ -891,7 +979,7 @@ async function shutdown(){
 
 
 
-async function restart(){
+async function restart (){
     if (globals) {
         await shutdown();
         console.log("\n\n\nRestarting\n\n\n");
@@ -901,12 +989,21 @@ async function restart(){
 
 
 
-async function soft_restart(msg){
+async function soft_restart (msg){
     //dont destroy the client, but shutdown and init (if msg provided, return reply on failure)
     botEventEmitter.emit('botSoftRestart0');
-    utils.botLogs(globals, "Soft restart requested\n--destroying existing intervals");
-    for (var interval in globals["timers"]){
-        clearInterval(globals.timers[interval]);
+    utils.botLogs(globals, "Soft restart requested\n--destroying existing intervals and timeouts");
+    for (var _timeout in globals.timeouts){
+        let timeout = globals.timeouts[_timeout];
+        if (Array.isArray(timeout)){
+            for (var t of timeout){
+                clearTimeout(t);
+            }
+        }
+        else  clearTimeout(timeout);
+    }
+    for (var interval_name in globals.intervals){
+        clearInterval(globals.intervals[interval_name]);
     }
     utils.botLogs(globals, "--running _shutdown commands")
     if (globals._shutdown){
@@ -929,7 +1026,8 @@ async function soft_restart(msg){
         globals["busy"] = temp_globals.busy;
         globals["logsPath"] = logsPath;
         globals["logsFileName"] = temp_globals.logsFileName;
-        globals["timers"] = {};
+        globals["intervals"] = {};
+        globals["timeouts"] = {}; //may contain arrays of timeouts
         globals["modularCommands"] = {};
         globals["modularReactables"] = {}; 
         globals["blocking_built_in_funcs"] = blocking_built_in_funcs;
@@ -938,6 +1036,7 @@ async function soft_restart(msg){
         globals["botEventEmitter"] = botEventEmitter;
         globals["_shutdown"] = []; //add functions (params: (globals)) to run on shutdown
         acquireConfigs();
+        setupLogs();
         acquireCommands();
         acquireReactables();
         await runStartupFunctions();
@@ -957,7 +1056,7 @@ async function soft_restart(msg){
 
 
 
-function set_exit_handler(){
+function set_exit_handler (){
     if (process.platform === "win32") {
         var rl = require("readline").createInterface({
           input: process.stdin,
@@ -991,7 +1090,7 @@ function set_exit_handler(){
 }
 
 
-function enterToExit() {
+function enterToExit () {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -1006,10 +1105,13 @@ function enterToExit() {
 
 
 
-function clearGlobals(){ //to maintain reference to object
+function clearGlobals (){
     for (var key in globals) {
         delete globals[key];
     }
+}
+function getGlobals (){ //should get on botReady if needed
+    return globals;
 }
 
 
@@ -1024,7 +1126,7 @@ module.exports = {
     shutdown,
     set_exit_handler,
     commandHandler,
-    globals,
+    getGlobals,
     botEventEmitter
 }
 

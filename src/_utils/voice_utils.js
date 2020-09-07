@@ -14,17 +14,18 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); //base utils is located in the base dir, if needed
+const utils = require('../utils.js');
+const fs = require("fs");
 
 
-const { requiredRole, noRestrition } = require('../_configs/voice_configs.json');
+const configsPath = '../_configs/voice_configs.json'
 
-
+const { requiredRole, noRestrition } = require(configsPath);
 
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     hasRolePermission: async function(member){
         if (noRestrition) return true;
         for (var role_id of requiredRole){
@@ -53,8 +54,38 @@ module.exports = {
             }
         }
         return null;
+    },
+
+
+
+    removeReqRole: function(role){
+        if (!requiredRole.hasOwnProperty(role.id)) throw ("Role ["+role.name+":"+role.id+"] isn't a voice authorized role");
+        //var newReqRoles = JSON.parse(JSON.stringify(requiredRole));
+
+        while (requiredRole.indexOf(role.id) != -1){ //remove all instances of role in reqRoles
+            requiredRole.splice(requiredRole.indexOf(role.id), 1);
+        }
+        try{ setReqRoles(); }
+        catch (err){ throw (err); }
+    },
+
+    addReqRole: function(role){
+        if (requiredRole.hasOwnProperty(role.id)) throw ("Role ["+role.name+":"+role.id+"] is already a voice authorized role");
+
+        requiredRole.push(role.id);
+        try{ setReqRoles(); }
+        catch (err){ throw (err); }
     }
 }
+
+function setReqRoles(){
+    let obj = {};
+    obj["requiredRole"] = requiredRole; 
+    obj["noRestrition"] = noRestrition;
+    let json = JSON.stringify(obj);
+    fs.writeFileSync(configsPath, json);
+}
+
 
 
 

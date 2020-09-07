@@ -76,6 +76,11 @@ module.exports = {
         return this.getDateTime(globals).toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
     },
 
+    getDate: function (globals){
+        return this.getDateTime(globals).toFormat("y'-'MM'-'dd'_'ccc'_'ZZZZ");
+        //return this.getDateTime(globals).toLocaleString({ year: "numeric", month: 'short', day: '2-digit', weekday: 'short', timeZoneName: "short" });
+    },
+
     memberHasRole: async function(member, role_id){
         var member =  await member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
         return member.roles.cache.has(role_id);
@@ -173,6 +178,20 @@ module.exports = {
         return {'emote': emote, 'type': type};
     },
 
+
+    event_once: function (target, type, func) {
+        target.once(type, func);
+        return function() {
+            if (target.off)
+                target.off(type, func);
+        };
+    },
+    event_on: function (target, type, func) {
+        target.on(type, func);
+        return function() {
+            target.off(type, func);
+        };
+    },
 
 
     Queue
@@ -276,12 +295,12 @@ Queue.prototype.remove = function(element){
     return this._elements.splice(index, 1);
 }
 /**
- * remove the first element to satisfy the conditionFunction
+ * remove the first element to satisfy the conditionFunction and return it
  */
 Queue.prototype.removeOneConditioned = function(conditionFunction){
     var index = this._elements.findIndex(conditionFunction);
     if (index < 0 ) throw new Error("element not found in Queue");
-    return Array.from(this._elements).splice(index, 1);
+    return this._elements.splice(index, 1);
 }
 /**
  * remove element at index of queue
@@ -313,7 +332,7 @@ Queue.prototype.clear = function(){
 Queue.prototype.insert = function(element, index){ 
     if (this._capacity && this._elements.length == this._capacity)
         throw new Error("Queue is full ( "+this._elements.length+" / "+this._capacity+" )");
-    this._elements = this._elements.splice(index, 0, element);
+    this._elements.splice(index, 0, element);
 }
 /**
  * return whether queue contains element

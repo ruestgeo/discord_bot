@@ -21,7 +21,7 @@ const utils = require('../utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     auth_level: 4,
 
 
@@ -86,15 +86,19 @@ module.exports = {
         for (var _member of list){
             var member = await _member.fetch();
             if(args.hasOwnProperty("missing-role")){
+                var skip = false;
                 for (var rolegroup of args["missing-role"]){
-                    var noSkip = false;
+                    var missingOne = false;
                     for (var role of rolegroup){ //check if member is missing at least one of this role group
                         var has = member.roles.cache.has(server_roles.cache.find(_role => _role.name === role.trim()).id );
-                        noSkip = noSkip || (!has); //if any is true then noSkip is true, if all false then noSkip is false
+                        missingOne = missingOne || (!has); //if any is true then missingOne is true, if all false then missingOne is false
                     }
-                    if (!noSkip) break;
+                    if (!missingOne) { //has all, therefore cannot satisfy missing at least one role from each rolegroup
+                        skip = true;
+                        break;
+                    }
                 }
-                if (!noSkip) continue;
+                if (skip) continue;
             }
             //give role(s)
             for (var role of args["give-role"]){
@@ -112,7 +116,7 @@ module.exports = {
             }
         }
         utils.botLogs(globals,  "----request complete");
-        msg.reply("request complete");
+        return "request complete";
     }
 
     

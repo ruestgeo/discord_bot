@@ -9,3 +9,5 @@
 **/_private/**/*.json
 **/_private/**/*.txt
 **/_db
+**/_assets/*
+**/_assets/READEME.txt

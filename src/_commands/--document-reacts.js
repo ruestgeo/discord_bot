@@ -18,11 +18,12 @@ Made by JiJae (ruestgeo)
 
 const utils = require('../utils.js'); 
 const gs_utils = require('../_utils/googleSheets_utils'); 
+const { codePointAt } = require('ffmpeg-static');
 
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
@@ -33,7 +34,7 @@ module.exports = {
 
 
     func: async function (globals, msg, content){
-        // https://discordapp.com/channels/<server>/<channel>/<message>
+        // https://discordapp.com/channels/<server>/<channel>/<message>  or https://discord.com/channels/<server>/<channel>/<message>
         var client = globals.client;
 
         
@@ -43,11 +44,14 @@ module.exports = {
         
         content = content.trim();
         utils.botLogs(globals,  "--fetching message ["+content+"]");
-        if (! content.startsWith("https://discordapp.com/channels/")){
+        if ( !content.startsWith("https://discordapp.com/channels/") && !content.startsWith("https://discord.com/channels/")){
             utils.botLogs(globals,  "----invalid message link"+content);
-            throw ("Invalid message link: ["+content+"]");
+            if ( !content.startsWith("https://discordapp.com/") && !content.startsWith("https://discord.com/"))
+                throw ("Invalid message link (not discord link):  ["+content+"]");
+            else
+                throw ("Invalid message link (invalid discord link):  ["+content+"]");
         }
-        var ids = content.substring("https://discordapp.com/channels/".length).split("/");
+        var ids = content.startsWith("https://discordapp.com/channels/") ? content.substring("https://discordapp.com/channels/".length).split("/") : content.substring("https://discord.com/channels/".length).split("/");
         var server_id = ids[0];
         var channel_id = ids[1];
         var message_id = ids[2];
@@ -82,9 +86,11 @@ module.exports = {
             var longest_col = 0;
             for (var msg_react of msg_reacts){
                 var col = [];
+                var col2 = [];
                 try{
                     var emote = msg_react.emoji.name+":"+msg_react.emoji.id;
                     col.push(emote);
+                    col2.push("\\\\");
                     utils.botLogs(globals,  "  "+emote);
                     var _react_users = await msg_react.users.fetch();
                     var react_users = _react_users.values();
@@ -92,7 +98,9 @@ module.exports = {
                         var _member = message.guild.members.resolve(user.id);
                         var display_name = _member  ?  _member.displayName+"#"+user.discriminator  :  "[NOT_IN_SERVER]__"+user.username+"#"+user.discriminator;
                         col.push(display_name);
-                        utils.botLogs(globals,  "      "+display_name+":"+user.id);
+                        col2.push(user.username+"#"+user.discriminator);
+                        //utils.botLogs(globals,  "      "+display_name+":"+user.id);
+                        utils.botLogs(globals,  "      "+display_name+":"+user.id+"   ("+user.username+")");
                     }
                 } catch (err){
                     utils.botLogs(globals,  err.stack);
@@ -100,6 +108,7 @@ module.exports = {
                 }
                 longest_col = Math.max(longest_col, col.length);
                 list.push(col);
+                list.push(col2);
             }
 
             /**  create new sheet and dump info  **/

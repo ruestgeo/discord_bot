@@ -21,15 +21,15 @@ const utils = require('../utils.js');
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     auth_level: 2,
 
 
 
-    manual: "--auth-level  ->  \\*none\\* ~~  or  ~~ \\*commandName\\* ~~  or  ~~ \\*userID\\*"+
+    manual: "--auth-level  ->  \\*none\\* ~~  or  ~~ \\*commandName\\* ~~  or  ~~ \\*userID\\* ~~  or  ~~ @user"+
             ".     *if \\*none\\* is given then it reply with your highest authorization level*\n"+
             ".     *if \\*commandName\\* is given then reply with the authorization level required for that command*\n"+
-            ".     *if \\*userID\\* is given then it reply with that users highest authorization level*",
+            ".     *if \\*userID\\* or @user is given then it reply with that users highest authorization level*",
 
 
 
@@ -58,7 +58,8 @@ module.exports = {
             }
         }
 
-        var resolved = msg.guild.members.resolve(args);
+
+        var resolved = (args.startsWith("<@") && args.endsWith(">")) ? msg.guild.members.resolve(args.substring(2, args.length-1)) : msg.guild.members.resolve(args);
         if ( resolved ){
             var member = resolved;
             var memberAuthLevel = 0;

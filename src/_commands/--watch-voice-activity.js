@@ -29,7 +29,7 @@ var textChannels = {};
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     auth_level: 3,
 
 
@@ -45,7 +45,7 @@ module.exports = {
     voiceChannels,
     textChannels,
     listenToVoiceChannelActivity,
-    lvcattc_listener,
+    wva_listener,
     clear,
 
 
@@ -107,19 +107,21 @@ module.exports = {
             delete textChannels[msg.guild.id];
             if (listeningServers.size == 0){
                 client.off('voiceStateUpdate', listenToVoiceChannelActivity);
-                client.off('message', lvcattc_listener);
+                client.off('message', wva_listener);
                 isListening = false;
             }
         }
 
         //add new listener
+        utils.botLogs(globals,  "--finalizing listener setup");
         listeningServers.add(msg.guild.id);
         voiceChannels[msg.guild.id] = voiceChannel;
         textChannels[msg.guild.id] = textChannel;
 
         textChannel.send("**Logging voice activity from ["+voiceChannelName+"]**\n***"+utils.getDateTimeString(globals)+"***");
         if (!isListening){
-            client.on('message', lvcattc_listener);
+            utils.botLogs(globals,  "----starting client listener");
+            client.on('message', wva_listener);
             client.on('voiceStateUpdate', listenToVoiceChannelActivity);
             isListening = true;
         }
@@ -156,36 +158,36 @@ async function listenToVoiceChannelActivity(oldState, newState){
                 /* user joined specified voice channel */
                 //console.log("DEBUG    joined target channel");
                 oldChannel ?
-                textChannel.send(member.displayName+"#"+member.user.discriminator+" switched to ["+newChannelName+"] from ["+oldChannelName+"] at  *"+utils.getDateTimeString(globals)+"*") :
-                textChannel.send(member.displayName+"#"+member.user.discriminator+" joined ["+newChannelName+"] at  *"+utils.getDateTimeString(globals)+"*");
+                textChannel.send("[<] "+member.displayName+"#"+member.user.discriminator+" switched to ["+newChannelName+"] from ["+oldChannelName+"] at  *"+utils.getDateTimeString(globals)+"*") :
+                textChannel.send("[+] "+member.displayName+"#"+member.user.discriminator+" joined ["+newChannelName+"] at  *"+utils.getDateTimeString(globals)+"*");
             }
             else if ( (oldChannel ? (oldChannel.id === voiceChannel.id) : false ) 
             && (newChannel ? (newChannel.id !== voiceChannel.id) : (newChannel === undefined)) ){
                 /* user left specified voice channel */
                 //console.log("DEBUG    left target channel");
                 newChannel ? 
-                textChannel.send(member.displayName+"#"+member.user.discriminator+" left ["+voiceChannelName+"] and joined ["+newChannelName+"] at  *"+utils.getDateTimeString(globals)+"*") :
-                textChannel.send(member.displayName+"#"+member.user.discriminator+" left ["+voiceChannelName+"] at  *"+utils.getDateTimeString(globals)+"*");
+                textChannel.send("[>] "+member.displayName+"#"+member.user.discriminator+" swapped from ["+voiceChannelName+"] to ["+newChannelName+"] at  *"+utils.getDateTimeString(globals)+"*") :
+                textChannel.send("[-] "+member.displayName+"#"+member.user.discriminator+" left ["+voiceChannelName+"] at  *"+utils.getDateTimeString(globals)+"*");
             }
         }
     }
 }
 
-async function lvcattc_listener(msg){
+async function wva_listener(msg){
     if (!listeningServers.has(msg.guild.id)) return;
     var textChannel = textChannels[msg.guild.id];
     if (msg.channel.id !== textChannel.id) return;
     if ((msg.content === "***stop***")){
         if (!utils.checkMemberAuthorized(globals, msg.member, this.auth_level, false)) return;
-        console.log("    __[lvcattc] stop");
+        console.log("    __[wva] stop from ["+msg.guild.name+":"+msg.guild.id+"]");
         await textChannel.send("**Ending voice activity listener**");
         listeningServers.delete(textChannel.guild.id);
         delete voiceChannels[textChannel.guild.id];
         delete textChannels[textChannel.guild.id];
         if (listeningServers.size == 0){
-            console.log("    __[lvcattc] no listeners remaining (destroying event listeners)");
+            console.log("    __[wva] no listeners remaining (destroying event listeners)");
             client.off('voiceStateUpdate', listenToVoiceChannelActivity);
-            client.off('message', lvcattc_listener);
+            client.off('message', wva_listener);
             isListening = false;
         }
     }

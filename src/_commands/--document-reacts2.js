@@ -22,7 +22,7 @@ const gs_utils = require('../_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
@@ -33,7 +33,7 @@ module.exports = {
 
 
     func: async function (globals, msg, content){
-        // https://discordapp.com/channels/<server>/<channel>/<message>
+        // https://discordapp.com/channels/<server>/<channel>/<message>  or  https://discord.com/channels/<server>/<channel>/<message>
         var client = globals.client;
 
         if ( !globals.googleSheets )
@@ -61,25 +61,32 @@ module.exports = {
         
         var list = [];
         var col = [];
+        var col2 = [];
         var members = [];
         var noReaction = {}; 
         utils.botLogs(globals,  "--fetching users with role ["+role.name+":"+role.id+"]");
-        col.push("Users");
+        col.push("displayname");
+        col2.push("username");
         for (var member of role.members.values()){
             var member = await server.members.fetch(member);
             col.push(member.displayName+"#"+member.user.discriminator);
+            col2.push(member.user.username+"#"+member.user.discriminator);
             members.push(member.id);
             noReaction[member.id] = true; //later updated to false if member has reacted
         }
         list.push(col);
+        list.push(col2);
         utils.botLogs(globals,  "----complete");
 
         utils.botLogs(globals,  "--fetching message ["+target+"]");
-        if (! target.startsWith("https://discordapp.com/channels/")){
+        if ( !target.startsWith("https://discordapp.com/channels/") && !target.startsWith("https://discord.com/channels/")){
             utils.botLogs(globals,  "----invalid message link"+target);
-            throw ("Invalid message link: ["+target+"]");
+            if ( !target.startsWith("https://discordapp.com/") && !target.startsWith("https://discord.com/"))
+                throw ("Invalid message link (not discord link):  ["+target+"]");
+            else
+                throw ("Invalid message link (invalid discord link):  ["+target+"]");
         }
-        var ids = target.substring("https://discordapp.com/channels/".length).split("/");
+        var ids = target.startsWith("https://discordapp.com/channels/") ? target.substring("https://discordapp.com/channels/".length).split("/") : target.substring("https://discord.com/channels/".length).split("/");
         var server_id = ids[0];
         var channel_id = ids[1];
         var message_id = ids[2];
@@ -124,7 +131,8 @@ module.exports = {
                         col.push(hasReacted);
                         if(hasReacted){
                             var member = message.guild.members.resolve(memberID);
-                            utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                            //utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                            utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id+"   ("+member.user.username+")");
                         }
                         noReaction[memberID] = ((!hasReacted) && noReaction[memberID]); //only true if NOT hasReacted for all reactions
                     }
@@ -145,7 +153,8 @@ module.exports = {
                 var member = await server.members.fetch(memberID); 
                 var hasNotReacted = noReaction[memberID];
                 col.push(hasNotReacted);
-                utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                //utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+                utils.botLogs(globals,  "      "+member.displayName+"#"+member.user.discriminator+":"+member.id+"   ("+member.user.username+")");
             }
             list.push(col);
             

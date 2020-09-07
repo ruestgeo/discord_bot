@@ -32,11 +32,11 @@ module.exports = {
 
         if (globals._shutdown) {
             globals._shutdown.push( async (globals) => {
-                const { listeningServers,textChannels,isListening,lvcattc_listener,listenToVoiceChannelActivity,clear } = require('../_commands/--watch-voice-activity.js');
+                const { listeningServers,textChannels,isListening,wva_listener,listenToVoiceChannelActivity,clear } = require('../_commands/--watch-voice-activity.js');
                 if (listeningServers.size > 0){
-                    console.log("    __[lvcattc] shutdown");
+                    console.log("    __[wva] shutdown");
                     globals.client.off('voiceStateUpdate', listenToVoiceChannelActivity);
-                    globals.client.off('message', lvcattc_listener);
+                    globals.client.off('message', wva_listener);
                     for (_textChan in textChannels){
                         var textChan = textChannels[_textChan];
                         await textChan.send("**Bot Shutting down, ending voice activity listener**");

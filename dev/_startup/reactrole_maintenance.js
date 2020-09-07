@@ -32,7 +32,7 @@ module.exports = {
         var rr_interval = setInterval(function(){
             garbage_collection(globals);
         }, maintenance_interval); 
-        globals.timers["reactroles"] = rr_interval;
+        globals.intervals["reactroles"] = rr_interval;
 
         //TODO-later check if existing reactroles are all valid and complete (no missing roles from reactions)
     }

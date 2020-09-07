@@ -21,7 +21,7 @@ const utils = require('../utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     auth_level: 4,
 
 
@@ -117,7 +117,7 @@ module.exports = {
             }
         }
         utils.botLogs(globals,  "----request complete");
-        msg.reply("request complete");
+        return "request complete";
     }
 
     
