@@ -16,29 +16,31 @@ Made by JiJae (ruestgeo)
 const fs = require('fs'); 
 
 
-const utils = require('../utils.js');
+const utils = require(process.cwd()+'/utils.js');
 
 
 
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     func: async function (globals){
         var leading_space = "        ";
         console.log(leading_space + "Setting up voice cleanup");
         
         //disconnect from all voice
-        globals._shutdown.push( async (globals) => {
-            console.log("    [voice] shutdown");
-            var connections = Array.from(globals.client.voice.connections.values());
-            for (var connection of connections){
-                var channel = connection.channel;
-                console.log(`    --disconnected from [${channel.name}:${channel.id}] of [${channel.guild.name}:${channel.guild.id}]`);
-                connection.disconnect();
-            }         
-        });
-        
+        if (globals._shutdown){
+            if ( !globals._shutdown.hasOwnProperty("--voice") )   globals._shutdown["--voice"] = [];
+            globals._shutdown["--voice"].push( async (globals) => {
+                console.log("    [voice] shutdown");
+                var connections = Array.from(globals.client.voice.connections.values());
+                for (var connection of connections){
+                    var channel = connection.channel;
+                    console.log(`    --disconnected from [${channel.name}:${channel.id}] of [${channel.guild.name}:${channel.guild.id}]`);
+                    connection.disconnect();
+                }         
+            });
+        }
     }        
 }
 

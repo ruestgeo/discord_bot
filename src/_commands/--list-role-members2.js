@@ -21,13 +21,13 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.0,
     auth_level: 3,
 
 
 
-    manual: "--list-role-members  ->  \\*roleName\\* ~~  or  ~~ \\*roleID\\*  < ,  ... additional_roles_for_filtering>"+
-            ".     *reply with an ordered list of members that have the specified role*\n"+
+    manual: "--list-role-members2  ->  \\*roleName\\* ~~  or  ~~ \\*roleID\\*  < ,  ... additional_roles_for_filtering>"+
+            ".     *reply with an ordered list of members (with mentions) that have the specified role*\n"+
             ".     *if additional roles are given (delimited by comma) then it will filter the list such that anyone who does not have those roles is excluded*\n"+
             ".     *NOTE: roles cannot contain commas, otherwise this command will not function properly*",
 
@@ -80,7 +80,7 @@ module.exports = {
         
         var all = "";
         list.forEach(member => {
-            all += member.displayName+"#"+member.user.discriminator+"\n";
+            all += "<@"+member.id+">  "+member.displayName+"#"+member.user.discriminator+"\n";
         });
 
         if (all.length > 2000){
@@ -96,6 +96,7 @@ module.exports = {
         else if (all.trim() != "")  msg.channel.send(all);
         return "found "+members_count+" members with the role(s) ["+criteriaName+"]";
     }   
+
 }
 
 

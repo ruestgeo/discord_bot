@@ -11,3 +11,13 @@
 **/_db
 **/_assets/*
 **/_assets/READEME.txt
+
+**/_commands/*
+!**/_commands/*.js
+!**/_commands/*.txt
+!**/_commands/disabled
+
+**/_startup/*
+!**/_startup/*.js
+!**/_startup/*.txt
+!**/_startup/disabled

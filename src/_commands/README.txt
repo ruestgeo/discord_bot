@@ -16,6 +16,7 @@ By convention, prefix the command name with "--" for disambiguation, however thi
 Similarly lowercase is used by convention, however not required.
 
 The following file names cannot be used:
+    ".js"
     "all.js"
     "-all.js"
     "--all.js"
@@ -24,6 +25,8 @@ The following file names cannot be used:
     "--help.js"
     "--commands.js"
     "--shutdown.js"
+    "--import.js"
+    "--reimport.js"
 
 
 ================================================================================
@@ -47,14 +50,15 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); //base utils is located in the base dir, if needed
-//const custom_utils = require('../_utils/custom_utils'); //custom utils located in the _utils directory
+const utils = require(process.cwd()+'/utils.js'); //base utils is located in the base dir, if needed
+//const custom_utils = require(process.cwd()+'/_utils/custom_utils'); //custom utils located in the _utils directory
 
 
 
 /* Must include all of "version", "manual", "func", and "auth_level".
+    The "requisites" property may be optionally included for further validation.
 
-   The main function to call from bot.js should be named "func"
+   The main function to call from bot.js should be named "func".
 
    "manual" should include usage of this function. 
    Limit this to 2000 chars as per Discord post restrictions; preferably keep it
@@ -70,15 +74,24 @@ const utils = require('../utils.js'); //base utils is located in the base dir, i
    (or lower) and means any user can use the command.
 
     "version" is used to help identify changes/updates to the command.
+
+    "requisites" defines the requisite files for the command.
+    Each object should contain the requisite file name as well as the path to 
+    that file from the main directory (not including the file name).
 */
 
 module.exports = {
     version: 1.0,
 
-
     
     auth_level: 0,
 
+
+
+    requisites: {
+        "commands" : ["path/to/file/from/_commands/fileName.js", ...],
+        "startups" : ["path/to/file/from/_startups/fileName.js", ...]
+    },
 
 
     manual: "Example modular function manual.", 

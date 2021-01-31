@@ -19,7 +19,7 @@ Made by JiJae (ruestgeo)
 */
 
 console.log("[dev.js]\n--importing bot.js");
-const bot = require("./dev_bot.js");
+const bot = require("./bot.js");
 console.log("--starting bot \n");
 
 bot.set_exit_handler();

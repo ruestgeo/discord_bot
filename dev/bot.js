@@ -21,9 +21,10 @@ const reactablesPath = "./_reactables/";
 //const customConfigsPath = "./_configs/";
 //const privatePath = "./_private/";
 const startupPath = "./_startup/";
-const configsPath = './configs.json'
+const configsPath = './configs.json';
 
 const fs = require('fs'); 
+const path = require('path');
 const EventEmitter = require('events');
 const readline = require('readline'); //for enterToExit()
 
@@ -34,15 +35,15 @@ const { DateTime } = require('luxon');
 const package = require('./package.json');
 const utils = require('./utils.js');
 //const _configs = require(configsPath); //original configs
-var configs = undefined; //configs might be added (default) during acquireConfigs if missing
+let configs = undefined; //configs might be added (default) during acquireConfigs if missing
 
 
 //const client = new Discord.Client();
-var client = undefined;
+let client = undefined;
 const botEventEmitter = new EventEmitter();
 
-var globals = {};
-var initArg = undefined;
+let globals = {};
+let initArg = undefined;
 
 
 const nonblocking_built_in_funcs = ["--version"];
@@ -69,11 +70,19 @@ const built_in_manuals = {
                     ".     *if \\**keywords*\\* (split by a single empty space) are given then it will try to send a list of all commands that contain all of those keywords*\n",
     "--commands":   "**--commands** ->  \\*none\\*   *or*   all   *or*   \\*commandName\\*   *or*   \\**keywords*\\*\n" +
                     ".     *an alias for the \"--help\" command*",
-    "--reimport":   "**--reimport** ->  all   *or*   configs   *and/or*   reactables   *and/or*   commands\n"+
-                    ".     *will reimport all of or some of configs, reactables, and/or commands depending on given arguments (separated by empty space)*"+
-                    ".     *for example `--reimport reactables commands`*"
+    "--detach":   "**--detach** ->  command/reactable *fileName.js* \n"+
+                    ".     *unlink or remove a command or reactable module from the bot, making it unaccessible*\n"+
+                    ".     *only the file name should be provided, not the relative path of the file*",
+    "--import":   "**--import** ->  command/reactable *path/to/file/from/cwd/fileName.js* \n"+
+                    ".     *import a command or reactable (or reimport if command already imported)*\n"+
+                    ".     *if a command is imported then it will (re)import any requisite utils or commands and run any startup*\n"+
+                    ".     *the path given should be relative to the respective directory; \"_commands\" for command files, and \"_reactables\" for emoji reaction files*",
+    "--reimport":   "**--reimport** ->  configs   *and/or*   reactables\n"+
+                    ".     *will reimport all of or some of configs and/or reactables  depending on given arguments (separated by empty space)*\n"+
+                    ".     *for example `--reimport reactables configs`*",
+
 }
-var command_description = "The command manual *should* follow the following conventions: \n"+
+let command_description = "The command manual *should* follow the following conventions: \n"+
         ".    **commandName**  ->  ***`arguments`*** \n"+
         ".    any quotation marks, curly brackets, or square brackets are necessary\n"+
         ".    `...` (ellipsis) implies that you can input more than one, usually using a comma\n"+
@@ -85,9 +94,9 @@ var command_description = "The command manual *should* follow the following conv
 
 function handleRequest(msg){
     if (!globals) return;
-    var requestBody = msg.content.substring(configs["prefix"].length);
-    var command;
-    var content;
+    let requestBody = msg.content.substring(configs["prefix"].length);
+    let command;
+    let content;
     if (requestBody.includes(' ')){
         command = requestBody.substr(0,requestBody.indexOf(' ')).trim();
         content = requestBody.substr(requestBody.indexOf(' ')+1).trim();
@@ -113,11 +122,11 @@ async function commandHandler(msg, command, content, ignoreQueue){
     if (!globals) return;
     if (!ignoreQueue) ignoreQueue = false;
 
-    var member = msg.member;
+    let member = msg.member;
 
     /* modular  and  blocking built-in  commands */
     if ( globals.modularCommands.hasOwnProperty(command) || blocking_built_in_funcs.includes(command) ){
-        var requiredAuthLevel;
+        let requiredAuthLevel;
         if ( blocking_built_in_funcs.includes(command) ){
             requiredAuthLevel = globals.configs.built_in_AuthLevels[command];
         }
@@ -140,10 +149,10 @@ async function commandHandler(msg, command, content, ignoreQueue){
             msg.reply("I'm busy with something at the moment\n Please wait and I'll get back to your request in a moment");
         } // else not busy
         
-        var content_line = content.replace(/\n/g, ' `\\n` ');
+        let content_line = content.replace(/\n/g, ' `\\n` ');
         await utils.acquire_work_lock(globals, "["+command/*+"  "+content_line*/+"] req from "+member.displayName+"#"+member.user.discriminator);
         if (globals.configs.timestamp)
-            utils.botLogs(globals,"\n\n("+utils.getTime(globals)+")\nProcessing command ["+command+"]\n  from "+member.displayName+"#"+member.user.discriminator+"\n    in channel #"+msg.channel.name+":"+msg.channel.id+" of server ["+msg.guild.name+":"+msg.guild.id+"]\n  with args ::   "+content_line);
+            utils.botLogs(globals,"\n\n("+utils.getTimeString(globals)+")\nProcessing command ["+command+"]\n  from "+member.displayName+"#"+member.user.discriminator+"\n    in channel #"+msg.channel.name+":"+msg.channel.id+" of server ["+msg.guild.name+":"+msg.guild.id+"]\n  with args ::   "+content_line);
         else 
             utils.botLogs(globals,"\n\nProcessing command ["+command+"]\n  from "+member.displayName+"#"+member.user.discriminator+"\n    in channel #"+msg.channel.name+":"+msg.channel.id+" of server ["+msg.guild.name+":"+msg.guild.id+"]\n  with args ::   "+content_line);
         
@@ -159,7 +168,7 @@ async function commandHandler(msg, command, content, ignoreQueue){
                 builtInHandler(msg, member, command, content)
                 .then(completionMessage => {
                     if (globals.configs.timestamp)
-                        utils.botLogs(globals,"\n("+utils.getTime(globals)+")\nCompleted request\n");
+                        utils.botLogs(globals,"\n("+utils.getTimeString(globals)+")\nCompleted request\n");
                     else
                         utils.botLogs(globals,"\nCompleted request\n");
                     if (completionMessage) msg.reply(completionMessage); //send if one is given
@@ -191,7 +200,7 @@ async function commandHandler(msg, command, content, ignoreQueue){
                 globals.modularCommands[command].func(globals, msg, content)
                 .then(completionMessage => {
                     if (globals.configs.timestamp)
-                        utils.botLogs(globals,"\n("+utils.getTime(globals)+")\nCompleted request\n");
+                        utils.botLogs(globals,"\n("+utils.getTimeString(globals)+")\nCompleted request\n");
                     else
                         utils.botLogs(globals,"\nCompleted request\n");
                     if (completionMessage) msg.reply(completionMessage); //send only if given
@@ -233,6 +242,14 @@ async function commandHandler(msg, command, content, ignoreQueue){
         }
     }
 
+
+    /* only prefix given */
+    else if ( command === "" ){
+        msg.react('🤔');
+        msg.reply("Try --help or --commands for a list of commands and short documentation");
+    }
+
+
     /* unknown command */
     else {
         msg.react('🤔');
@@ -256,18 +273,18 @@ async function builtInHandler (msg, member, command, content){
         }
 
         if ( content === "all" || content === "-all" || content === "--all" ){
-            var all = ""
-            for (var builtin of nonblocking_built_in_funcs){ all += builtin +"\n"; }
-            for (var builtin of blocking_built_in_funcs){ all += builtin +"\n"; }
-            for (var modularCommand in globals.modularCommands){ all += modularCommand +"\n"; }
+            let all = ""
+            for (let builtin of nonblocking_built_in_funcs){ all += builtin +"\n"; }
+            for (let builtin of blocking_built_in_funcs){ all += builtin +"\n"; }
+            for (let modularCommand in globals.modularCommands){ all += modularCommand +"\n"; }
             if (all.length > 2000){
-                var parts = [];
+                let parts = [];
                 while (all.length > 2000){
-                    var split_index = all.substr(1800, all.length).indexOf("\n")+1800;
+                    let split_index = all.substr(1800, all.length).indexOf("\n")+1800;
                     parts.push(all.substr(0,split_index));
                     all = all.substr(split_index, all.length);
                 }
-                for (var part of parts){ msg.channel.send(part); }
+                for (let part of parts){ msg.channel.send(part); }
                 if (all.trim() !== "") msg.channel.send(all); //last part
             }
             else  msg.channel.send(all);
@@ -275,7 +292,7 @@ async function builtInHandler (msg, member, command, content){
         }
         
         if ( nonblocking_built_in_funcs.includes(content) || blocking_built_in_funcs.includes(content)) {
-            var manual = built_in_manuals[content];
+            let manual = built_in_manuals[content];
             if ( (command_description + manual).length > 1999 ){
                 msg.reply(command_description);
                 msg.channel.send(manual);
@@ -286,7 +303,8 @@ async function builtInHandler (msg, member, command, content){
         }
 
         if ( globals.modularCommands.hasOwnProperty(content) ){
-            var manual = globals.modularCommands[content].manual;
+            let jsFile = globals.modularCommands[content];
+            let manual = jsFile.manual+"\nversion:  "+jsFile.version+"\nauthorization Lv."+jsFile.auth_level;
             if ( (command_description + manual).length > 1999 ){
                 msg.reply(command_description);
                 msg.channel.send(manual);
@@ -296,15 +314,15 @@ async function builtInHandler (msg, member, command, content){
             return;
         }
 
-        var keywords = content.split(" "); //split by spaces
-        var remaining_keywords = Array.from(keywords);
+        let keywords = content.split(" "); //split by spaces
+        let remaining_keywords = Array.from(keywords);
         msg.reply("The following keywords are being used list matching command names\n["+keywords.toString().replace(/,/g, ", ")+"]");
-        var matches = {};
-        var allList = [];
+        let matches = {};
+        let allList = [];
         allList = allList.concat(Object.keys(built_in_manuals), Object.keys(globals.modularCommands));
 
-        var keyword = remaining_keywords.shift();
-        for (var cmd of allList){
+        let keyword = remaining_keywords.shift();
+        for (let cmd of allList){
             if ( cmd.includes(keyword) ) matches[cmd] = null; //globals.modularCommands[cmd].manual;
         }
         if (Object.keys(matches).length == 0){
@@ -312,20 +330,20 @@ async function builtInHandler (msg, member, command, content){
         }
         
         while (remaining_keywords.length > 0){ 
-            var keyword = remaining_keywords.shift();
-            for ( var command_match in matches ){
+            let keyword = remaining_keywords.shift();
+            for ( let command_match in matches ){
                 if ( !command_match.includes(keyword) ) { delete matches[command_match]; }
             }
         }
-        var command_matches = Object.keys(matches).toString().replace(/,/g, "\n");
+        let command_matches = Object.keys(matches).toString().replace(/,/g, "\n");
         if (command_matches.length > 2000){
-            var parts = [];
+            let parts = [];
             while (command_matches.length > 2000){
-                var split_index = command_matches.substr(1800, command_matches.length).indexOf("\n")+1800;
+                let split_index = command_matches.substr(1800, command_matches.length).indexOf("\n")+1800;
                 parts.push(command_matches.substr(0,split_index));
                 command_matches = command_matches.substr(split_index, command_matches.length);
             }
-            for ( var part of parts ){ msg.channel.send(part); }
+            for ( let part of parts ){ msg.channel.send(part); }
             if (command_matches.trim() !== "")  msg.channel.send(command_matches); //last part
         }
         else  msg.channel.send(command_matches);
@@ -334,7 +352,7 @@ async function builtInHandler (msg, member, command, content){
     /* fancy ping */
     else if (command === '--ping'){
         msg.reply("pong");
-        var blink_time = 1000;
+        let blink_time = 1000;
         await client.user.setStatus('online').catch(err => { console.log("## err in status_blink ::  "+err); });
         await utils.sleep(blink_time);        
         await client.user.setStatus('dnd').catch(err => { console.log("## err in status_blink ::  "+err); });
@@ -350,29 +368,144 @@ async function builtInHandler (msg, member, command, content){
     }
 
 
+    else if (command === "detach"){
+        let import_type;
+        let filePath;
+        if (content.includes(' ')){
+            import_type = content.substr(0,content.indexOf(' ')).trim();
+            filePath = content.substr(content.indexOf(' ')+1).trim();
+        }
+        filePath = path.normalize( filePath );
+        let targetName = path.basename(filePath, ".js");
+        switch (import_type) {
+            case "command":
+                if ( globals.modularCommands.hasOwnProperty(targetName) ){ 
+                    utils.botLogs(globals,"--detaching command ["+targetName+"]");
+                    if ( globals._shutdown.hasOwnProperty(targetName) ){
+                        utils.botLogs(globals,"--running linked shutdown functions");
+                        let shutdown_funcs = globals._shutdown[targetName];
+                        for ( let shutdown_func of shutdown_funcs ){
+                            try{ await shutdown_func(globals); }
+                            catch(err){ 
+                                utils.botLogs(globals, "----error ::   "+err.stack); 
+                                console.error(err); 
+                                await msg.channel.send("an error occured when trying to run shutdown functions to properly detach the command:\n"+err);
+                            }
+                        }
+                    }
+                    delete require.cache[require.resolve(commandsPath+targetName+'.js')];
+                    delete globals.modularCommands[targetName];
+                }
+                break;
+            case "reactable":
+                if ( globals.modularReactables.hasOwnProperty(targetName) ){
+                    utils.botLogs(globals,"--detaching reactable ["+targetName+"]");
+                    delete require.cache[require.resolve(reactablesPath+targetName+'.js')];
+                    delete globals.modularReactables[targetName];
+                }
+                break;
+            default:
+                throw ("Invalid import type  ["+import_type+"]\nOnly \"command\" and \"reactable\"");
+        }
+        return "request complete;  ["+targetName+"] detached";
+        
+    }
+
+    else if (command === "import"){
+        //TODO cases command and reactables
+        //"**--import command/reactable *path/to/file/from/cwd/fileName.js*"
+        let import_type;
+        let filePath;
+        let jsFile;
+        if (content.includes(' ')){
+            import_type = content.substr(0,content.indexOf(' ')).trim();
+            filePath = content.substr(content.indexOf(' ')+1).trim();
+        }
+        filePath = path.normalize( filePath );
+        let targetName = path.basename(filePath, ".js");
+        if ( !fs.existsSync(filePath) ){
+            throw ("Invalid path:  "+filePath);
+        }
+        switch (import_type) {
+            case "command":
+                //trigger any linked shutdowns
+                if ( globals._shutdown.hasOwnProperty(targetName) ){
+                    utils.botLogs(globals,"--running linked shutdown functions");
+                    let shutdown_funcs = globals._shutdown[targetName];
+                    for ( let shutdown_func of shutdown_funcs ){
+                        try{ await shutdown_func(globals); }
+                        catch(err){ 
+                            utils.botLogs(globals, "----error ::   "+err.stack); 
+                            console.error(err); 
+                            await msg.channel.send("an error occured when trying to run shutdown functions to properly detach the command:\n"+err);
+                        }
+                    }
+                }
+                //deletw old caches and entries
+                if ( globals.modularCommands.hasOwnProperty(targetName) ){ 
+                    utils.botLogs(globals,"--detaching command ["+targetName+"]");
+                    delete require.cache[require.resolve(commandsPath+targetName+'.js')];
+                    delete globals.modularCommands[targetName];
+                }
+                utils.botLogs(globals, "--importing command ["+commandsPath+filePath+"]");
+                jsFile = require(commandsPath+filePath);
+                if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
+                    globals.modularCommands[targetName] = jsFile;
+                    utils.botLogs(globals, "----\""+file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
+                }
+                else
+                    throw ("Invalid modular command file ["+reactablesPath+filePath+"]");
+                //import and run any additional requisites
+                acquireRequisites( targetName, jsFile );  
+                importCommandRequisite();
+                await runRequisiteStartupFunctions().catch(err => { throw (err) });
+                break;
+            case "reactable":
+               //delete old caches and entries 
+               if ( globals.modularReactables.hasOwnProperty(targetName) ){
+                    utils.botLogs(globals,"--detaching reactable ["+targetName+"]");
+                    delete require.cache[require.resolve(reactablesPath+targetName+'.js')];
+                    delete globals.modularReactables[targetName];
+                }
+                //import reactable
+                jsFile = require(reactablesPath+filePath);
+                if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
+                    globals.modularReactables[targetName] = jsFile; 
+                    utils.botLogs(globals, "--importing reactable ["+reactablesPath+filePath+"]");
+                }
+                else 
+                    throw ("Invalid modular reactable file ["+reactablesPath+filePath+"]");
+                break;
+            default:
+                throw ("Invalid import type  ["+import_type+"]\nOnly \"command\" and \"reactable\"")
+        }
+    }
+
+
     /* reimport assets */
-    // WARNING using this command may have unforseen consequences
+    // WARNING using this command may have unforseen consequences depending on function design
     else if (command === '--reimport'){
-        var args = content.split(" ");
+        let args = content.split(" ");
         args = [...new Set(args)]; //remove duplicates
         utils.botLogs(globals, "--reimporting:  "+args);
-        for (var arg of args){
+        for (let arg of args){
             if (arg !== "all" && arg !== "reactables" && arg !== "commands" && arg !== "configs")
                 throw new Error(`invalid arg: [${arg}]`);
         }
 
+        /* //DEPREC, use restart to reimport all, use import to include new commands or reactables
         //leave all voice connections
         if ( args.includes("all") || args.includes("commands") )
         utils.botLogs(globals, "-- disconnecting from voice channels for reimport");
-        var connections = Array.from(globals.client.voice.connections.values());
-        for (var connection of connections){
-            var channel = connection.channel;
+        let connections = Array.from(globals.client.voice.connections.values());
+        for (let connection of connections){
+            let channel = connection.channel;
             utils.botLogs(globals, `---- disconnected from [${channel.name}:${channel.id}] of [${channel.guild.name}:${channel.guild.id}]`);
             connection.disconnect();
         }
 
         if (args.includes("all")){
-            var old_configs = globals.configs;
+            let old_configs = globals.configs;
             configs = {};
             globals.configs = {};
             try { 
@@ -391,29 +524,30 @@ async function builtInHandler (msg, member, command, content){
                 msg.reply("An error occured when reimporting configs.  Previous configs will be retained.\n"+err); 
             }
 
-            for (var modCmd in globals.modularCommands){ delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
+            for (let modCmd in globals.modularCommands){ delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
             globals["modularCommands"] = {};
             acquireCommands();
 
-            for (var modReact in globals.modularReactables){ delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
+            for (let modReact in globals.modularReactables){ delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
             globals["modularReactables"] = {}; 
             acquireReactables();
             return "Request complete.  Reimported all (commands, reactables, configs)";
         }
 
         if (args.includes("commands")) {
-            for (var modCmd in globals.modularCommands) { delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
+            for (let modCmd in globals.modularCommands) { delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
             globals["modularCommands"] = {};
             acquireCommands();
-        }
+        } 
+        */
 
         if (args.includes("reactables")) {
-            for (var modReact in globals.modularReactables) { delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
+            for (let modReact in globals.modularReactables) { delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
             globals["modularReactables"] = {}; 
             acquireReactables();
         }
         if (args.includes("configs")) {
-            var old_configs = globals.configs;
+            let old_configs = globals.configs;
             //console.log("DEBUG_old "+JSON.stringify(configs,null,'  '));
             configs = {};
             globals.configs = {};
@@ -482,7 +616,7 @@ async function builtInHandler (msg, member, command, content){
 
 async function handleReactables(msg){
     if (!globals) return;
-    for ( var _replyFile in globals.modularReactables ){
+    for ( let _replyFile in globals.modularReactables ){
         const replyFile = globals.modularReactables[_replyFile];
 
         if ( replyFile.hasOwnProperty("targetServers") ){
@@ -491,7 +625,7 @@ async function handleReactables(msg){
         
         if ( replyFile.hasOwnProperty("exact") ){
             if ( replyFile.exact.hasOwnProperty(msg.content) || replyFile.exact.hasOwnProperty(msg.content.toLowerCase()) ){
-                var msg_content = msg.content;
+                let msg_content = msg.content;
                 if ( (msg.content !== msg.content.toLowerCase())
                 && replyFile.exact.hasOwnProperty(msg.content.toLowerCase())
                 && !replyFile.exact.hasOwnProperty(msg.content) ){ //if all lowercase matches and there isn't an exact match
@@ -501,7 +635,7 @@ async function handleReactables(msg){
                 } 
 
                 if ( replyFile.exact[msg_content].hasOwnProperty("reply") ){
-                    var directed = true;
+                    let directed = true;
                     if ( replyFile.exact[msg_content].hasOwnProperty("directed") )
                         directed = replyFile.exact[msg_content].directed;
                     if ( directed )
@@ -510,7 +644,7 @@ async function handleReactables(msg){
                         await msg.channel.send(replyFile.exact[msg_content].reply);
                 }
                 if ( replyFile.exact[msg_content].hasOwnProperty('reactions') ){
-                    for ( var reaction of replyFile.exact[msg_content].reactions ){
+                    for ( let reaction of replyFile.exact[msg_content].reactions ){
                         await msg.react(reaction);
                     }
                 }
@@ -519,11 +653,11 @@ async function handleReactables(msg){
         }
 
         if ( replyFile.hasOwnProperty("contains") ){
-            for ( var subphrase in replyFile.contains ){
-                var case_insensitive = replyFile.contains[subphrase].hasOwnProperty("case_insensitive") ? replyFile.contains[subphrase].case_insensitive : false;
+            for ( let subphrase in replyFile.contains ){
+                let case_insensitive = replyFile.contains[subphrase].hasOwnProperty("case_insensitive") ? replyFile.contains[subphrase].case_insensitive : false;
                 if ( case_insensitive ? msg.content.toLowerCase().includes(subphrase) : msg.content.includes(subphrase) ){
                     if ( replyFile.contains[subphrase].hasOwnProperty("reply") ){
-                        var directed = true;
+                        let directed = true;
                         if ( replyFile.contains[subphrase].hasOwnProperty("directed") )
                             { directed = replyFile.contains[subphrase].directed; }
                         if ( directed )
@@ -532,7 +666,7 @@ async function handleReactables(msg){
                             { await msg.channel.send(replyFile.contains[subphrase].reply); }
                     }
                     if ( replyFile.contains[subphrase].hasOwnProperty("reactions") ){
-                        for ( var reaction of replyFile.contains[subphrase].reactions ){
+                        for ( let reaction of replyFile.contains[subphrase].reactions ){
                             await msg.react(reaction);
                         }
                     }
@@ -575,6 +709,8 @@ async function onMessage (msg) {
     if (msg.content === 'ping')
         msg.reply('pong\ni see ping, i send pong!');
 
+    else if ( !msg.guild || !(msg.channel instanceof Discord.TextChannel) ) return; //ignore DMs unless basic 'ping'
+
     /*** bot commands ***/
     else if (msg.content.startsWith(configs.prefix)) {
         handleRequest(msg);
@@ -605,72 +741,176 @@ function clientSetup (){
 
 
 async function runStartupFunctions (){
-    console.log("\nRunning _startup functions");
+    utils.botLogs(globals, "\nRunning _startup functions");
     if (fs.existsSync(startupPath)) {
-        console.log("--scanning directory: ");
-        var startup_Dir = fs.readdirSync(startupPath);
+        utils.botLogs(globals, "--scanning _startup directory (one layer): ");
+        let startup_Dir = fs.readdirSync(startupPath);
         botEventEmitter.emit('botRunningStartup', startup_Dir.length);
-        for ( var file of startup_Dir ){
+        for ( let file of startup_Dir ){
             if ((file === "disabled") ||  (file === "README.txt"))  continue;
             if (file.endsWith('.js')){
-                var jsFile = require(startupPath+file);
+                let jsFile = require(startupPath+file);
+                let filePath = path.normalize(startupPath+file);
+                let requesters = null;
+                if ( globals._requisites.startups.hasOwnProperty(filePath) ){
+                    requesters = globals._requisites.startups[filePath];
+                    delete globals._requisites.startups[filePath];
+                }
                 if ( jsFile.hasOwnProperty("func")){
-                    console.log("    running  \""+file+"\"");
+                    utils.botLogs(globals, "    running  \""+file+"\""+ (requesters ? "\n      requested by: [ "+requesters.join(", ")+" ]" : "") );
                     await jsFile.func(globals);
                 }
             }
         }
     }
     else 
-        console.log("--directory not found");
+        utils.botLogs(globals, "--directory not found");
+
+    await runRequisiteStartupFunctions().catch(err => { throw (err) });
     botEventEmitter.emit('botStartupDone');
 }
-
+async function runRequisiteStartupFunctions (){
+    /** run additional requisite startups **/
+    if ( Object.keys(globals._requisites.startups).length > 0 ){
+        utils.botLogs(globals, "--running requisite startups");
+        let to_delete = [];
+        for (let filePath in globals._requisites.startups){
+            if (filePath.endsWith('.js')){
+                let jsFile = require('./'+filePath);
+                let requesters = globals._requisites.startups[filePath];
+                let file = path.basename(filePath);
+                if ( jsFile.hasOwnProperty("func")){
+                    utils.botLogs(globals, "    running  \""+file+"\""+ (requesters ? "\n      requested by: [ "+requesters.join(", ")+" ]" : "") );
+                    await jsFile.func(globals);
+                    to_delete.push(filePath);
+                }
+            }
+        }
+        for (let filePath of to_delete){ //clean up
+            delete globals._requisites.startups[filePath];
+        }
+    }
+}
 
 
 
 function acquireCommands (){
-    console.log("\nAcquiring _commands");
+    utils.botLogs(globals, "\nAcquiring _commands");
     if (fs.existsSync(commandsPath)) {
-        console.log("--scanning directory: ");
-        var commands_Dir = fs.readdirSync(commandsPath);
+        utils.botLogs(globals, "--scanning _commands directory: ");
+        let commands_Dir = fs.readdirSync(commandsPath);
         botEventEmitter.emit('botAcquiringCommands', commands_Dir.length);
-        for ( var file of commands_Dir ){
+        for ( let file of commands_Dir ){
             if ((file === "disabled") ||  (file === "README.txt"))  continue;
             if (file.endsWith('.js')){
-                var jsFile = require(commandsPath+file);
+                let jsFile = require(commandsPath+file);
                 if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
                     globals.modularCommands[file.substr(0,file.length-3)] = jsFile; 
-                    console.log("    \""+file+"\"  included");
+                    utils.botLogs(globals, "    \""+file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
                 }
-                else console.log("    \""+file+"\"  not included");
+                else utils.botLogs(globals, "    \""+file+"\"  not included");
             }
-            else console.log("    \""+file+"\"  not included");
+
+            else if ( fs.lstatSync(commandsPath+file).isDirectory() ){ //parse 1 layer of directories, but no deeper
+                let cmd_inner_dir = file+"/";
+                utils.botLogs(globals, "--scanning _commands inner directory ["+cmd_inner_dir+"]: ");
+                let commands_Dir_inner = fs.readdirSync(commandsPath+cmd_inner_dir);
+                botEventEmitter.emit('botAcquiringCommands', commands_Dir_inner.length);
+                for ( let inner_file of commands_Dir_inner ){
+                    if ((inner_file === "disabled") ||  (inner_file === "README.txt"))  continue;
+                    if (inner_file.endsWith('.js')){
+                        let jsFile = require(commandsPath+cmd_inner_dir+inner_file);
+                        if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
+                            globals.modularCommands[inner_file.substr(0,inner_file.length-3)] = jsFile; 
+                            utils.botLogs(globals, "    \""+inner_file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
+                        }
+                        else utils.botLogs(globals, "    \""+inner_file+"\"  not included");
+                    }
+                    else utils.botLogs(globals, "    \""+inner_file+"\"  not included");
+                }
+            }
+
+            else utils.botLogs(globals, "    \""+file+"\"  not included");
         }
     }
-    else console.log("--directory not found");
+    else utils.botLogs(globals, "--directory not found");
+
+    
+    /** acquire list of requisites from each command **/
+    for ( let cmd in globals.modularCommands ){
+        acquireRequisites( cmd, globals.modularCommands[cmd] );        
+    }
+
+    /** search and import requisites from the list **/
+    importCommandRequisite();
+
     botEventEmitter.emit('botAcquiredCommands');
 }
-function acquireReactables (){
-    console.log("\nAcquiring _reactables");
-    if (fs.existsSync(reactablesPath)) {
-        console.log("--scanning directory: ");
-        var reactables_Dir = fs.readdirSync(reactablesPath);
-        botEventEmitter.emit('botAcquiringCommands', reactables_Dir.length);
-        for ( var file of reactables_Dir ){
-            if ((file === "disabled") ||  (file === "README.txt"))  continue;
-            if (file.endsWith('.js')){
-                var jsFile = require(reactablesPath+file);
-                if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
-                    globals.modularReactables[file.substr(0,file.length-3)] = jsFile; 
-                    console.log("    \""+file+"\" included");
+function acquireRequisites(cmd, jsFile){
+    if ( jsFile.hasOwnProperty("requisites") ){
+        if ( jsFile.requisites.hasOwnProperty("commands") ){
+            for ( let cmd_req of jsFile.requisites.commands ){
+                let filePath = path.normalize( commandsPath + cmd_req );
+                if ( !globals._requisites.commands.hasOwnProperty(filePath) ){
+                    globals._requisites.commands[filePath] = [];
                 }
-                else  console.log("    \""+file+"\" not included");
+                utils.botLogs(globals, "--command ["+cmd+"] required command at file path:  "+filePath);
+                globals._requisites.commands[filePath].push(cmd);
             }
-            else  console.log("    \""+file+"\" not included");
+        }
+        if ( jsFile.requisites.hasOwnProperty("startups") ){
+            for ( let start_req of jsFile.requisites.startups ){
+                let filePath = path.normalize( startupPath + start_req );
+                if ( !globals._requisites.startups.hasOwnProperty(filePath) ){
+                    globals._requisites.startups[filePath] = [];
+                }
+                utils.botLogs(globals, "--command ["+cmd+"] required startup at file path:  "+filePath);
+                globals._requisites.startups[filePath].push(cmd);
+            }
         }
     }
-    else  console.log("--directory not found");
+}
+function importCommandRequisite(){
+    //as imported, check imports for new requisites and add to list
+    utils.botLogs(globals, "--importing requisite commands");
+    let commands_to_import = Object.keys(globals._requisites.commands);
+    while ( commands_to_import.length > 0 ){
+        let filePath = commands_to_import[0];
+        let requesters = globals._requisites.commands[filePath];
+        let commandName = path.basename(filePath, ".js");
+        if ( globals.modularCommands.hasOwnProperty(commandName) ){
+            utils.botLogs(globals, "--requisite command ["+commandName+"] already found in command list\n----requested file path: ["+filePath+"]\n----requesters: ["+requesters+"]");
+            delete globals._requisites.commands[filePath];
+        }
+        else {
+            utils.botLogs(globals, "--importing ["+commandName+"] via path: "+filePath);
+            globals.modularCommands[commandName] = require('./'+filePath);
+            delete globals._requisites.commands[filePath];
+            acquireRequisites(commandName, globals.modularCommands[commandName]);
+        }
+        commands_to_import = Object.keys(globals._requisites.commands);
+    }
+}
+function acquireReactables (){
+    utils.botLogs(globals, "\nAcquiring _reactables");
+    if (fs.existsSync(reactablesPath)) {
+        utils.botLogs(globals, "--scanning _reactables directory: ");
+        let reactables_Dir = fs.readdirSync(reactablesPath);
+        botEventEmitter.emit('botAcquiringCommands', reactables_Dir.length);
+        for ( let file of reactables_Dir ){
+            if ((file === "disabled") ||  (file === "README.txt"))  continue;
+            if (file.endsWith('.js')){
+                let jsFile = require(reactablesPath+file);
+                if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
+                    globals.modularReactables[file.substr(0,file.length-3)] = jsFile; 
+                    utils.botLogs(globals, "    \""+file+"\" included");
+                }
+                else  utils.botLogs(globals, "    \""+file+"\" not included");
+            }
+            else  utils.botLogs(globals, "    \""+file+"\" not included");
+        }
+    }
+    else  utils.botLogs(globals, "--directory not found");
     botEventEmitter.emit('botAcquiredReactables');
 }
 
@@ -682,14 +922,15 @@ async function logInterval(globals){
         await utils.acquire_work_lock(globals, "log_newfile");
         botEventEmitter.emit('botLogNewFile_start');
         
-        var date = utils.getDateTime(globals);
-        var oldLogsFileName = globals.logsFileName;
-        var newLogsFileName = "LOGS_"+date.toISO()+".txt";
+        let date = utils.getDateTime(globals);
+        let oldLogsFileName = globals.logsFileName;
+        let newLogsFileName = "LOGS_"+date.toISO()+".txt";
         newLogsFileName = newLogsFileName.replace(/-/g,"_");
         newLogsFileName = newLogsFileName.replace(/:/g,"-");
         globals["logsFileName"] = newLogsFileName;
         fs.appendFileSync(logsPath+oldLogsFileName, "\n\nSwitching to new logs file with name:  "+newLogsFileName);
         fs.writeFileSync(logsPath+newLogsFileName, "\n\n\n\n\n["+package.name+"]\nCreating new logs file  ["+newLogsFileName+"]\n    "+utils.getDateTimeString(globals)+"\n\n\n\n");
+        console.log("\nLogs File Name:  "+globals.logsFileName+"\n");
     }
     catch (err){
         utils.botLogs(globals,"## ERR occurred during 24hour new logs file interval ::  "+err);
@@ -705,17 +946,18 @@ async function logTimeout(globals){
         await utils.acquire_work_lock(globals, "log_daily");
         botEventEmitter.emit('botLogDaily_start');
         
-        var day = utils.getDate(globals);
-        var oldLogsFileName = globals.logsFileName;
-        var newLogsFileName = `LOGS_${day}.txt`;
+        let day = utils.getDate(globals);
+        let oldLogsFileName = globals.logsFileName;
+        let newLogsFileName = `LOGS_${day}.txt`;
         globals["logsFileName"] = newLogsFileName;
         fs.appendFileSync(logsPath+oldLogsFileName, "\n\nSwitching to new daily logs file with name:  "+newLogsFileName);
         fs.writeFileSync(logsPath+newLogsFileName, "\n\n\n\n\n["+package.name+"]\nCreating new daily logs file  ["+newLogsFileName+"]\n    "+utils.getDateTimeString(globals)+"\n\n\n\n");
+        console.log("\nLogs File Name:  "+globals.logsFileName+"\n");
         
         //setup next timeout
-        var dateTime = utils.getDateTime(globals);
-        var secondsTillNextDay = (24*60*60) - ((dateTime.hour*60*60) + (dateTime.minute*60) + dateTime.second); //should be nearly 24hour
-        var log_timeout = setTimeout(logTimeout,secondsTillNextDay*1000, globals);
+        let dateTime = utils.getDateTime(globals);
+        let secondsTillNextDay = (24*60*60) - ((dateTime.hour*60*60) + (dateTime.minute*60) + dateTime.second); //should be nearly 24hour
+        let log_timeout = setTimeout(logTimeout,(secondsTillNextDay*1000)+60000, globals);
         globals.timeouts["botLogs"] = log_timeout;
     }
     catch (err){
@@ -744,14 +986,14 @@ function setupLogs (){
     
         globals["LogsToFile"] = true;
         if (configs.logsFileMode === "daily"){ // 1 file per day
-            var day = utils.getDate(globals);
+            let day = utils.getDate(globals);
             //console.log("DEBUG day: "+day);
-            var fileName = `LOGS_${day}.txt`;
+            let fileName = `LOGS_${day}.txt`;
             globals["logsFileName"] = fileName;
-            var dateTime = utils.getDateTime(globals);
-            var secondsTillNextDay = (24*60*60) - ((dateTime.hour*60*60) + (dateTime.minute*60) + dateTime.second);
+            let dateTime = utils.getDateTime(globals);
+            let secondsTillNextDay = (24*60*60) - ((dateTime.hour*60*60) + (dateTime.minute*60) + dateTime.second);
             //console.log("DEBUG till next day: "+secondsTillNextDay);
-            var log_timeout = setTimeout(logTimeout,secondsTillNextDay*1000, globals);
+            let log_timeout = setTimeout(logTimeout,(secondsTillNextDay*1000)+60000, globals);
             globals.timeouts["botLogs"] = log_timeout;
             //if file exists, append otherwise create
             if (fs.existsSync(logsPath+globals.logsFileName)){
@@ -764,12 +1006,12 @@ function setupLogs (){
             }
         }
         else if (configs.logsFileMode === "newfile"){ //setup 24hour interval to renew name and make new file
-            var date = utils.getDateTime(globals);
-            var fileName = "LOGS_"+date.toISO()+".txt";
+            let date = utils.getDateTime(globals);
+            let fileName = "LOGS_"+date.toISO()+".txt";
             fileName = fileName.replace(/-/g,"_");
             fileName = fileName.replace(/:/g,"-");
             globals["logsFileName"] = fileName;
-            var log_interval = setInterval(logInterval, 24*60*60*1000, globals);
+            let log_interval = setInterval(logInterval, 24*60*60*1000, globals);
             globals.intervals["botLogs"] = log_interval;
             fs.writeFileSync(logsPath+globals.logsFileName, "\n\n\n\nnewfile log\n["+package.name+"] started "+utils.getDateTimeString(globals)+"\nlogsFileMode:  "+configs.logsFileMode+"\n\n");
         }
@@ -784,6 +1026,7 @@ function setupLogs (){
         }
     }
     else globals["LogsToFile"] = false;
+    if ( globals.LogsToFile != false ) console.log("\nLogs File Name:  "+globals.logsFileName+"\n");
 
     botEventEmitter.emit('botLogsReady');
 }
@@ -812,9 +1055,9 @@ function acquireConfigs (){
     delete require.cache[require.resolve(configsPath)]; //prevent configs caching
     botEventEmitter.emit('botVerifyConfigs');
     console.log("\nParsing configs.json");
-    var invalid = false;
-    var missing = [];
-    var incorrect = [];
+    let invalid = false;
+    let missing = [];
+    let incorrect = [];
     if ( !configs.hasOwnProperty("prefix") ){ invalid = true; missing.push("prefix"); }
     else if ( typeof configs.prefix !== "string" ){ invalid = true; incorrect.push("prefix"); }
     
@@ -828,7 +1071,7 @@ function acquireConfigs (){
     if ( !configs.hasOwnProperty("built_in_AuthLevels") ){ missing.push("built_in_AuthLevels"); invalid = true; }
     else if ( typeof configs.built_in_AuthLevels !== "object" ){ invalid = true; incorrect.push("built_in_AuthLevels"); }
     else {
-        for (var built_in of blocking_built_in_funcs){
+        for (let built_in of blocking_built_in_funcs){
             if ( !configs.built_in_AuthLevels.hasOwnProperty(built_in) ){ invalid = true; missing.push("built_in_AuthLevels."+built_in); }
         }
     }
@@ -900,7 +1143,15 @@ async function initializeClient (){
 
 
 async function init (press_enter_to_exit){
-    if (!client) client = new Discord.Client();
+    if (!client) client = new Discord.Client({
+        ws: { intents: [
+            'GUILDS', 'GUILD_MEMBERS', 'GUILD_BANS',
+            'GUILD_EMOJIS', 'GUILD_INVITES', 'GUILD_VOICE_STATES',
+            'GUILD_PRESENCES', 'GUILD_MESSAGES', 'GUILD_MESSAGE_REACTIONS',
+            'DIRECT_MESSAGES'
+        ] }
+        /*,fetchAllMembers: true*/
+    });
     console.log("\n\n["+package.name+"]   version -- "+package.version+"\n");
     process.title = "["+package.name+"]   version -- "+package.version;
     
@@ -922,7 +1173,11 @@ async function init (press_enter_to_exit){
         globals["nonblocking_built_in_funcs"] = nonblocking_built_in_funcs;
         globals["queueLength"] = 0;
         globals["botEventEmitter"] = botEventEmitter;
-        globals["_shutdown"] = []; //add functions (params: (globals)) to run on shutdown
+        globals["_shutdown"] = {}; //add functions (params: (globals)) to run on shutdown
+        globals["_requisites"] = {
+            "commands" : {/*"example_req_command": ["requester_cmd_1", ...] ...*/},
+            "startups" : {/*"normalized_path/fileName.js": ["requester_1, ..."] ...*/}
+        };
 
         acquireConfigs();
         setupLogs();
@@ -944,24 +1199,27 @@ async function shutdown (){
     if (!globals) process.exit();
 
     utils.botLogs(globals, "Shutdown requested\n--destroying existing intervals and timeouts");
-    for (var _timeout in globals.timeouts){
+    for (let _timeout in globals.timeouts){
         let timeout = globals.timeouts[_timeout];
         if (Array.isArray(timeout)){
-            for (var t of timeout){
+            for (let t of timeout){
                 clearTimeout(t);
             }
         }
         else  clearTimeout(timeout);
     }
-    for (var interval_name in globals.intervals){
+    for (let interval_name in globals.intervals){
         clearInterval(globals.intervals[interval_name]);
     }
     utils.botLogs(globals, "--running _shutdown commands")
     if (globals._shutdown){
         botEventEmitter.emit('botRunningShutdown', globals._shutdown.length);
-        for (var shutdown_func of globals._shutdown){
-            try{ await shutdown_func(globals); }
-            catch(err){ console.log("----error ::   "+err); }
+        for (let shutdown_src in globals._shutdown){
+            let shutdown_funcs = globals._shutdown[shutdown_src];
+            for (let shutdown_func of shutdown_funcs){
+                try{ await shutdown_func(globals); }
+                catch(err){ console.log("----error ::   "+err.stack); console.error(err); }
+            }
         }
         botEventEmitter.emit('botShutdownDone');
     }
@@ -993,33 +1251,35 @@ async function soft_restart (msg){
     //dont destroy the client, but shutdown and init (if msg provided, return reply on failure)
     botEventEmitter.emit('botSoftRestart0');
     utils.botLogs(globals, "Soft restart requested\n--destroying existing intervals and timeouts");
-    for (var _timeout in globals.timeouts){
+    for (let _timeout in globals.timeouts){
         let timeout = globals.timeouts[_timeout];
         if (Array.isArray(timeout)){
-            for (var t of timeout){
+            for (let t of timeout){
                 clearTimeout(t);
             }
         }
         else  clearTimeout(timeout);
     }
-    for (var interval_name in globals.intervals){
+    for (let interval_name in globals.intervals){
         clearInterval(globals.intervals[interval_name]);
     }
     utils.botLogs(globals, "--running _shutdown commands")
     if (globals._shutdown){
         botEventEmitter.emit('botRunningShutdown', globals._shutdown.length);
-        for (var shutdown_func of globals._shutdown){
-            //console.log("---- (DEBUG) running "+shutdown_func);
-            try{ await shutdown_func(globals); }
-            catch(err){ console.log("----error ::   "+err); }
+        for (let shutdown_src in globals._shutdown){
+            let shutdown_funcs = globals._shutdown[shutdown_src];
+            for (let shutdown_func of shutdown_funcs){
+                try{ await shutdown_func(globals); }
+                catch(err){ console.log("----error ::   "+err.stack); console.error(err); }
+            }
         }
         botEventEmitter.emit('botShutdownDone');
     }
-    var temp_globals = globals;
+    let temp_globals = globals;
     clearGlobals(); 
     botEventEmitter.emit('botSoftRestart1');
     
-    var press_enter_to_exit = initArg;
+    let press_enter_to_exit = initArg;
     try{
         globals["client"] = client;
         globals["bot_id"] = temp_globals.bot_id;
@@ -1034,7 +1294,11 @@ async function soft_restart (msg){
         globals["nonblocking_built_in_funcs"] = nonblocking_built_in_funcs;
         globals["queueLength"] = temp_globals.queueLength;
         globals["botEventEmitter"] = botEventEmitter;
-        globals["_shutdown"] = []; //add functions (params: (globals)) to run on shutdown
+        globals["_shutdown"] = {}; //add functions (params: (globals)) to run on shutdown
+        globals["_requisites"] = {
+            "commands" : {/*"example_req_command": ["requester_cmd_1", ...] ...*/},
+            "startups" : {/*"normalized_path/fileName.js": ["requester_1, ..."] ...*/}
+        };
         acquireConfigs();
         setupLogs();
         acquireCommands();
@@ -1055,10 +1319,10 @@ async function soft_restart (msg){
 
 
 
-
+let exitCount = 0;
 function set_exit_handler (){
     if (process.platform === "win32") {
-        var rl = require("readline").createInterface({
+        let rl = require("readline").createInterface({
           input: process.stdin,
           output: process.stdout
         });
@@ -1069,13 +1333,31 @@ function set_exit_handler (){
     }
       
     process.on("SIGINT", async function () {
+        exitCount++;
+        if (exitCount == 5){
+            console.log("FORCING EXIT");
+            process.exit(); //force exit
+        }
+        if (exitCount > 1){
+            console.log("\nRepeat EXIT another "+(5-exitCount)+" times to force close\n");
+            return;
+        }
         console.log('\n\nProcess interrupted [SIGINT]\n\n');
         await shutdown();
-        //console.log("\n\nProcess will exit in 2 seconds.\n\n");
-        //await utils.sleep(2000);
+        //console.log("\n\nProcess will exit in 3 seconds.\n\n");
+        //await utils.sleep(3000);
         process.exit();
     });
     process.on('SIGHUP', async function() {
+        exitCount++;
+        if (exitCount == 5){
+            console.log("FORCING EXIT");
+            process.exit(); //force exit
+        }
+        if (exitCount > 1){
+            console.log("\nRepeat EXIT another "+(5-exitCount)+" times to force close\n");
+            return;
+        }
         console.log('\n\nWindow about to close [SIGHUP]\n\n');
         await shutdown();
         console.log("\n\nWindow will close in 5 seconds.\n\n");
@@ -1083,6 +1365,15 @@ function set_exit_handler (){
         process.exit();
     });
     process.on('SIGTERM', async function() { 
+        exitCount++;
+        if (exitCount == 5){
+            console.log("FORCING EXIT");
+            process.exit(); //force exit
+        }
+        if (exitCount > 1){
+            console.log("\nRepeat EXIT another "+(5-exitCount)+" times to force close\n");
+            return;
+        }
         console.log('\n\nProcess about to terminate [SIGTERM]\n\n');
         await shutdown();
         process.exit();
@@ -1106,7 +1397,7 @@ function enterToExit () {
 
 
 function clearGlobals (){
-    for (var key in globals) {
+    for (let key in globals) {
         delete globals[key];
     }
 }
@@ -1129,8 +1420,6 @@ module.exports = {
     getGlobals,
     botEventEmitter
 }
-
-
 
 
 

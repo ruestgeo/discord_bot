@@ -14,9 +14,9 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); 
+const utils = require(process.cwd()+'/utils.js'); 
 
-const localStorage = require('../_utils/localStorage_utils.js');
+const localStorage = require(process.cwd()+'/_utils/localStorage_utils.js');
 
 var dbName = "music";
 

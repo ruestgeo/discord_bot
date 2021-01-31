@@ -15,7 +15,7 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); 
+const utils = require(process.cwd()+'/utils.js'); 
 
 
 
@@ -27,9 +27,11 @@ const listeningServers = new Set();
 var voiceChannels = {};
 var textChannels = {};
 
+var displayID = false;
+
 
 module.exports = {
-    version: 1.2,
+    version: 1.4,
     auth_level: 3,
 
 
@@ -134,8 +136,8 @@ async function listenToVoiceChannelActivity(oldState, newState){
     var oldChannel = oldState.channel ? await oldState.channel.fetch() : undefined;
     var newChannel = newState.channel ? await newState.channel.fetch() : undefined;
     var member = newState.member;
-    var oldChannelName = (oldChannel ? (oldChannel.name+":"+oldChannel.id) : "null");
-    var newChannelName = (newChannel ? (newChannel.name+":"+newChannel.id) : "null");
+    var oldChannelName = (oldChannel ?   (displayID ? oldChannel.name+":"+oldChannel.id : oldChannel.name)   : "null");
+    var newChannelName = (newChannel ?   (displayID ? newChannel.name+":"+newChannel.id : newChannel.name)   : "null");
     //console.log("DEBUG    "+ "["+member.displayName+"#"+member.user.discriminator+":"+member.id+"] left old channel ["+oldChannelName+"] joined new channel ["+newChannelName+"]");
 
     var servers = new Set(); //user might hop in diff server channels where the bot might watching across servers
@@ -146,41 +148,43 @@ async function listenToVoiceChannelActivity(oldState, newState){
     //console.log("DEBUG textChannels:  "+JSON.stringify(textChannels,null,'  '));
     var _servers = Array.from(servers);
     //console.log("DEBUG servers: "+_servers);
-    for (var server of _servers){
+    for (var server of _servers){ //if bot is watching for both old and new channel, update logs for both sides
         
         if ( oldChannelName !== newChannelName ){ //( oldChannel ? (newChannel ? (newChannel.id !== oldChannel.id) : true) : newChannel ){ 
             /* not the same channel */
             //console.log("DEBUG    Not same channel");
             var voiceChannel = voiceChannels[server];
             var textChannel = textChannels[server];
-            var voiceChannelName = voiceChannel.name+":"+voiceChannel.id;
+            var voiceChannelName = displayID ? voiceChannel.name+":"+voiceChannel.id : voiceChannel.name;
             if ( newChannel ? (newChannel.id  === voiceChannel.id) : false ){
                 /* user joined specified voice channel */
                 //console.log("DEBUG    joined target channel");
                 oldChannel ?
-                textChannel.send("[<] "+member.displayName+"#"+member.user.discriminator+" switched to ["+newChannelName+"] from ["+oldChannelName+"] at  *"+utils.getDateTimeString(globals)+"*") :
-                textChannel.send("[+] "+member.displayName+"#"+member.user.discriminator+" joined ["+newChannelName+"] at  *"+utils.getDateTimeString(globals)+"*");
+                textChannel.send("[<] **"+member.displayName+"#"+member.user.discriminator+"**   switched to   __["+newChannelName+"]__   from   ["+oldChannelName+"]   at  *"+utils.getTimeString2(globals)+"*") :
+                textChannel.send("[+] **"+member.displayName+"#"+member.user.discriminator+"**   joined   __["+newChannelName+"]__   at  *"+utils.getTimeString2(globals)+"*");
             }
             else if ( (oldChannel ? (oldChannel.id === voiceChannel.id) : false ) 
             && (newChannel ? (newChannel.id !== voiceChannel.id) : (newChannel === undefined)) ){
                 /* user left specified voice channel */
                 //console.log("DEBUG    left target channel");
                 newChannel ? 
-                textChannel.send("[>] "+member.displayName+"#"+member.user.discriminator+" swapped from ["+voiceChannelName+"] to ["+newChannelName+"] at  *"+utils.getDateTimeString(globals)+"*") :
-                textChannel.send("[-] "+member.displayName+"#"+member.user.discriminator+" left ["+voiceChannelName+"] at  *"+utils.getDateTimeString(globals)+"*");
+                textChannel.send("[>] **"+member.displayName+"#"+member.user.discriminator+"**   swapped from   __["+voiceChannelName+"]__   to   ["+newChannelName+"]   at  *"+utils.getTimeString2(globals)+"*") :
+                textChannel.send("[-] **"+member.displayName+"#"+member.user.discriminator+"**   left   __["+voiceChannelName+"]__   at  *"+utils.getTimeString2(globals)+"*");
             }
         }
     }
 }
 
 async function wva_listener(msg){
+    if ( !msg.guild ) return;//msg is DM
+
     if (!listeningServers.has(msg.guild.id)) return;
     var textChannel = textChannels[msg.guild.id];
     if (msg.channel.id !== textChannel.id) return;
     if ((msg.content === "***stop***")){
         if (!utils.checkMemberAuthorized(globals, msg.member, this.auth_level, false)) return;
         console.log("    __[wva] stop from ["+msg.guild.name+":"+msg.guild.id+"]");
-        await textChannel.send("**Ending voice activity listener**");
+        await textChannel.send("**Ending voice activity listener**\n*"+utils.getDateTimeString(globals)+"*");
         listeningServers.delete(textChannel.guild.id);
         delete voiceChannels[textChannel.guild.id];
         delete textChannels[textChannel.guild.id];

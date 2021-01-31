@@ -16,8 +16,8 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); 
-const gs_utils = require('../_utils/googleSheets_utils'); 
+const utils = require(process.cwd()+'/utils.js'); 
+const gs_utils = require(process.cwd()+'/_utils/googleSheets_utils'); 
 
 
 

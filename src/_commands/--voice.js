@@ -16,8 +16,8 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js');
-const voiceUtils = require('../_utils/voice_utils.js');
+const utils = require(process.cwd()+'/utils.js');
+const voiceUtils = require(process.cwd()+'/_utils/voice_utils.js');
 
 
 

@@ -57,8 +57,11 @@ module.exports = {
         });
     },
 
-    getTime: function(globals){
+    getTimeString: function(globals){
         return this.getDateTime(globals).toLocaleString({hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    },
+    getTimeString2: function(globals){
+        return this.getDateTime(globals).toLocaleString({hourCycle: 'h11', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short"});
     },
 
     getDateTime: function(globals){
@@ -73,7 +76,7 @@ module.exports = {
     },
 
     getDateTimeString: function (globals) {
-        return this.getDateTime(globals).toLocaleString({ weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
+        return this.getDateTime(globals).toLocaleString({hourCycle: 'h11', weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
     },
 
     getDate: function (globals){

@@ -90,7 +90,7 @@ Contains all files pertaining to basic react & reply logic.
 Contains all files that are intended to run a function at startup.
 
 #### _shutdown
-Doesn't exist!  Instead there is an object `globals["_shutdown"]` which is intended to contain functions that take `globals` as an argument and will run those functions on shutdown.  Just push functions with any shutdown logic into that array.
+Doesn't exist!  Instead there is an object `globals["_shutdown"]` which is intended to contain functions that take `globals` as an argument and will run those functions on shutdown.  This is an object with keys being the source command and the value being an array of functions to run on shutdown.  Just push functions with any shutdown logic into that array.
 
 #### _utils
 Contains all utility files, ones which contain common code and such.  This is different from the utils.json in the base directory in that the latter is intended for the most basic uses where files within this directory are intended for more customized use.

@@ -30,11 +30,11 @@ const discordStream_options = {highWaterMark: 1};
 
 const ytdl = require('ytdl-core');
 
-const utils = require('../utils.js');
-const { Queue } = require('../utils.js');
-const voiceUtils = require('../_utils/voice_utils.js');
-const ls = require('../_utils/localStorage_utils.js');
-const bot = require('../bot.js');
+const utils = require(process.cwd()+'/utils.js');
+const { Queue } = require(process.cwd()+'/utils.js');
+const voiceUtils = require(process.cwd()+'/_utils/voice_utils.js');
+const ls = require(process.cwd()+'/_utils/localStorage_utils.js');
+const bot = require(process.cwd()+'/bot.js');
 
 
 
@@ -239,7 +239,7 @@ module.exports = {
                                 url: yt_info.videoDetails.video_url,
                                 origin: link,
                                 requester: `${msg.member.displayName}#${msg.member.user.discriminator}`
-                            }
+                            };
                             info.push(one_info);
                             utils.botLogs(globals, `----acquired  [${one_info.title}] from  ${one_info.url}`);    
                         }
@@ -822,7 +822,7 @@ function MusicQueue (capacity, array){
 prototype.prototype = Queue.prototype;
 MusicQueue.prototype = new prototype();
 MusicQueue.prototype.constructor = MusicQueue;*/
-MusicQueue.prototype = Object.create(require('../utils.js').Queue.prototype);
+MusicQueue.prototype = Object.create(require(process.cwd()+'/utils.js').Queue.prototype);
 
 /**
  * remove first instance of element that contains key with value from queue and returns it

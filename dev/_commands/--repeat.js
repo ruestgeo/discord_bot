@@ -13,8 +13,8 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js');
-const bot = require('../dev_bot.js');
+const utils = require(process.cwd()+'/utils.js');
+const bot = require(process.cwd()+'/dev_bot.js');
 
 //https://www.npmjs.com/package/node-persist
 

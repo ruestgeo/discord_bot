@@ -14,8 +14,8 @@ Made by JiJae (ruestgeo)
 
 //example.js
 
-const utils = require('../utils.js'); //base utils is located in the base dir, if needed
-//const custom_utils = require('../_utils/custom_utils'); //custom utils located in the _utils directory
+const utils = require(process.cwd()+'/utils.js'); //base utils is located in the base dir, if needed
+//const custom_utils = require(process.cwd()+'/_utils/custom_utils'); //custom utils located in the _utils directory
 
 
 

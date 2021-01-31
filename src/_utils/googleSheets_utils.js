@@ -14,7 +14,7 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); //base utils is located in the base dir, if needed
+const utils = require(process.cwd()+'/utils.js'); //base utils is located in the base dir, if needed
 
 
 

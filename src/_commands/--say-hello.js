@@ -16,7 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js');
+const utils = require(process.cwd()+'/utils.js');
 const music = require('./--music.js');
 const voice = require('./--voice.js');
 

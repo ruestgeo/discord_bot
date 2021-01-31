@@ -16,8 +16,8 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require('../utils.js'); 
-const reactroles_utils = require('../_utils/reactroles_utils');
+const utils = require(process.cwd()+'/utils.js'); 
+const reactroles_utils = require(process.cwd()+'/_utils/reactroles_utils');
 
 
 

@@ -16,7 +16,7 @@ Made by JiJae (ruestgeo)
 const fs = require('fs'); 
 
 
-const utils = require('../utils.js');
+const utils = require(process.cwd()+'/utils.js');
 
 
 
@@ -24,22 +24,23 @@ const utils = require('../utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.2,
     func: async function (globals){
         var leading_space = "        ";
         console.log(leading_space + "Setting up shutdown-cleanup for voiceActivityWatcher");
 
 
         if (globals._shutdown) {
-            globals._shutdown.push( async (globals) => {
-                const { listeningServers,textChannels,isListening,wva_listener,listenToVoiceChannelActivity,clear } = require('../_commands/--watch-voice-activity.js');
+            if ( !globals._shutdown.hasOwnProperty("--watchVoiceActivity") )   globals._shutdown["--watchVoiceActivity"] = [];
+            globals._shutdown["--watchVoiceActivity"].push( async (globals) => {
+                const { listeningServers,textChannels,isListening,wva_listener,listenToVoiceChannelActivity,clear } = require(process.cwd()+'/_commands/--watch-voice-activity.js');
                 if (listeningServers.size > 0){
                     console.log("    __[wva] shutdown");
                     globals.client.off('voiceStateUpdate', listenToVoiceChannelActivity);
                     globals.client.off('message', wva_listener);
                     for (_textChan in textChannels){
                         var textChan = textChannels[_textChan];
-                        await textChan.send("**Bot Shutting down, ending voice activity listener**");
+                        await textChan.send("**Bot Shutting down, ending voice activity listener**\n*"+utils.getDateTimeString(globals)+"*");
                     }
                     clear();
                 }

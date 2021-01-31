@@ -19,8 +19,8 @@ const { GoogleSpreadsheet } = require('google-spreadsheet');
 const fs = require('fs'); 
 
 
-const utils = require('../utils.js');
-const gs_utils = require('../_utils/googleSheets_utils.js'); 
+const utils = require(process.cwd()+'/utils.js');
+const gs_utils = require(process.cwd()+'/_utils/googleSheets_utils.js'); 
 
 const googleSheetsConfigsPath = "../_configs/googleSheets_configs.json";
 
@@ -47,7 +47,7 @@ module.exports = {
         await verifyConfigs(globals);
 
         console.log(leading_space + "-- connecting to Google Sheets");
-        const googleAuth = require("../"+globals.googleSheets_configs.GoogleAuthFilePath);
+        const googleAuth = require(process.cwd()+"/"+globals.googleSheets_configs.GoogleAuthFilePath);
         const doc = new GoogleSpreadsheet(globals.googleSheets_configs.googleSheetsId);
         
         await doc.useServiceAccountAuth(googleAuth)
