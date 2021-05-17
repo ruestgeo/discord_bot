@@ -21,31 +21,27 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.2,
     auth_level: 4,
 
 
 
-    manual: "**--remove-role-conditioned3**  ->  `{\"remove-role\": [\"role_Name/ID\", ...] <, \"target\": \"role_Name/ID\"> <,  \"has-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
-    ".     *Remove role(s) from a user if the member has all roles from at least* ***one*** *role-group from 'has-role'.  If a target role is given then it will only look at the list of users who have that role.*",
+    manual: "**--remove-role-conditioned1**  ->  `{\"remove-role\": [\"role_Name/ID\", ...] <, \"target\": \"role_Name/ID\"> <,  \"has-role\": [\"role_Name/ID\", ...]> <,  \"missing-role\": [\"role_Name/ID\", ...]>  }` \n" +
+            ".     *Remove role(s) from a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"remove-role\", but \"has-role\" and \"missing-role\" are optional. Give a target role for better performance.*",
 
 
 
     func: async function (globals, msg, content){
-        //{"remove-role": ['role_Name/ID', ...] <, "target": "role_Name/ID"> <,  "has-role": [[rolegroup1, ...], ['rolegroup2', ...] ...]>  }
+        //{"remove-role": ['role_Name/ID', ...] <, "target": "role_Name/ID"> <,  "has-role": ['role_Name/ID', ...]> <,  "missing-role": ['role_Name/ID', ...]>  }
 
 
         utils.botLogs(globals,  "--parsing request");
         const args = JSON.parse(content);
-
+        
         let server = await msg.guild.fetch();
         let server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying and resolving roles");
-
-        if (args.hasOwnProperty("missing-role")){
-            utils.botLogs(globals,  "----incorrect request body");
-            throw ("Incorrect request body.  Please ensure that the input arguments are correct. 'missing-role' is not currently supported for this command");
-        }
+        
         if (args.hasOwnProperty("remove-role")){
             args["remove-role"] = args["remove-role"].map(resolvable => {
                 resolvable = resolvable.trim();
@@ -63,21 +59,31 @@ module.exports = {
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
         if (args.hasOwnProperty("has-role")){    
-            args["has-role"] = args["has-role"].map(rolegroup => 
-                rolegroup.map(resolvable => {
-                    resolvable = resolvable.trim();
-                    let role;
-                    role = server_roles.resolve(resolvable);
-                    if (!role) role = server_roles.cache.find(_role => _role.name === resolvable);
-                    if (!role) {
-                        utils.botLogs(globals,  "----invalid role ::  "+resolvable);
-                        throw ("Invalid role -> "+resolvable);
-                    }
-                    return role.id;
-                })
-            );
+            args["has-role"] = args["has-role"].map(resolvable => {
+                resolvable = resolvable.trim();
+                let role;
+                role = server_roles.resolve(resolvable);
+                if (!role) role = server_roles.cache.find(_role => _role.name === resolvable);
+                if (!role) {
+                    utils.botLogs(globals,  "----invalid role ::  "+resolvable);
+                    throw ("Invalid role -> "+resolvable);
+                }
+                return role.id;
+            });
         }
-        
+        if (args.hasOwnProperty("missing-role")){
+            args["missing-role"] = args["missing-role"].map(resolvable => {
+                resolvable = resolvable.trim();
+                let role;
+                role = server_roles.resolve(resolvable);
+                if (!role) role = server_roles.cache.find(_role => _role.name === resolvable);
+                if (!role) {
+                    utils.botLogs(globals,  "----invalid role ::  "+resolvable);
+                    throw ("Invalid role -> "+resolvable);
+                }
+                return role.id;
+            });
+        }
         let list;
         if (args.hasOwnProperty("target")){ //use target role as list
             utils.botLogs(globals,  "--using ["+args["target"]+"] role users list");
@@ -98,21 +104,27 @@ module.exports = {
             list = server_members.values();
         }
 
+        
+
         let count = 0;
         let count_total = 0;
         utils.botLogs(globals,  "--searching user list for candidates");
         for (let _member of list){
             let member = await _member.fetch();
-            if(args.hasOwnProperty("has-role")){
-                let skip = true;
-                for (let rolegroup of args["has-role"]){
-                    let hasRoleGroup = true;
-                    for (let role of rolegroup){ //check if member has at least all of one role group
-                        let has = member.roles.cache.has( role );
-                        hasRoleGroup = hasRoleGroup && has; //true if all roles in rolegroup are satisfied
+            let skip = false;
+            if (args.hasOwnProperty("has-role")){
+                for (let role of args['has-role']){ //check if member doesn't have role, if so skiptrue and break
+                    if ( !member.roles.cache.has( role ) ){
+                        skip = true;
+                        break;
                     }
-                    if (hasRoleGroup) { //has all of rolegroup, condition satisfied
-                        skip = false;
+                }
+                if (skip) continue;
+            }
+            if(args.hasOwnProperty("missing-role")){
+                for (let role of args["missing-role"]){ //check if member has role, if so skiptrue and break
+                    if ( member.roles.cache.has( role ) ){
+                        skip = true;
                         break;
                     }
                 }

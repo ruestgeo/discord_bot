@@ -1,18 +1,19 @@
 {
   "name": "discord_bot",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "A Discord Bot",
   "main": "main.js",
   "bin": "./main.js",
   "author": "JiJae",
   "dependencies": {
-    "@discordjs/opus": "^0.3.2",
-    "async-mutex": "^0.2.4",
-    "discord.js": "^12.3.1",
-    "ffmpeg-static": "^4.2.7",
+    "@discordjs/opus": "^0.3.3",
+    "async-mutex": "^0.2.6",
+    "discord-tts": "^1.0.3",
+    "discord.js": "^12.5.3",
+    "ffmpeg-static": "^4.3.0",
     "google-spreadsheet": "^3.1.15",
-    "luxon": "^1.25.0",
+    "luxon": "^1.27.0",
     "node-localstorage": "^2.1.6",
-    "ytdl-core": "^4.2.1"
+    "ytdl-core": "^4.8.0"
   }
 }

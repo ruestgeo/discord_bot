@@ -22,7 +22,7 @@ const voiceUtils = require(process.cwd()+'/_utils/voice_utils.js');
 
 
 module.exports = {
-    version: 1.1,
+    version: 1.3,
     auth_level: 1,
 
 
@@ -31,12 +31,14 @@ module.exports = {
             ".     *if no args given, the bot is in a channel in the server, and the requester has permission to connect to that channel then bot will disconnect from that channel*\n"+
             ".     *if an identifier for a voice channel within the server is given and user has sufficient permission then the bot will join that voice channel*",
 
-
+    requisites: {
+        "startups" : ["voice_setup.js"]
+    },
 
     func: async function (globals, msg, content){ 
-        var client = globals.client;
-        var server = await msg.guild.fetch();
-
+        let client = globals.client;
+        let server = await msg.guild.fetch();
+        let connection; 
         
         if ( !(await voiceUtils.hasRolePermission(msg.member)) )  throw ("Insufficient permissions:  lacking role to use voice commands");
 
@@ -44,16 +46,9 @@ module.exports = {
 
         /* leave voice */
         if (content === ""){
-            var connections = Array.from(client.voice.connections.values());
-            var connection = null; 
-            for (var _connection of connections){
-                if (_connection.channel.guild.id === server.id) {
-                    connection = _connection;
-                    break;
-                }
-            }
+            connection = utils.getVoiceConnection(client, server.id);
             if (connection === null) throw ("Bot is not connected to a voice channel in this server");
-            var channel = connection.channel;
+            let channel = connection.channel;
             if ( !channel.permissionsFor(msg.member).has("CONNECT") ) throw (msg.member.displayName+"#"+msg.member.user.discriminator+" doesn't have permission to connect to ["+voiceChannelName+"]");
             connection.disconnect();
             return "Bot left voice channel ["+channel.name+":"+channel.id+"]";
@@ -62,27 +57,27 @@ module.exports = {
 
         /* join voice */
         utils.botLogs(globals,  "--resolving voice channel ["+content+"]");
-        var voiceChannel;
+        let voiceChannel;
         voiceChannel = server.channels.resolve(content);
         if (!voiceChannel){
             voiceChannel = server.channels.cache.find(_channel => _channel.name === content);
             if (!voiceChannel) throw ("Could not find voice channel ["+content+"] in server");
         }
-        var voiceChannelName = voiceChannel.name+":"+voiceChannel.id;
+        let voiceChannelName = voiceChannel.name+":"+voiceChannel.id;
         if (voiceChannel.type !== "voice"){
             throw new Error("Invalid voice channel.  Given channel ["+voiceChannelName+"] is type: '"+voiceChannel.type+"'");
         }
         
 
         /* check bot and member permission for channel */
-        var bot_perms = voiceChannel.permissionsFor(client.user);
+        let bot_perms = voiceChannel.permissionsFor(client.user);
         if ( !bot_perms.has("CONNECT") ) throw ("Bot doesn't have permission to connect to ["+voiceChannelName+"]");
-        var member_perms = voiceChannel.permissionsFor(msg.member);
+        let member_perms = voiceChannel.permissionsFor(msg.member);
         if ( !member_perms.has("CONNECT") ) throw (msg.member.displayName+"#"+msg.member.user.discriminator+" doesn't have permission to connect to ["+voiceChannelName+"]");
 
 
         /* connect and mute */
-        var connection = await voiceChannel.join().catch(err => { throw (err); });
+        connection = await voiceChannel.join().catch(err => { throw (err); });
         await connection.voice.setMute(true);
         return "Joined voice channel ["+voiceChannelName+"]";
     }

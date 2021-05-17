@@ -16,7 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require(process.cwd()+'/utils.js');
+const utils = require(process.cwd()+'/utils.js'); 
 const gs_utils = require(process.cwd()+'/_utils/googleSheets_utils'); 
 
 
@@ -27,10 +27,9 @@ module.exports = {
 
 
 
-    manual: "**--document-reacts**  ->  *message_link*  <roleID/Name , ... >\n" +
-            ".     *Records the reactions and users who reacted of the specified message into a google sheet.*\n"+
-            ".     *If no role resolvable is provided then only the names of the users who reacted are recorded*\n"+
-            ".     *At least one role resolvable is provided then each role will have a column for displayName and username of each of the reactions and members of that role who have not reacted*",
+    manual: "**--document-reacts-boolean**  ->  `message_link` `roleName or roleID` \n" +
+    ".     *Records the reactions and users who reacted of the specified message into a google sheet.*\n"+
+    ".     *At least one role resolvable is required, and each role will have a column for displayName and username of members of that role and a boolean whether they reacted or not*",
 
 
 
@@ -49,27 +48,21 @@ module.exports = {
         let targetMessage;
         let targetRoles;
         if (content.includes(" ")){
-            utils.botLogs(globals,  "--roles mode");
             targetMessage = content.substr(0, content.indexOf(' ')).trim();
             targetRoles = content.substr(content.indexOf(' ')+1).trim().split(',').map(elem => elem.trim()).filter(elem => elem !== '');
         }
-        else {
-            utils.botLogs(globals,  "--@everyone mode");
-            if (content.includes(","))   throw ("Incorrect request body.  Please ensure the args are correctly formatted");
-            targetMessage = content;
-            targetRoles = [];
-        }
-        utils.botLogs(globals,  "--targetMessage:: "+targetMessage+"\n--targetRoles:: "+(targetRoles.length > 0 ? targetRoles : "@everyone"));
+        else   throw ("Incorrect request body.  At least one role resolvable must be provided");
+        utils.botLogs(globals,  "--targetMessage:: "+targetMessage+"\n--targetRoles:: "+targetRoles);
         let server = await msg.guild.fetch();
 
 
         /* fetch roles */
         let server_roles = await server.roles.fetch();
-        if (targetRoles.length > 0)   utils.botLogs(globals,  "--fetching role(s)");
+        utils.botLogs(globals,  "--fetching role(s)");
         let roles = [];
         for (let targetRole of targetRoles){
             let role;
-            try {
+            try{
                 role = utils.resolveRole(globals, targetRole, server_roles, true);
             } catch (err) { throw (err); }
             roles.push(role);
@@ -121,66 +114,35 @@ module.exports = {
         /* determine user reacts per role */
         let list = [];
         let date = utils.getDateTimeString(globals);
-        let sheet_title = (targetRoles.length > 0 ? "@role" : "`@everyone`")+" reacts on `#"+message.channel.name+"/"+message.id+"`   "+date;
-        if (targetRoles.length > 0){ //roles
-            for (let role of roles){
-                utils.botLogs(globals,  "\n\nreactions by @"+role.name);
-                let roleMembers = all_members[role.id];
+        let sheet_title = "@role reacts on `#"+message.channel.name+"/"+message.id+"`   "+date;
+        for (let role of roles){
+            utils.botLogs(globals,  "\n\nreactions by @"+role.name);
+            let roleMembers = all_members[role.id];
 
-                for (let emote in msg_reacts){
-                    let users = msg_reacts[emote].users;
-                    let emote_string = msg_reacts[emote].string;
-                    let col_react_displayName = [];
-                    let col_react_username = [];
-                    col_react_displayName.push(emote_string+" @"+role.name);
-                    col_react_username.push("\\\\");
-                    utils.botLogs(globals,  "\n\n"+emote_string+" reacts by @"+role.name);
-                    let reacted_members = [...users.keys()];
-                    let reacted_role_members = reacted_members.filter(id => roleMembers.includes(id));
-                    for (let memberID of reacted_role_members){
-                        let member = server.members.resolve(memberID);
-                        col_react_displayName.push(member.displayName+"#"+member.user.discriminator);
-                        col_react_username.push(member.user.username+"#"+member.user.discriminator);
-                        utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
-                    }
-                    list.push(col_react_displayName);
-                    list.push(col_react_username);
-                }
-                //obtain list of users without reacts
-                let no_react = roleMembers.filter(memberID => !all_reacted_members.includes(memberID));
-                let col_no_react_displayName = [];
-                let col_no_react_username = [];
-                col_no_react_displayName.push("no reacts");
-                col_no_react_username.push("\\\\");
-                utils.botLogs(globals,  "\n\nno reactions by @"+role.name);
-                for (let memberID of no_react){
-                    let member = server.members.resolve(memberID);
-                    col_no_react_displayName.push(member.displayName+"#"+member.user.discriminator);
-                    col_no_react_username.push(member.user.username+"#"+member.user.discriminator);
-                    utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
-                }
-                list.push(col_no_react_displayName);
-                list.push(col_no_react_username);
-            }
-        }
-        else { //@everyone
             for (let emote in msg_reacts){
                 let users = msg_reacts[emote].users;
                 let emote_string = msg_reacts[emote].string;
                 let col_react_displayName = [];
                 let col_react_username = [];
-                col_react_displayName.push(emote_string+" reacts");
+                let col_reacted = [];
+                col_react_displayName.push(emote_string+" @"+role.name);
                 col_react_username.push("\\\\");
-                utils.botLogs(globals,  "\n\n"+emote_string+" reacts");
+                col_reacted.push("");
+                utils.botLogs(globals,  "\n\n"+emote_string+" reacts by @"+role.name);
                 let reacted_members = [...users.keys()];
-                for (let memberID of reacted_members){
+                for (let memberID of roleMembers){
                     let member = server.members.resolve(memberID);
                     col_react_displayName.push(member.displayName+"#"+member.user.discriminator);
                     col_react_username.push(member.user.username+"#"+member.user.discriminator);
-                    utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
+                    if (reacted_members.includes(memberID)){
+                        utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
+                        col_reacted.push(true);
+                    }
+                    else   col_reacted.push(false);
                 }
                 list.push(col_react_displayName);
                 list.push(col_react_username);
+                list.push(col_reacted);
             }
         }
         let numRows = Math.max(...list.map(arr => arr.length));

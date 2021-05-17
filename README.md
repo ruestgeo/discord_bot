@@ -2,8 +2,8 @@
 
 ## 
 using:
-- node version 12(.16.3)
-- discord.js version 12.3.1
+- node version 12(.18.2)
+- discord.js version 12.5.3
 
 
 This bot is intended for light use and is primarily intended for single server use.  It can be used across multiple servers, however some included commands  may not behave as expected in a multi-server setup.  
@@ -30,7 +30,7 @@ It is possible to change the names of these files, just change the path in the c
 ### node and npm
 You can launch the bot using the command `node main.js` when in the code base directory (**src**).
 
-Node.js version 12.16.3 or fully compatable versions are required when launching through `node`.
+The Node.JS version mentioned above or fully compatable versions are required when launching through `node`.
 
 ### executable
 Alternatively you can use a compiler such as Nexe (https://github.com/nexe/nexe) to compile it all (except the modular parts) into an executable (.exe) for ease of use.
@@ -38,14 +38,14 @@ Alternatively you can use a compiler such as Nexe (https://github.com/nexe/nexe)
 `npm install -g nexe`
 `nexe main.js -r "bot.js" -r "utils.js" -r "node_modules/**/*"` or `nexe main.js -r "node_modules/**/*"`
 
-This will enable use of the executable (.exe) without the **node_modules** directory, nor installing **npm** or **node**.
+This will enable use of the executable (.exe) without requiring the **node_modules** directory, nor installing **npm** or **node**.
 
 Note that this means the created exe will only have access to the currently installed packages, and any additional packages that are required in the modular javascript files will require recompiling the executable with all required modules installed in order to function.  
 The currently installed node_modules can be found in **package.json**
 
 **bot.js** and **utils.js** are included by default.
 
-**If using the  *`ffmpeg-static`* package then you will have to include the *`node_modules`*`* directory and use `nexe main.js` without the "-r" option.**
+**If using the  *`ffmpeg-static`* package then you will have to include the *`node_modules`* directory in the bot folder and use `nexe main.js` without the "-r" option.**
 
 
 ## Source Code 

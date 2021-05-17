@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /*
 GNU General Public License v3.0
 
@@ -11,31 +9,37 @@ rights.
 
 Made by JiJae (ruestgeo)
 --feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
-
---currently uses in-memory storage so the amount of reactroles that can be held is limited
-
---requires manage-roles permissions to use ConditionedRoles functions
---requires google sheets setup to use DocumentDump functions
 */
 
-console.log("[main.js]\n--importing bot.js");
-const bot = require("./bot.js");
-const utils = require("./utils.js");
-console.log("--starting bot \n");
-
-bot.set_exit_handler();
-bot.init(true).catch(err => console.log(err));
 
 
 
 
 
+const utils = require(process.cwd()+'/utils.js');
 
 
 
+module.exports = {
+    version: 0.000,
+    auth_level: 9,
 
 
 
+    manual: "a temporary command",
+
+
+
+    func: async function (globals, msg, content){ 
+        let client = globals.client;
+
+        //let server = await msg.guild.fetch();
+        
+        return "Request complete";
+    }
+
+    
+}
 
 
 

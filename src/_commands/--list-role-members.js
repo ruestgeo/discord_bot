@@ -27,7 +27,7 @@ module.exports = {
 
 
     manual: "--list-role-members  ->  \\*roleName\\* ~~  or  ~~ \\*roleID\\*  < ,  ... additional_roles_for_filtering>"+
-            ".     *reply with an ordered list of members that have the specified role*\n"+
+            ".     *reply with a list of members that have the specified role*\n"+
             ".     *if additional roles are given (delimited by comma) then it will filter the list such that anyone who does not have those roles is excluded*\n"+
             ".     *NOTE: roles cannot contain commas, otherwise this command will not function properly*",
 
@@ -56,7 +56,7 @@ module.exports = {
             .map( elem => {
                 let resolved = server_roles.resolve(elem);
                 if ( !resolved )   resolved = server_roles.cache.find(_role => _role.name === elem);
-                if ( !resolved )   throw ("Invalid role ::  role ["+elem+"] not found"); //TODO test this
+                if ( !resolved )   throw ("Invalid role ::  role ["+elem+"] not found");
                 return resolved;
             });
             //console.log("DEBUG roles:  "+roles.map(elem => elem.name));
@@ -75,7 +75,7 @@ module.exports = {
             });
             members_count = list.length;
         }
-        utils.botLogs(globals,"--found "+members_count+"members\n--prepairing to send list through message(s)");
+        utils.botLogs(globals,"--found "+members_count+" members\n--prepairing to send list through message(s)");
 
         
         var all = "";

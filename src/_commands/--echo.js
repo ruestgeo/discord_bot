@@ -21,60 +21,59 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.3,
     auth_level: 3,
 
 
 
-    manual: "**--echo**  ->  here ~~  or  ~~ `channel_ID` ~~  or  ~~ `channelTag` ~~  or  ~~ `channel_name` ~~  or  ~~ \\``channel_name`\\`       __ message to send __\n" +
-            ".     *takes either \"here\" or a channel ID/tag/name and repeats anything written after that to the same channel if \"here\" or to the specified channel if channel_ID*\n"+
-            ".     *(if using channel name with spaces then enclose with \\`grave marks\\`)*",
+    manual: "**--echo**  ->  here /\\``channel_name/id/tag`\\`       __ message to send __\n" +
+            ".     *takes either \"here\" or a channel ID/tag/name and repeats anything written after that to the same channel.*\n"+
+            ".     *(channel resolvable should be enclosed enclose with \\`grave marks\\`)*",
 
 
 
-    func: async function (globals, msg, content){ 
-        var client = globals.client;
+    func: async function (globals, msg, content){
         if (!content.includes(' ')){
             utils.botLogs(globals,  "----incorrect request body");
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
-        var target = content.substr(0, content.indexOf(' ')).trim();
-        var message_to_echo = content.substr(content.indexOf(' ')+1).trim();
+        let target;
+        let message_to_echo;
+        let channel;
 
-        if (target.toLowerCase() === "here"){
-            await msg.channel.send(message_to_echo);
-            return;
+        if (content.toLowerCase().startsWith("here ")){
+            target = content.substr(0, content.indexOf(' ')).trim();
+            message_to_echo = content.substr(content.indexOf(' ')+1).trim();
+            channel = msg.channel;
         }
-
-
-
-        var server = await msg.guild.fetch();
-        var textChannel;
-        utils.botLogs(globals,  "--resolving text channel ["+target+"]");
-        textChannel = server.channels.resolve(target);
-        if ( !textChannel && (target.startsWith("<#") && target.endsWith(">")) ) { //cant resolve links/tags for whatever reason
-            target = target.substring(2, target.length-1);
-            textChannel = server.channels.resolve(target);
-        }
-        if (!textChannel){
-            if (content.startsWith("`")){
-                utils.botLogs(globals,  "--resolving channel by name");
-                var idx = content.substring(1).indexOf("`")+1;
-                target = content.substring(1,idx).trim();
-                message_to_echo = content.substring(idx+1).trim();
+        else {
+            if (utils.countOccurrences(content,'`') !== 2){
+                throw ("Incorrect request body.  Please ensure that the input arguments are correct.\nThe text channel resolvables should be encapsulated by a single backtick/grave-accent-mark at each end.");
             }
-            textChannel = server.channels.cache.find(_channel => _channel.name === target);
-            if (!textChannel) throw ("Could not find text channel ["+target+"] in server");
+
+            /* parse args */
+            let server = await msg.guild.fetch();
+            let args = utils.extractEncapsulated(content, '`');
+            if (args[1].trim().length == 0)   throw ("Incorrect request body.  At least one channel resolvable must be provided");
+            target = args[1].trim();
+            message_to_echo = args[2].trim()
+            utils.botLogs(globals,  "--targetChannel:: "+channel);
+            
+            try {
+                channel = resolveChannel(globals, target, server.channels, true);
+            }catch (err) {throw (err)}
+            if (channel.type !== "text"){
+                throw new Error("Incorrect given text channel.  Given channel ["+target+"] is type: '"+channel.type+"'");
+            }
         }
-        if (textChannel.type !== "text"){
-            throw new Error("Incorrect given text channel.  Given channel ["+target+"] is type: '"+textChannel.type+"'");
-        }
-
-
-
-        await textChannel.send(message_to_echo).catch(err => {
-            throw ("Error when sending message to target channel ::   "+err)
+        
+        await channel.send(message_to_echo).catch(err => {
+            throw ("Error when sending message to text channel ["+channel.name+" : "+channel.id+"] ::   "+err)
         });
+
+
+
+        
     }
 
     

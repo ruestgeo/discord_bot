@@ -22,7 +22,7 @@ const utils = require(process.cwd()+'/utils.js'); //base utils is located in the
 /* Must include "func" which takes globals as argument (can ignore it if not needed)
     func will run before the bot is activated (to wait until bot is ready, use the "botReady" event with globals["botEventEmitter"] )
 
-  By convention, use console.log rather than botLogs during the startup and lead with eight (8) empty spaces for readability in the logs,
+  By convention, use console.log rather than botLogs during the startup and optionally lead with eight (8) empty spaces for readability in the logs,
   unless printing logs after the botReady event in which no leading spaces are needed and botLogs can be used.
 */
 

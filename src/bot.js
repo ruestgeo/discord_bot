@@ -47,7 +47,7 @@ let initArg = undefined;
 
 
 const nonblocking_built_in_funcs = ["--version"];
-const blocking_built_in_funcs = ["--help", "--commands", "--ping", "--shutdown", "--reimport", "--restart"];
+const blocking_built_in_funcs = ["--help", "--commands", "--ping", "--shutdown", "--detach", "--import", "--reimport", "--restart"];
 
 //"**--**  ->  ``\n" +
 //".     *description* \n" +
@@ -70,15 +70,15 @@ const built_in_manuals = {
                     ".     *if \\**keywords*\\* (split by a single empty space) are given then it will try to send a list of all commands that contain all of those keywords*\n",
     "--commands":   "**--commands** ->  \\*none\\*   *or*   all   *or*   \\*commandName\\*   *or*   \\**keywords*\\*\n" +
                     ".     *an alias for the \"--help\" command*",
-    "--detach":   "**--detach** ->  command/reactable *fileName.js* \n"+
+    "--detach":   "**--detach** ->  command/reactable *fileName* \n"+
                     ".     *unlink or remove a command or reactable module from the bot, making it unaccessible*\n"+
-                    ".     *only the file name should be provided, not the relative path of the file*",
+                    ".     *only the base file name should be provided, not including the extension type*",
     "--import":   "**--import** ->  command/reactable *path/to/file/from/cwd/fileName.js* \n"+
                     ".     *import a command or reactable (or reimport if command already imported)*\n"+
                     ".     *if a command is imported then it will (re)import any requisite utils or commands and run any startup*\n"+
                     ".     *the path given should be relative to the respective directory; \"_commands\" for command files, and \"_reactables\" for emoji reaction files*",
     "--reimport":   "**--reimport** ->  configs   *and/or*   reactables\n"+
-                    ".     *will reimport all of or some of configs and/or reactables  depending on given arguments (separated by empty space)*\n"+
+                    ".     *will reimport both or one of configs and/or reactables*\n"+
                     ".     *for example `--reimport reactables configs`*",
 
 }
@@ -94,7 +94,7 @@ let command_description = "The command manual *should* follow the following conv
 
 function handleRequest(msg){
     if (!globals) return;
-    let requestBody = msg.content.substring(configs["prefix"].length);
+    let requestBody = msg.content.substring(configs["prefix"].length).trim();
     let command;
     let content;
     if (requestBody.includes(' ')){
@@ -368,63 +368,75 @@ async function builtInHandler (msg, member, command, content){
     }
 
 
-    else if (command === "detach"){
+    else if (command === "--detach"){
+        if (content === "")  throw ("No args were given");
         let import_type;
-        let filePath;
+        let targetName;
         if (content.includes(' ')){
             import_type = content.substr(0,content.indexOf(' ')).trim();
-            filePath = content.substr(content.indexOf(' ')+1).trim();
+            targetName = content.substr(content.indexOf(' ')+1).trim();
         }
-        filePath = path.normalize( filePath );
-        let targetName = path.basename(filePath, ".js");
         switch (import_type) {
             case "command":
-                if ( globals.modularCommands.hasOwnProperty(targetName) ){ 
-                    utils.botLogs(globals,"--detaching command ["+targetName+"]");
-                    if ( globals._shutdown.hasOwnProperty(targetName) ){
-                        utils.botLogs(globals,"--running linked shutdown functions");
-                        let shutdown_funcs = globals._shutdown[targetName];
-                        for ( let shutdown_func of shutdown_funcs ){
-                            try{ await shutdown_func(globals); }
-                            catch(err){ 
-                                utils.botLogs(globals, "----error ::   "+err.stack); 
-                                console.error(err); 
-                                await msg.channel.send("an error occured when trying to run shutdown functions to properly detach the command:\n"+err);
+                if ( globals.modularCommands.hasOwnProperty(targetName) ){
+                    let rc_message = await msg.channel.send("React with 🟢 to confirm detachment of command ["+targetName+"]\n__***30 seconds to confirm***__\n\nOrgin: "+globals.modularCommands[targetName].__filePath+"\nVersion: "+globals.modularCommands[targetName].version+"\nAuth_level: "+globals.modularCommands[targetName].auth_level).catch(err => {throw (err)});
+                    await utils.react_confirm(globals, "Detach_command["+targetName+"]", rc_message, 30, [msg.author.id], async _ => {
+                        utils.botLogs(globals,"DETACH_CONFIRM\n  Requester: "+msg.author.tag+" : "+msg.author.id+"\n--detaching command ["+targetName+"]");
+                        if ( globals._shutdown.hasOwnProperty(targetName) ){
+                            utils.botLogs(globals,"--running linked shutdown functions");
+                            let shutdown_funcs = globals._shutdown[targetName];
+                            for ( let shutdown_func of shutdown_funcs ){
+                                try{ await shutdown_func(globals); }
+                                catch(err){ 
+                                    utils.botLogs(globals, "----error ::   "+err.stack); 
+                                    console.error(err); 
+                                    await msg.channel.send("an error occured when trying to run shutdown functions to properly detach the command:\n"+err);
+                                }
                             }
                         }
-                    }
-                    delete require.cache[require.resolve(commandsPath+targetName+'.js')];
-                    delete globals.modularCommands[targetName];
+                        delete require.cache[require.resolve( globals.modularCommands[targetName].__filePath )];
+                        delete globals.modularCommands[targetName];
+                        await msg.reply("request complete;  ["+targetName+"] detached");
+                    }, null);
                 }
                 break;
+
             case "reactable":
                 if ( globals.modularReactables.hasOwnProperty(targetName) ){
-                    utils.botLogs(globals,"--detaching reactable ["+targetName+"]");
-                    delete require.cache[require.resolve(reactablesPath+targetName+'.js')];
-                    delete globals.modularReactables[targetName];
+                    let rc_message = await msg.channel.send("React with 🟢 to confirm detachment of reactable ["+targetName+"]\n__***30 seconds to confirm***__\n\nOrgin: "+globals.modularCommands[targetName].__filePath).catch(err => {throw (err)});
+                    await utils.react_confirm(globals, "Detach_reactable["+targetName+"]", rc_message, 30, [msg.author.id], async _ => {
+                        utils.botLogs(globals,"DETACH_CONFIRM\n  Requester: "+msg.author.tag+" : "+msg.author.id+"\n--detaching reactable ["+targetName+"]");
+                        delete require.cache[require.resolve( globals.modularReactables[targetName].__filePath )];
+                        delete globals.modularReactables[targetName];
+                        await msg.reply("request complete;  ["+targetName+"] detached");
+                    }, null);
                 }
                 break;
+
             default:
                 throw ("Invalid import type  ["+import_type+"]\nOnly \"command\" and \"reactable\"");
         }
-        return "request complete;  ["+targetName+"] detached";
+        return;// "request complete;  ["+targetName+"] detached";
         
     }
 
-    else if (command === "import"){
-        //TODO cases command and reactables
+    else if (command === "--import"){
+        if (content === "")  throw ("No args were given");
+
         //"**--import command/reactable *path/to/file/from/cwd/fileName.js*"
         let import_type;
         let filePath;
         let jsFile;
+        let originalPath;
         if (content.includes(' ')){
             import_type = content.substr(0,content.indexOf(' ')).trim();
-            filePath = content.substr(content.indexOf(' ')+1).trim();
+            originalPath = content.substr(content.indexOf(' ')+1).trim();
         }
-        filePath = path.normalize( filePath );
+        filePath = "./"+path.normalize( (import_type === "command" ? commandsPath : (import_type === "reactable" ? reactablesPath : "")) + originalPath );
+        if (filePath.startsWith("..") || filePath.includes("/../") || filePath.includes("\\..\\")) throw new Error("Illegal path;  Path includes upward traversal beyond scope ::   "+originalPath);
         let targetName = path.basename(filePath, ".js");
         if ( !fs.existsSync(filePath) ){
-            throw ("Invalid path:  "+filePath);
+            throw ("Invalid path:  "+filePath.replace("\\","/"));
         }
         switch (import_type) {
             case "command":
@@ -441,105 +453,62 @@ async function builtInHandler (msg, member, command, content){
                         }
                     }
                 }
-                //deletw old caches and entries
+                //delete old caches and entries
                 if ( globals.modularCommands.hasOwnProperty(targetName) ){ 
                     utils.botLogs(globals,"--detaching command ["+targetName+"]");
-                    delete require.cache[require.resolve(commandsPath+targetName+'.js')];
+                    delete require.cache[require.resolve(filePath)];
                     delete globals.modularCommands[targetName];
                 }
-                utils.botLogs(globals, "--importing command ["+commandsPath+filePath+"]");
-                jsFile = require(commandsPath+filePath);
+                utils.botLogs(globals, "--importing command ["+filePath+"]");
+                jsFile = require(filePath);
                 if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
+                    jsFile["__filePath"] = filePath;
                     globals.modularCommands[targetName] = jsFile;
-                    utils.botLogs(globals, "----\""+file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
+                    utils.botLogs(globals, "----\""+filePath+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
                 }
                 else
-                    throw ("Invalid modular command file ["+reactablesPath+filePath+"]");
+                    throw ("Invalid modular command file ["+filePath+"]");
                 //import and run any additional requisites
                 acquireRequisites( targetName, jsFile );  
                 importCommandRequisite();
                 await runRequisiteStartupFunctions().catch(err => { throw (err) });
                 break;
+
             case "reactable":
                //delete old caches and entries 
                if ( globals.modularReactables.hasOwnProperty(targetName) ){
                     utils.botLogs(globals,"--detaching reactable ["+targetName+"]");
-                    delete require.cache[require.resolve(reactablesPath+targetName+'.js')];
+                    delete require.cache[require.resolve(filePath)];
                     delete globals.modularReactables[targetName];
                 }
                 //import reactable
-                jsFile = require(reactablesPath+filePath);
+                jsFile = require(filePath);
                 if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
+                    jsFile["__filePath"] = filePath;
                     globals.modularReactables[targetName] = jsFile; 
-                    utils.botLogs(globals, "--importing reactable ["+reactablesPath+filePath+"]");
+                    utils.botLogs(globals, "--importing reactable ["+filePath+"]");
                 }
                 else 
-                    throw ("Invalid modular reactable file ["+reactablesPath+filePath+"]");
+                    throw ("Invalid modular reactable file ["+filePath+"]");
                 break;
+
             default:
                 throw ("Invalid import type  ["+import_type+"]\nOnly \"command\" and \"reactable\"")
         }
+        return "request complete;  ["+targetName+"] imported";
     }
 
 
-    /* reimport assets */
-    // WARNING using this command may have unforseen consequences depending on function design
+    /* reimport reactables or configs */
     else if (command === '--reimport'){
         let args = content.split(" ");
         args = [...new Set(args)]; //remove duplicates
         utils.botLogs(globals, "--reimporting:  "+args);
         for (let arg of args){
-            if (arg !== "all" && arg !== "reactables" && arg !== "commands" && arg !== "configs")
+            if ( arg !== "reactables" && arg !== "configs" )
                 throw new Error(`invalid arg: [${arg}]`);
         }
 
-        /* //DEPREC, use restart to reimport all, use import to include new commands or reactables
-        //leave all voice connections
-        if ( args.includes("all") || args.includes("commands") )
-        utils.botLogs(globals, "-- disconnecting from voice channels for reimport");
-        let connections = Array.from(globals.client.voice.connections.values());
-        for (let connection of connections){
-            let channel = connection.channel;
-            utils.botLogs(globals, `---- disconnected from [${channel.name}:${channel.id}] of [${channel.guild.name}:${channel.guild.id}]`);
-            connection.disconnect();
-        }
-
-        if (args.includes("all")){
-            let old_configs = globals.configs;
-            configs = {};
-            globals.configs = {};
-            try { 
-                acquireConfigs(); 
-                if (old_configs.DiscordAuthFilePath !== configs.DiscordAuthFilePath)
-                    throw new Error("Auth file path was changed, bot should be shutdown and manually restarted.");
-                if (old_configs.logsFileMode !== configs.logsFileMode){
-                    utils.botLogs(globals,"--logfile mode changed from ["+old_configs.logsFileMode+"] to ["+configs.logsFileMode+"]\n----setting up for new logging mode");
-                    setupLogs();
-                }   
-            }
-            catch (err){ 
-                utils.botLogs("---- error on configs reimport (retaining old configs)\n"+err);
-                globals.configs = old_configs;
-                configs = old_configs;
-                msg.reply("An error occured when reimporting configs.  Previous configs will be retained.\n"+err); 
-            }
-
-            for (let modCmd in globals.modularCommands){ delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
-            globals["modularCommands"] = {};
-            acquireCommands();
-
-            for (let modReact in globals.modularReactables){ delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
-            globals["modularReactables"] = {}; 
-            acquireReactables();
-            return "Request complete.  Reimported all (commands, reactables, configs)";
-        }
-
-        if (args.includes("commands")) {
-            for (let modCmd in globals.modularCommands) { delete require.cache[require.resolve(commandsPath+modCmd+'.js')]; }
-            globals["modularCommands"] = {};
-            acquireCommands();
-        } 
-        */
 
         if (args.includes("reactables")) {
             for (let modReact in globals.modularReactables) { delete require.cache[require.resolve(reactablesPath+modReact+'.js')]; }
@@ -632,8 +601,12 @@ async function handleReactables(msg){
                     if ( replyFile.exact[msg.content.toLowerCase()]["case_insensitive"] ){ //if not undefined and true
                         msg_content = msg.content.toLowerCase();
                     }
-                } 
-
+                }
+                if ( replyFile.exact[msg_content].hasOwnProperty('reactions') ){
+                    for ( let reaction of replyFile.exact[msg_content].reactions ){
+                        await msg.react(reaction);
+                    }
+                }
                 if ( replyFile.exact[msg_content].hasOwnProperty("reply") ){
                     let directed = true;
                     if ( replyFile.exact[msg_content].hasOwnProperty("directed") )
@@ -643,11 +616,6 @@ async function handleReactables(msg){
                     else 
                         await msg.channel.send(replyFile.exact[msg_content].reply);
                 }
-                if ( replyFile.exact[msg_content].hasOwnProperty('reactions') ){
-                    for ( let reaction of replyFile.exact[msg_content].reactions ){
-                        await msg.react(reaction);
-                    }
-                }
                 return; //if msg.content in exact then no need to check contains
             }
         }
@@ -656,6 +624,11 @@ async function handleReactables(msg){
             for ( let subphrase in replyFile.contains ){
                 let case_insensitive = replyFile.contains[subphrase].hasOwnProperty("case_insensitive") ? replyFile.contains[subphrase].case_insensitive : false;
                 if ( case_insensitive ? msg.content.toLowerCase().includes(subphrase) : msg.content.includes(subphrase) ){
+                    if ( replyFile.contains[subphrase].hasOwnProperty("reactions") ){
+                        for ( let reaction of replyFile.contains[subphrase].reactions ){
+                            await msg.react(reaction);
+                        }
+                    }
                     if ( replyFile.contains[subphrase].hasOwnProperty("reply") ){
                         let directed = true;
                         if ( replyFile.contains[subphrase].hasOwnProperty("directed") )
@@ -664,11 +637,6 @@ async function handleReactables(msg){
                             { await msg.reply(replyFile.contains[subphrase].reply); }
                         else 
                             { await msg.channel.send(replyFile.contains[subphrase].reply); }
-                    }
-                    if ( replyFile.contains[subphrase].hasOwnProperty("reactions") ){
-                        for ( let reaction of replyFile.contains[subphrase].reactions ){
-                            await msg.react(reaction);
-                        }
                     }
                 }
             }
@@ -693,7 +661,7 @@ async function handleReactables(msg){
 
 function onReady (){
     //console.log(client);
-    utils.change_status(client, 'idle', configs.startupStatusText).catch();
+    //utils.change_status(client, 'idle', configs.startupStatusText).catch();
     process.title = `${client.user.tag}  [${package.name}]   version -- ${package.version}`;
 
     console.log(`\nLogged in as ${client.user.tag}!`);
@@ -726,12 +694,43 @@ function onError (err){
     +"\n________________________________________________________________________________\n\n");
     //process.exit();
 }
+function onRateLimit (rateLimitInfo){
+    console.log("<< Request rate limited for "+(rateLimitInfo.timeout/1000.0)+"s >>");
+}
+
+function onShardReady (id, unavailableGuilds){
+    console.log("<< Shard "+id+" ready >>"+ (unavailableGuilds ? "\nUnavailable servers (id): "+unavailableGuilds: ""));
+    utils.change_status(client, 'idle', configs.startupStatusText).catch();
+}
+function onShardReconnecting (id){
+    console.log("<< Shard "+id+" reconnecting... >>");
+}
+function onShardResume (id, replayedEvents){
+    console.log("<< Shard "+id+" connection resumed; "+replayedEvents+" events replaying >>");
+    utils.change_status(client, 'idle', "reconnected shard "+id).catch();
+}
+function onShardDisconnect (closeEvent, id){
+    console.log("<< Shard "+id+" disconnected >>\ncode: "+closeEvent.code+"  (wasClean: "+closeEvent.wasClean+")\nreason: "+closeEvent.reason);
+}
+function onShardError (error, shardID){
+    console.log("<< Shard "+shardID+" encountered an error >>\n");
+    console.error(error);
+}
+
 
 function clientSetup (){
     console.log("\nSetting up client event handlers");
     client.once('ready', onReady);
     client.on('message', onMessage);
     client.on('error', onError);
+    client.on('rateLimit', onRateLimit);
+
+    client.on('shardReady', onShardReady);
+    client.on('shardError', onShardError);
+    client.on('shardReconnecting', onShardReconnecting);
+    client.on('shardResume', onShardResume);
+    client.on('shardDisconnect', onShardDisconnect);
+
 }
 
 
@@ -741,7 +740,7 @@ function clientSetup (){
 
 
 async function runStartupFunctions (){
-    utils.botLogs(globals, "\nRunning _startup functions");
+    utils.botLogs(globals, "\nStarting _startup functions");
     if (fs.existsSync(startupPath)) {
         utils.botLogs(globals, "--scanning _startup directory (one layer): ");
         let startup_Dir = fs.readdirSync(startupPath);
@@ -751,6 +750,7 @@ async function runStartupFunctions (){
             if (file.endsWith('.js')){
                 let jsFile = require(startupPath+file);
                 let filePath = path.normalize(startupPath+file);
+                if (filePath.startsWith("..") || filePath.includes("/../") || filePath.includes("\\..\\")) throw new Error("Illegal path;  Path includes upward traversal beyond scope ::   "+startupPath+file);
                 let requesters = null;
                 if ( globals._requisites.startups.hasOwnProperty(filePath) ){
                     requesters = globals._requisites.startups[filePath];
@@ -805,6 +805,7 @@ function acquireCommands (){
             if (file.endsWith('.js')){
                 let jsFile = require(commandsPath+file);
                 if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
+                    jsFile["__filePath"] = commandsPath+file;
                     globals.modularCommands[file.substr(0,file.length-3)] = jsFile; 
                     utils.botLogs(globals, "    \""+file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
                 }
@@ -821,6 +822,7 @@ function acquireCommands (){
                     if (inner_file.endsWith('.js')){
                         let jsFile = require(commandsPath+cmd_inner_dir+inner_file);
                         if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") && jsFile.hasOwnProperty("auth_level") ){
+                            jsFile["__filePath"] = commandsPath+cmd_inner_dir+inner_file;
                             globals.modularCommands[inner_file.substr(0,inner_file.length-3)] = jsFile; 
                             utils.botLogs(globals, "    \""+inner_file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
                         }
@@ -851,6 +853,7 @@ function acquireRequisites(cmd, jsFile){
         if ( jsFile.requisites.hasOwnProperty("commands") ){
             for ( let cmd_req of jsFile.requisites.commands ){
                 let filePath = path.normalize( commandsPath + cmd_req );
+                if (filePath.startsWith("..") || filePath.includes("/../") || filePath.includes("\\..\\")) throw new Error("Illegal path;  Path includes upward traversal beyond scope ::   "+commandsPath + cmd_req);
                 if ( !globals._requisites.commands.hasOwnProperty(filePath) ){
                     globals._requisites.commands[filePath] = [];
                 }
@@ -861,6 +864,7 @@ function acquireRequisites(cmd, jsFile){
         if ( jsFile.requisites.hasOwnProperty("startups") ){
             for ( let start_req of jsFile.requisites.startups ){
                 let filePath = path.normalize( startupPath + start_req );
+                if (filePath.startsWith("..") || filePath.includes("/../") || filePath.includes("\\..\\")) throw new Error("Illegal path;  Path includes upward traversal beyond scope ::   "+startupPath + start_req);
                 if ( !globals._requisites.startups.hasOwnProperty(filePath) ){
                     globals._requisites.startups[filePath] = [];
                 }
@@ -882,9 +886,10 @@ function importCommandRequisite(){
             utils.botLogs(globals, "--requisite command ["+commandName+"] already found in command list\n----requested file path: ["+filePath+"]\n----requesters: ["+requesters+"]");
             delete globals._requisites.commands[filePath];
         }
-        else {
+        else { //not yet imported
             utils.botLogs(globals, "--importing ["+commandName+"] via path: "+filePath);
             globals.modularCommands[commandName] = require('./'+filePath);
+            globals.modularCommands[commandName]["__filePath"] = './'+filePath;
             delete globals._requisites.commands[filePath];
             acquireRequisites(commandName, globals.modularCommands[commandName]);
         }
@@ -901,7 +906,16 @@ function acquireReactables (){
             if ((file === "disabled") ||  (file === "README.txt"))  continue;
             if (file.endsWith('.js')){
                 let jsFile = require(reactablesPath+file);
-                if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){
+                if (jsFile.hasOwnProperty("exact") || jsFile.hasOwnProperty("contains")){ 
+                    for (let elem in jsFile.exact){ //fix reaction by removing any < or >
+                        if (jsFile.exact[elem].hasOwnProperty('reactions')) 
+                            jsFile.exact[elem].reactions = jsFile.exact[elem].reactions.map(react => react.replace("<","").replace(">",""));
+                    }
+                    for (let elem in jsFile.contains){ //fix reaction by removing any < or >
+                        if (jsFile.contains[elem].hasOwnProperty('reactions')) 
+                            jsFile.contains[elem].reactions = jsFile.contains[elem].reactions.map(react => react.replace("<","").replace(">",""));
+                    }
+                    jsFile["__filePath"] = reactablesPath+file;//store the orgin path
                     globals.modularReactables[file.substr(0,file.length-3)] = jsFile; 
                     utils.botLogs(globals, "    \""+file+"\" included");
                 }
@@ -1178,7 +1192,7 @@ async function init (press_enter_to_exit){
             "commands" : {/*"example_req_command": ["requester_cmd_1", ...] ...*/},
             "startups" : {/*"normalized_path/fileName.js": ["requester_1, ..."] ...*/}
         };
-
+        await utils.util_startup(globals);
         acquireConfigs();
         setupLogs();
         acquireCommands();
@@ -1221,12 +1235,19 @@ async function shutdown (){
                 catch(err){ console.log("----error ::   "+err.stack); console.error(err); }
             }
         }
-        botEventEmitter.emit('botShutdownDone');
     }
+    await utils.util_shutdown(globals);
+    botEventEmitter.emit('botShutdownDone');
     try { 
         //client.off('ready', onReady);
         client.off('message', onMessage);
         client.off('error', onError);
+        client.off('rateLimit', onRateLimit);
+        client.off('shardReady', onShardReady);
+        client.off('shardError', onShardError);
+        client.off('shardReconnecting', onShardReconnecting);
+        client.off('shardResume', onShardResume);
+        client.off('shardDisconnect', onShardDisconnect);
         client.destroy(); 
     }
     catch (err){ utils.botLogs(globals, "ERROR when destroying client\n"+err); }
@@ -1273,8 +1294,9 @@ async function soft_restart (msg){
                 catch(err){ console.log("----error ::   "+err.stack); console.error(err); }
             }
         }
-        botEventEmitter.emit('botShutdownDone');
     }
+    await utils.util_shutdown(globals);
+    botEventEmitter.emit('botShutdownDone');
     let temp_globals = globals;
     clearGlobals(); 
     botEventEmitter.emit('botSoftRestart1');
@@ -1299,6 +1321,7 @@ async function soft_restart (msg){
             "commands" : {/*"example_req_command": ["requester_cmd_1", ...] ...*/},
             "startups" : {/*"normalized_path/fileName.js": ["requester_1, ..."] ...*/}
         };
+        await utils.util_startup(globals);
         acquireConfigs();
         setupLogs();
         acquireCommands();

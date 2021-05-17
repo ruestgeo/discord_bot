@@ -24,9 +24,9 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.2,
+    version: 2.0,
     func: async function (globals){
-        var leading_space = "        ";
+        let leading_space = "        ";
         console.log(leading_space + "Setting up shutdown-cleanup for voiceActivityWatcher");
 
 
@@ -39,7 +39,7 @@ module.exports = {
                     globals.client.off('voiceStateUpdate', listenToVoiceChannelActivity);
                     globals.client.off('message', wva_listener);
                     for (_textChan in textChannels){
-                        var textChan = textChannels[_textChan];
+                        let textChan = await globals.client.channels.fetch(textChannels[_textChan]);
                         await textChan.send("**Bot Shutting down, ending voice activity listener**\n*"+utils.getDateTimeString(globals)+"*");
                     }
                     clear();

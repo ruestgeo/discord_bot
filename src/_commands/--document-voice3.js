@@ -28,7 +28,7 @@ module.exports = {
 
 
     manual: "**--document-voice3**  ->  `channel_id` `roleName or roleID` ~~  or  ~~ \\``channel_name`\\` `roleName roleID`\n" +
-            ".     *Dumps the member information (names) that are in a specified voice channel (via ID, or by name if encapsulated with grave accents) into a specified google sheet;  lists all users of roleName for participation or not.*\n  ***A role must be specified***\n  *(cannot use channel name if name includes grave accent)*",
+            ".     *Dumps the member information (names) that are in a specified voice channel (via ID, or by name if encapsulated with backtick/grave-accent-mark) into a specified google sheet;  lists all users of roleName for participation or not.*\n  ***A role must be specified***\n  *(cannot use channel name if name includes backtick/grave-accent-mark)*",
 
 
 

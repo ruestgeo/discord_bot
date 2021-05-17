@@ -27,10 +27,9 @@ module.exports = {
 
 
 
-    manual: "**--document-voice**  ->  \\`channel_id/name\\`  <roleID/Name , ... >\n" +
-            ".     *Records the names of members that are in a specified voice channel into a google sheet.*\n"+
-            ".     *If no role resolvables are provided then only columns for the displayName and username of the participants of the voice channel will be added.*\n"+
-            ".     *If at least one role resolvable is provided then two columns for each role (for displayName and username) as well as an additional two roles for members of that role who are not in the channel*\n"+
+    manual: "**--document-voice-boolean**  ->  \\`channel_id/name\\`  roleID/Name <, role ... >\n" +
+            ".     *Records the names of members that are in a specified voice channel into a google sheet;  lists all users of roleName with true/false values for voice channel participation.*\n"+
+            ".     *At least one role resolvable must be provided, and each role will have three columns for username and display name of each member of that role and a boolean column for whether they are a participant of the voice channel*\n"+
             ".     *(cannot use channel name if name includes backtick/grave-accent-mark)*",
 
 
@@ -52,11 +51,12 @@ module.exports = {
 
         /* parse args */
         let args = utils.extractEncapsulated(content, '`');
+        if (args[2].trim().length == 0)   throw ("Incorrect request body.  At least one role resolvable must be provided");
         targetChannel = args[1].trim();
         targetRoles = args[2].trim().split(',').map(elem => elem.trim()).filter(elem => elem !== '');
-        utils.botLogs(globals,  "--targetChannel:: "+targetChannel+"\n--targetRoles:: "+(targetRoles.length > 0 ? targetRoles : "@everyone"));
+        utils.botLogs(globals,  "--targetChannel:: "+targetChannel+"\n--targetRoles:: "+targetRoles);
 
-
+        
         /* fetch channel */
         try {
             channel = utils.resolveChannel(globals, targetChannel, server.channels, true);
@@ -65,9 +65,10 @@ module.exports = {
             throw new Error("Invalid given voice channel.  Given channel ["+targetChannel+"] is type: '"+channel.type+"'");
         }
         
+
         /* fetch roles */
         let server_roles = await server.roles.fetch();
-        if (targetRoles.length > 0)   utils.botLogs(globals,  "--fetching role(s)");
+        utils.botLogs(globals,  "--fetching role(s)");
         let roles = [];
         for (let targetRole of targetRoles){
             let role;
@@ -88,70 +89,53 @@ module.exports = {
             }
             all_members[role.id] = members;
         }
-        
+
 
         /* determine participants per role */
         let list = [];
         let voice_members = channel.members;
         let date = utils.getDateTimeString(globals);
-        let sheet_title = (targetRoles.length > 0 ? "@role" : "`@everyone`")+" in `"+channel.name+"` comms  "+date;
-        if (targetRoles.length > 0){
-            for (let role of roles){
-                let col_IN_displayName = [];
-                let col_NOT_displayName = [];
-                let col_IN_username = [];
-                let col_NOT_username = [];
-                utils.botLogs(globals,  "\n\n"+role.name+" in  ["+channel.name+"] "+date);
-                col_IN_displayName.push("#"+role.name);
-                col_IN_username.push("\\\\");
-                col_NOT_displayName.push("Not in Channel");
-                col_NOT_username.push("\\\\");
-                let members = all_members[role.id];
-                for (let memberID of members){ 
-                    let member = channel.guild.members.resolve(memberID);
-                    if(voice_members.has(memberID)){
-                        col_IN_displayName.push(member.displayName+"#"+member.user.discriminator);
-                        col_IN_username.push(member.user.username+"#"+member.user.discriminator);
-                        utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
-                    } else {
-                        col_NOT_displayName.push(member.displayName+"#"+member.user.discriminator);
-                        col_NOT_username.push(member.user.username+"#"+member.user.discriminator);
-                    }
-                }
-                list.push(col_IN_displayName);
-                list.push(col_IN_username);
-                list.push(col_NOT_displayName);
-                list.push(col_NOT_username);
-    
-                /* print out members not in channel */
-                utils.botLogs(globals,  "\n\nUsers not in channel");
-                for (let idx=1; idx < col_NOT_displayName.length; idx++){
-                    utils.botLogs(globals,  "  "+col_NOT_displayName[idx]+"    ("+col_NOT_username[idx]+")");
-                    
-                }
-            }
-        }
-        else { //@everyone in comms
+        let sheet_title = "@role in `"+channel.name+"` comms  "+date;
+        for (let role of roles){
             let col_displayName = [];
             let col_username = [];
-            utils.botLogs(globals,  "\n\n@everyone in  ["+channel.name+"] "+date);
-            col_displayName.push("@everyone");
+            let col_boolean = [];
+            utils.botLogs(globals,  "\n\n"+role.name+" in  ["+channel.name+"] "+date);
+            let not_in_comms = [];
+
+
+            col_displayName.push("#"+role.name);
             col_username.push("\\\\");
-            for (let member of voice_members.values()){
-                utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+":"+member.id);
+            col_boolean.push("is in comms?");
+            let members = all_members[role.id];
+            for (let memberID of members){ 
+                let member = channel.guild.members.resolve(memberID);
                 col_displayName.push(member.displayName+"#"+member.user.discriminator);
                 col_username.push(member.user.username+"#"+member.user.discriminator);
+                if(voice_members.has(memberID)){
+                    col_boolean.push(true);
+                    utils.botLogs(globals,  "  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
+                } else {
+                    col_boolean.push(false);
+                    not_in_comms.push("  "+member.displayName+"#"+member.user.discriminator+"    ("+member.user.username+"#"+member.user.discriminator+")");
+                }
             }
             list.push(col_displayName);
             list.push(col_username);
+            list.push(col_boolean);
+
+            /* print out members not in channel */
+            utils.botLogs(globals,  "\n\nUsers not in channel");
+            for (let str of not_in_comms){
+                utils.botLogs(globals,  str);
+            }
         }
         let numRows = Math.max(...list.map(arr => arr.length));
         
 
         /**  create new sheet and dump info  **/
         await gs_utils.dumpToSheet(msg, globals, sheet_title, list, 0, numRows, 0, list.length).catch (err => { throw (err); });
-        
     }
-   
-}
 
+    
+}
