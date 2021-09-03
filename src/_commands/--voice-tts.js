@@ -48,7 +48,7 @@ module.exports = {
         let server = await msg.guild.fetch();
         let connection; 
         
-        /*DEV*/ let utils = require("../utils.js");
+        /*DEV*/ //let utils = require("../utils.js");
         /*DEV*/ //let voiceUtils = require("../_utils/voice_utils.js");
         
         if ( !(await voiceUtils.hasRolePermission(msg.member)) )  throw ("Insufficient permissions:  lacking role to use voice commands");
@@ -60,7 +60,7 @@ module.exports = {
         let userID = msg.author.id;
         let serverID = msg.guild.id;
 
-        if (content == ''){
+        if (content === ''){
             try{
                 connection.dispatcher.pause();
                 connection.dispatcher.destroy();
@@ -78,7 +78,7 @@ module.exports = {
         let dispatcher = connection.play(stream);
 
         dispatcher.once('error', async (err) => {
-            utils.awaitLogs(globals, "__[voice-say] error on tts from user ID "+userID+"   in server ID "+serverID+"\n"+err, 5); 
+            utils.awaitLogs(globals, "__[voice-tts] error on tts from user ID "+userID+"   in server ID "+serverID+"\n"+err, 5); 
             let conn = streams[serverID].connection;
             conn.dispatcher.pause(); 
             conn.dispatcher.destroy();
@@ -86,7 +86,7 @@ module.exports = {
             delete streams[serverID];
         });
         dispatcher.once('finish', async _ => { 
-            utils.awaitLogs(globals, "__[voice-say] finished tts from user ID "+userID+"   in server ID "+serverID, 5); 
+            utils.awaitLogs(globals, "__[voice-tts] finished tts from user ID "+userID+"   in server ID "+serverID, 5); 
             let conn = streams[serverID].connection;
             try{ conn.dispatcher.destroy(); } catch (err) {console.error}
             await conn.voice.setMute(true); 

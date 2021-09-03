@@ -123,7 +123,7 @@ module.exports = {
         let voiceParticipants = "";
         let printParticipants = false;
         for ( let channelID of targetVoiceChannels ){
-            let channel = await (server.channels.resolve(targetChannel)).fetch();
+            let channel = await (server.channels.resolve(channelID)).fetch();
             if (channel.members.size > 0) printParticipants = true;
             else continue;
             voiceParticipants += "__"+channel.name+"__\n";

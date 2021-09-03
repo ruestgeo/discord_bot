@@ -700,14 +700,14 @@ function onRateLimit (rateLimitInfo){
 
 function onShardReady (id, unavailableGuilds){
     console.log("<< Shard "+id+" ready >>"+ (unavailableGuilds ? "\nUnavailable servers (id): "+unavailableGuilds: ""));
-    utils.change_status(client, 'idle', configs.startupStatusText).catch();
+    utils.change_status(client, 'idle', configs.startupStatusText).catch(err => utils.botLogs(globals, err));
 }
 function onShardReconnecting (id){
     console.log("<< Shard "+id+" reconnecting... >>");
 }
 function onShardResume (id, replayedEvents){
     console.log("<< Shard "+id+" connection resumed; "+replayedEvents+" events replaying >>");
-    utils.change_status(client, 'idle', "reconnected shard "+id).catch();
+    //utils.change_status(client, 'idle', "reconnected shard "+id).catch(err => utils.botLogs(globals, err));
 }
 function onShardDisconnect (closeEvent, id){
     console.log("<< Shard "+id+" disconnected >>\ncode: "+closeEvent.code+"  (wasClean: "+closeEvent.wasClean+")\nreason: "+closeEvent.reason);

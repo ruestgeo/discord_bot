@@ -448,7 +448,7 @@ module.exports = {
     fetchMessages: async function (globals, channel_messages, options, log){
         let channel = channel_messages.channel;
         let fetchAmount = options.amount ? options.amount : 30;
-        if (log) this.botLogs(globals,"--acquiring "+fetchAmount+" latest messages from  "+channel.name+"  id:"+channel.id+ "   type: "+channel.type);
+        if (log) this.botLogs(globals,"--acquiring "+fetchAmount+" latest messages from  "+(channel.type=="dm"?"DM":channel.name)+"  id:"+channel.id+ "   type: "+channel.type);
         
 
         let messages = await channel.messages.fetch({ limit: fetchAmount }).catch(err => {throw (err);});

@@ -17,7 +17,6 @@ Made by JiJae (ruestgeo)
 
 
 const utils = require(process.cwd()+'/utils.js');
-const { link } = require('ffmpeg-static');
 const fs = require('fs'); 
 
 const outputPath = "./_output/";
