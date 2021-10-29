@@ -8,7 +8,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -22,7 +22,7 @@ const gs_utils = require(process.cwd()+'/_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 2.0,
+    version: 2.1,
     auth_level: 3,
 
 
@@ -30,7 +30,7 @@ module.exports = {
     manual: "**--document-reacts**  ->  *message_link*  <roleID/Name , ... >\n" +
             ".     *Records the reactions and users who reacted of the specified message into a google sheet.*\n"+
             ".     *If no role resolvable is provided then only the names of the users who reacted are recorded*\n"+
-            ".     *At least one role resolvable is provided then each role will have a column for displayName and username of each of the reactions and members of that role who have not reacted*",
+            ".     *At least one role resolvable is provided then each role will have a column for displayName and username of each of the reactions and members of that role who have not reacted, as well as columns for each react with members with none of the roles*",
 
 
 
@@ -120,6 +120,7 @@ module.exports = {
 
         /* determine user reacts per role */
         let list = [];
+        let reacted_no_role = {}; 
         let date = utils.getDateTimeString(globals);
         let sheet_title = (targetRoles.length > 0 ? "@role" : "`@everyone`")+" reacts on `#"+message.channel.name+"/"+message.id+"`   "+date;
         if (targetRoles.length > 0){ //roles
@@ -135,8 +136,12 @@ module.exports = {
                     col_react_displayName.push(emote_string+" @"+role.name);
                     col_react_username.push("\\\\");
                     utils.botLogs(globals,  "\n\n"+emote_string+" reacts by @"+role.name);
-                    let reacted_members = [...users.keys()];
-                    let reacted_role_members = reacted_members.filter(id => roleMembers.includes(id));
+                    let reacted_users = [...users.keys()];
+                    let reacted_role_members = reacted_users.filter(id => roleMembers.includes(id));
+
+                    if ( !reacted_no_role.hasOwnProperty(emote) )    reacted_no_role[emote] = [];
+                    reacted_no_role[emote].push( reacted_users.filter(id => !roleMembers.includes(id)) );
+
                     for (let memberID of reacted_role_members){
                         let member = server.members.resolve(memberID);
                         col_react_displayName.push(member.displayName+"#"+member.user.discriminator);
@@ -146,6 +151,7 @@ module.exports = {
                     list.push(col_react_displayName);
                     list.push(col_react_username);
                 }
+
                 //obtain list of users without reacts
                 let no_react = roleMembers.filter(memberID => !all_reacted_members.includes(memberID));
                 let col_no_react_displayName = [];
@@ -161,6 +167,33 @@ module.exports = {
                 }
                 list.push(col_no_react_displayName);
                 list.push(col_no_react_username);
+            }
+
+            //obtain list of user who reacted but have none of the roles
+            let server_members = await server.members.fetch();
+            for (let emote in msg_reacts){
+                let emote_string = msg_reacts[emote].string;
+                let no_role_users = reacted_no_role[emote].reduce( (A,B) => A.filter( memberID => B.includes(memberID)) );
+                let no_role_users_displayName = [];
+                let no_role_users_username = [];
+                no_role_users_displayName.push(emote_string + " no roles");
+                no_role_users_username.push("\\\\");
+                utils.botLogs(globals,  "\n\n"+emote_string+" reacts but none of the roles");
+                for (let id of no_role_users){
+                    let no_role_user = server_members.get(id);
+                    if (!no_role_user) { //is not server member
+                        no_role_user = await client.users.fetch(id);
+                        no_role_users_displayName.push("|ID| "+id);
+                        no_role_users_username.push(no_role_user ? no_role_user.tag : no_role_user.id);
+                    }
+                    else { //is server member
+                        no_role_users_displayName.push(no_role_user.displayName+"#"+no_role_user.user.discriminator);
+                        no_role_users_username.push(no_role_user.user.tag);
+                    }
+                }
+                utils.botLogs(globals,  no_role_users_displayName.slice(1).map(dn => "  "+dn).join("\n"));
+                list.push(no_role_users_displayName);
+                list.push(no_role_users_username);
             }
         }
         else { //@everyone

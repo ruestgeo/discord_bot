@@ -8,7 +8,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -21,13 +21,13 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.2,
+    version: 1.1,
     auth_level: 4,
 
 
 
-    manual: "**--give-role-conditioned2**  ->  `{\"give-role\": [\"role_Name/ID\", ...] <, \"target\": \"role_Name/ID\"> <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
-            ".     *Give role(s) to a user in the server if the member is missing at least* ***one*** *role from each role-group from 'missing-role'.  If a target role is given then it will only look at the list of users who have that role.*",
+    manual: "**--give-role-conditioned3**  ->  `{\"give-role\": [\"role_Name/ID\", ...] <, \"target\": \"role_Name/ID\"> <,  \"missing-role\": [[\"group1role\", ...], [\"group2role\", ...], ...]> }` \n" +
+            ".     *Give role(s) to a user in the server if the member is missing all roles of at least* ***one*** *role-group from 'missing-role'.  If a target role is given then it will only look at the list of users who have that role.*",
 
 
 
@@ -98,19 +98,21 @@ module.exports = {
         }
         
 
+        let count = 0;
+        let count_total = 0;
         utils.botLogs(globals,  "--searching user list for candidates");
         for (let _member of list){
             let member = await _member.fetch();
             if(args.hasOwnProperty("missing-role")){
-                let skip = false;
+                let skip = true;
                 for (let rolegroup of args["missing-role"]){
-                    let missingOne = false;
-                    for (let role of rolegroup){ //check if member is missing at least one of this role group
+                    let missingRoleGroup = true;
+                    for (let role of rolegroup){ //check if member missing all of at least one role group
                         let has = member.roles.cache.has( role );
-                        missingOne = missingOne || (!has); //if any is true then missingOne is true, if all false then missingOne is false
+                        missingRoleGroup = missingRoleGroup && !has; //true if all roles in rolegroup are missing
                     }
-                    if (!missingOne) { //has all, therefore cannot satisfy missing at least one role from each rolegroup
-                        skip = true;
+                    if (missingRoleGroup) { //missing all of rolegroup, condition satisfied
+                        skip = false;
                         break;
                     }
                 }

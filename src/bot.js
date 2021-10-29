@@ -10,7 +10,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -268,7 +268,8 @@ async function builtInHandler (msg, member, command, content){
         utils.botLogs(globals,"received request [help] or [commands]");
         
         if ( content === "" ){
-            msg.reply("This is the usage manual for searching for other usage manuals: \n"+built_in_manuals["--help"]);
+            await msg.reply("This is the usage manual for searching for other usage manuals: \n"+built_in_manuals["--help"]);
+            await msg.channel.send(command_description);
             return;
         }
 
@@ -277,46 +278,26 @@ async function builtInHandler (msg, member, command, content){
             for (let builtin of nonblocking_built_in_funcs){ all += builtin +"\n"; }
             for (let builtin of blocking_built_in_funcs){ all += builtin +"\n"; }
             for (let modularCommand in globals.modularCommands){ all += modularCommand +"\n"; }
-            if (all.length > 2000){
-                let parts = [];
-                while (all.length > 2000){
-                    let split_index = all.substr(1800, all.length).indexOf("\n")+1800;
-                    parts.push(all.substr(0,split_index));
-                    all = all.substr(split_index, all.length);
-                }
-                for (let part of parts){ msg.channel.send(part); }
-                if (all.trim() !== "") msg.channel.send(all); //last part
-            }
-            else  msg.channel.send(all);
+            utils.message(msg,all,false);
             return;
         }
         
         if ( nonblocking_built_in_funcs.includes(content) || blocking_built_in_funcs.includes(content)) {
             let manual = built_in_manuals[content];
-            if ( (command_description + manual).length > 1999 ){
-                msg.reply(command_description);
-                msg.channel.send(manual);
-                return;
-            }
-            msg.reply(command_description+"\n"+manual);
+            utils.message(msg,manual,true); //await msg.reply(manual);
             return;
         }
 
         if ( globals.modularCommands.hasOwnProperty(content) ){
             let jsFile = globals.modularCommands[content];
             let manual = jsFile.manual+"\nversion:  "+jsFile.version+"\nauthorization Lv."+jsFile.auth_level;
-            if ( (command_description + manual).length > 1999 ){
-                msg.reply(command_description);
-                msg.channel.send(manual);
-                return;
-            }
-            msg.reply(command_description+"\n"+manual);
+            utils.message(msg,manual,true); //await msg.reply(manual);
             return;
         }
 
         let keywords = content.split(" "); //split by spaces
         let remaining_keywords = Array.from(keywords);
-        msg.reply("The following keywords are being used list matching command names\n["+keywords.toString().replace(/,/g, ", ")+"]");
+        await msg.reply("The following keywords are being used list matching command names\n["+keywords.toString().replace(/,/g, ", ")+"]");
         let matches = {};
         let allList = [];
         allList = allList.concat(Object.keys(built_in_manuals), Object.keys(globals.modularCommands));
@@ -326,7 +307,7 @@ async function builtInHandler (msg, member, command, content){
             if ( cmd.includes(keyword) ) matches[cmd] = null; //globals.modularCommands[cmd].manual;
         }
         if (Object.keys(matches).length == 0){
-            msg.reply("No matches found for the provided keywords");
+            await msg.reply("No matches found for the provided keywords");
         }
         
         while (remaining_keywords.length > 0){ 
@@ -336,17 +317,7 @@ async function builtInHandler (msg, member, command, content){
             }
         }
         let command_matches = Object.keys(matches).toString().replace(/,/g, "\n");
-        if (command_matches.length > 2000){
-            let parts = [];
-            while (command_matches.length > 2000){
-                let split_index = command_matches.substr(1800, command_matches.length).indexOf("\n")+1800;
-                parts.push(command_matches.substr(0,split_index));
-                command_matches = command_matches.substr(split_index, command_matches.length);
-            }
-            for ( let part of parts ){ msg.channel.send(part); }
-            if (command_matches.trim() !== "")  msg.channel.send(command_matches); //last part
-        }
-        else  msg.channel.send(command_matches);
+        utils.message(msg,command_matches,false);
     }
 
     /* fancy ping */
@@ -397,8 +368,10 @@ async function builtInHandler (msg, member, command, content){
                         delete require.cache[require.resolve( globals.modularCommands[targetName].__filePath )];
                         delete globals.modularCommands[targetName];
                         await msg.reply("request complete;  ["+targetName+"] detached");
-                    }, null);
+                    },  async _ => { await msg.reply("REJECTED -> detach abandoned"); });
                 }
+                else 
+                    msg.reply(import_type+" "+targetName+" not found");
                 break;
 
             case "reactable":
@@ -409,8 +382,10 @@ async function builtInHandler (msg, member, command, content){
                         delete require.cache[require.resolve( globals.modularReactables[targetName].__filePath )];
                         delete globals.modularReactables[targetName];
                         await msg.reply("request complete;  ["+targetName+"] detached");
-                    }, null);
+                    }, async _ => { await msg.reply("REJECTED -> detach abandoned"); });
                 }
+                else 
+                    msg.reply(import_type+" "+targetName+" not found");
                 break;
 
             default:
@@ -712,8 +687,8 @@ function onShardResume (id, replayedEvents){
 function onShardDisconnect (closeEvent, id){
     console.log("<< Shard "+id+" disconnected >>\ncode: "+closeEvent.code+"  (wasClean: "+closeEvent.wasClean+")\nreason: "+closeEvent.reason);
 }
-function onShardError (error, shardID){
-    console.log("<< Shard "+shardID+" encountered an error >>\n");
+function onShardError (error, shardId){
+    console.log("<< Shard "+shardId+" encountered an error >>\n");
     console.error(error);
 }
 
@@ -1179,6 +1154,7 @@ async function init (press_enter_to_exit){
         globals["busy"] = false; 
         globals["logsPath"] = logsPath;
         globals["logsFileName"] = "LOGS.txt"; //default
+        globals["__awaitLogs"] = {"content":null, "timeout":null, "init_time":null, "wait_time":0};
         globals["intervals"] = {};
         globals["timeouts"] = {}; //may contain arrays of timeouts
         globals["modularCommands"] = {};
@@ -1308,6 +1284,7 @@ async function soft_restart (msg){
         globals["busy"] = temp_globals.busy;
         globals["logsPath"] = logsPath;
         globals["logsFileName"] = temp_globals.logsFileName;
+        globals["__awaitLogs"] = {"content":null, "timeout":null, "init_time":null, "wait_time":0};
         globals["intervals"] = {};
         globals["timeouts"] = {}; //may contain arrays of timeouts
         globals["modularCommands"] = {};

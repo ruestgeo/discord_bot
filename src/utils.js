@@ -8,7 +8,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -31,7 +31,7 @@ const DateTime = luxon.DateTime;
 
 module.exports = {
 
-    /** Acquire the work lock */
+    /** Acquire the work lock   (DO NOT USE WITHIN A COMMAND FUNCTION) */
     acquire_work_lock: async function(globals, requester){
         // await acquire_work_lock or  acquire_work_lock(~~).then(_ => { do stuff })
         console.log("* attempting to acquire work lock for "+requester+" *");
@@ -40,7 +40,7 @@ module.exports = {
         globals.busy = true;
         this.botLogs(globals, "* acquired work lock for "+requester+" *");
     },
-    /** Release the work lock */
+    /** Release the work lock (DO NOT USE UNLESS AFTER ACQUIRING) */
     release_work_lock: function(globals, holder){
         if ( !work_lock.isLocked() ) {console.log("*not locked DEBUG*"); return;}
         this.botLogs(globals, "* releasing work lock for "+holder+" *");
@@ -62,14 +62,12 @@ module.exports = {
         else   globals.__awaitLogs.content = timestamp+"_"+content;
         if ( !waitingSeconds )   waitingSeconds = 0;
         else if ( typeof waitingSeconds !== 'number' )   waitingSeconds = 0;
-        else if ( waitingSeconds < 1 )    waitingSeconds = 0;
+        else if ( waitingSeconds < 0 )    waitingSeconds = 0;
 
         if ( !globals.__awaitLogs.timeout && waitingSeconds == 0 ){ //no existing timeout and no waitingSeconds, immediate log
             let temp = globals.__awaitLogs.content;
             globals.__awaitLogs.content = null;
-            release = await work_lock.acquire();
             this.botLogs(globals, temp);
-            release();  
         }
         else if ( !globals.__awaitLogs.timeout && waitingSeconds > 0 ){ //set timeout
             //console.log("set timeout");
@@ -91,23 +89,32 @@ module.exports = {
             //console.log("DEBUG\n  elapsed: "+elapsedTime+"\n  old remaining time: "+remainingTime+"\n  add waiting seconds: "+waitingSeconds+"\n  new waiting time: "+waitingTime+"\n  total wait from init: "+globals.__awaitLogs.wait_time);
             globals.__awaitLogs.timeout = setTimeout(flushAwaitLogs, waitingTime*1000, globals, this.botLogs);
         }
-        //else timeout but no waitSeconds, so just append content and maintain the current timeout
+        //else timeout but no waitSeconds, so just append content and maintain the current timeout (at start)
     },
 
     
 
 
 
-    /** Return the current time as a string (24h) */
+    /** Return the current time as a string (24h)
+     * @param {*} globals
+     * @return {String} return the date and time as a string (hour,minute,seconds)
+     */
     getTimeString: function(globals){
         return this.getDateTime(globals).toLocaleString({hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit'});
     },
-    /** Return the current time as a string (12h + TZ) */
+    /** Return the current time as a string (12h + TZ) 
+     * @param {*} globals
+     * @return {String} return the date and time as a string (hour,minute,seconds,timezone)
+     */
     getTimeString2: function(globals){
         return this.getDateTime(globals).toLocaleString({hourCycle: 'h11', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short"});
     },
 
-    /** Obtain a DateTime obj of the corresponding timezone */
+    /** Obtain a DateTime obj of the corresponding timezone
+     * @param {*} globals
+     * @return {luxon.DateTime} the current time in the set timezome
+     */
     getDateTime: function(globals){
         let zone = globals.configs.IANAZoneTime;
         if (DateTime.local().setZone(zone).isValid) {
@@ -119,12 +126,18 @@ module.exports = {
         
     },
 
-    /** Return the current date and time as a string */
+    /** Return the current date and time as a string
+     * @param {*} globals
+     * @return {String} return the date and time as a string (weekday, month,day,year,hour,minute,seconds,timezone)
+     */
     getDateTimeString: function (globals) {
         return this.getDateTime(globals).toLocaleString({hourCycle: 'h11', weekday: 'short', month: 'short', day: '2-digit', year: "numeric", hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: "short" });
     },
 
-    /** Return the date as a string */
+    /** Return the date as a string 
+     * @param {*} globals
+     * @returns {String} the date in the format "year-MM-DD-weekday{3}-timezone{abbreviated}"
+    */
     getDate: function (globals){
         return this.getDateTime(globals).toFormat("y'-'MM'-'dd'_'ccc'_'ZZZZ");
         //return this.getDateTime(globals).toLocaleString({ year: "numeric", month: 'short', day: '2-digit', weekday: 'short', timeZoneName: "short" });
@@ -133,15 +146,24 @@ module.exports = {
 
 
 
-    /** Return whether a member (obj) has a specific role (id) */
+    /** Return whether a member (obj) has a specific role (id)
+     * @param {Discord.GuildMember} member the member to check
+     * @param {Discord.Snowflake} role_id the role ID
+     */
     memberHasRole: async function(member, role_id){
         member =  await member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
         return member.roles.cache.has(role_id);
     },
 
-    /** Return a members highest authorization level */
+    /** Return a members highest authorization level 
+     * @param {*} configs the globals configs object 
+     * @param {Discord.GuildMember} member the member to check for authorization level
+     * @return {Number} the highest authorization level of the member
+     * @throws {Error} if an error occurs
+     */
     getMemberAuthorizationLevel: async function(configs, member){
         let memberAuthLevel = 0;
+        member =  await member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
         if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
             memberAuthLevel = configs.authorization.authorizedUsers[member.id];
         }
@@ -154,8 +176,15 @@ module.exports = {
         return memberAuthLevel;
     },
 
-    /** Return whether a member has sufficient authorization level */
-    checkMemberAuthorized: async function(globals, _member, requiredAuthLevel, printlog){
+    /** Return whether a member has sufficient authorization level
+     * @param {*} globals 
+     * @param {Discord.GuildMember} member the member to check for authorization level
+     * @param {Number} requiredAuthLevel the required authorization level
+     * @param {Boolean | undefined } printlog whether to log the result
+     * @return {Boolean} whether the member is authorized or not
+     * @throws {Error} if an error occurs
+     */
+    checkMemberAuthorized: async function(globals, member, requiredAuthLevel, printlog){
         try {
             if( !printlog ) printlog = false;
             let configs = globals.configs;
@@ -163,7 +192,7 @@ module.exports = {
             let isAuthorized = false;
             let memberAuthLevel = 0;
 
-            let member =  await _member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
+            member =  await member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
             if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
                 memberAuthLevel = configs.authorization.authorizedUsers[member.id];
             }
@@ -200,7 +229,13 @@ module.exports = {
     },
 
 
-    /** Change the status text of the bot */
+    /** Change the status text of the bot 
+     * @param {Discord.Client} client
+     * @param {Discord.PresenceStatusData} status
+     * @param {String} text the name of the activity
+     * @param {Discord.ActivityType | Number} type the type of activity
+     * @throws {Error} if an error occured when changing the bot status
+    */
     change_status: async function(client, status, text, type){ //type is optional, defaults to PLAYING
         if (!type) type = "PLAYING";
         await client.user.setPresence({ activity: { name: text, type: type }, status: status })
@@ -213,7 +248,11 @@ module.exports = {
 
 
 
-    /** Post a message in the same channel as a given message, the content which is split into parts if exceeding 2000 char */
+    /** Post a message in the same channel as a given message, the content which is split into parts if exceeding 2000 char
+     * @param {Discord.Message} msg a message in the desired channel to post a new message to
+     * @param {String} content the content of the message to send
+     * @return  {Discord.Message | Array <Discord.Message>} the posted message, or final message if the message is split into multiple due to character limit
+    */
     message: async function (msg, content, reply){
         if ( !reply ) reply = false;
 
@@ -228,22 +267,30 @@ module.exports = {
             }
             for (let part of parts){
                 reply ? 
-                    await msg.reply(part) :
-                    await msg.channel.send(part); 
+                    await msg.reply(part, {split: true}) :
+                    await msg.channel.send(part, {split: true}); 
             }
             if (content.trim() !== "") {  //last part
-                return (reply ? 
-                    await msg.reply(content) :
-                    await msg.channel.send(content) );
+                let last_msg = (reply ? await msg.reply(content, {split: true}) :
+                    await msg.channel.send(content, {split: true}) );
+                console.log(last_msg);
+                if (Array.isArray(last_msg)) last_msg = last_msg[last_msg.length-1]; //split option causes an array to be returned by send; return only the latest
+                return last_msg;
             }
         }
         else if (content.trim() != "")  {
-            return (reply ? 
-                await msg.reply(content) : 
-                await msg.channel.send(content) );
+            let last_msg = (reply ? await msg.reply(content, {split: true}) :
+                await msg.channel.send(content, {split: true}) );
+                console.log(last_msg);
+            if (Array.isArray(last_msg)) last_msg = last_msg[last_msg.length-1];
+            return last_msg;
         }
     },
-    /** Post a message in a channel, the content of which is split into parts if exceeding 2000 char */
+    /** Post a message in a channel, the content of which is split into parts if exceeding 2000 char 
+     * @param {Discord.TextChannel | Discord.NewsChannel | Discord.DMChannel} channel the channel to send the message content to
+     * @param {String} content the content of the message to send
+     * @return  {Discord.Message | Array <Discord.Message} the posted message, or final message if the message is split into multiple due to character limit
+    */
     messageChannel: async function (channel, content){
         if (content.length > 2000){
             let parts = [];
@@ -255,14 +302,14 @@ module.exports = {
                 content = content.substr(split_index, content.length);
             }
             for (let part of parts){
-                await channel.send(part); 
+                await channel.send(part, {split: true}); 
             }
             if (content.trim() !== "") {  //last part
-                return await channel.send(content);
+                return await channel.send(content, {split: true});
             }
         }
         else if (content.trim() != "")  {
-            return await channel.send(content);
+            return await channel.send(content, {split: true});
         }
     },
 
@@ -270,13 +317,30 @@ module.exports = {
 
 
 
-
+    /**
+     * Resolve the server by id
+     * @param {*} globals 
+     * @param {String} targetServer the target server ID
+     * @param {Boolean} log whether to print to botLogs
+     * @param {String} log_prefix a prefix to add to the botLogs, if set
+     * @returns {Discord.Guild } the resolved server (Discord.Guild), or throws an error if unable to resolve
+     * @throws {Error} if cannot resolve
+     */
     resolveServer: function (globals, targetServer, log, log_prefix){
         if (log)  this.botLogs(globals,  (log_prefix ? log_prefix : "")+"--resolving target server ["+targetServer+"]");
         let server = globals.client.guilds.resolve(targetServer);
         if (!server) throw ("Could not find server ["+targetServer+"] in the bot cache");
         return server;
     },
+    /**
+     * Fetch the server by id
+     * @param {*} globals 
+     * @param {String} targetServer the target server ID
+     * @param {Boolean} log whether to print to botLogs
+     * @param {String} log_prefix a prefix to add to the botLogs, if set
+     * @returns {Discord.Guild } the resolved server (Discord.Guild), or throws an error if unable to resolve
+     * @throws {Error} if cannot resolve
+     */
     fetchServer: async function (globals, targetServer, log, log_prefix){
         if (log)  this.botLogs(globals,  (log_prefix ? log_prefix : "")+"--resolving target server ["+targetServer+"]");
         let server = await globals.client.guilds.fetch(targetServer);
@@ -330,7 +394,7 @@ module.exports = {
     /**
      * Resolve the role (in the provided server) by id, name, or link/mention
      * @param {*} globals 
-     * @param {*} targetRole the target ID, name, or link/mention
+     * @param {String} targetRole the target ID, name, or link/mention
      * @param {Discord.RoleManager} server_roles the server_roles, which should already be fetched prior to calling this function
      * @param {Boolean} log whether to print to botLogs
      * @param {String} log_prefix a prefix to add to the botLogs, if set
@@ -469,7 +533,7 @@ module.exports = {
                 countAmount += fetchAmount;
             }
         }
-        if (log) this.botLogs(globals,"--fetched a total of "+countAmount+" messages through "+countFetches+" API calls, resulting in "+messages.size+" undeleted messages");
+        if (log) this.botLogs(globals,"--fetched a total of "+countAmount+" messages through "+countFetches+" API calls, resulting in "+messages.size+" fetched undeleted messages");
         if (messages.size > fetchAmount)   return [...messages.first(fetchAmount)];
         return [...messages.values()]; 
     },
@@ -978,12 +1042,12 @@ module.exports = {
     countOccurrences,
     extractEncapsulated,
     url_prefix,
-    Queue
+    //Queue
 }
 
 
 async function flushAwaitLogs(globals, botLogs){
-    //clear awaitLogs prior to mutex to prevent race; instead 
+    //clear awaitLogs prior to mutex to prevent race
     let temp = globals.__awaitLogs.content;
     globals.__awaitLogs.content = null;
     globals.__awaitLogs.timeout = null;
@@ -996,29 +1060,55 @@ async function flushAwaitLogs(globals, botLogs){
 
 
 
-/** Sleep for some amount of milliseconds */
+/** Sleep for some amount of milliseconds
+ * @param {Number} ms
+ * @return {Promise <undefined>}
+ */
 function sleep (ms) { //example:  await sleep(1000);
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
 }
 
-/** Return an object formatted in a 'pretty' way */
+/** Return an object formatted in a 'pretty' way 
+ * @param {Object} jsonObj a regular js object
+ * @return {String} the formatted object
+*/
 function json_formatted (jsonObj){
     return JSON.stringify(jsonObj,null,'  ');
 }
 
-
+/**
+ * Replace the spaces after commas with a specified number of spaces
+ * @param {String} str the string to clean
+ * @param {Number} numSpaces the nunmber of spaces to fill after commas
+ * @returns {String}
+ */
 function cleanCommas(str, numSpaces){
     return str.replace(/ +(?<=, +)/g, " ".repeat(numSpaces));
 }
+/**
+ * Clean the extra spacing between characters to at most 1 space
+ * @param {String} str the string to clean
+ * @returns {String}
+ */
 function cleanSpaces(str){
     return str.replace(/ +(?= )/g, '');
 }
+/**
+ * Count the number of occurences of a substring within a string
+ * @param {String} str the string to count within
+ * @param {String} countString the sub-string to count within the main string
+ * @returns {Number}
+ */
 function countOccurrences(str, countString){
     return (str.match(new RegExp(countString,"g")) || []).length;
 }
-/** Return an array containing the substring before the shell encapsulating the core string, the core string, and the substring after the core */
+/** Return an array containing the substring before the shell encapsulating the core string, the core string, and the substring after the core 
+ * @param {String} str the string to parse
+ * @param {String} shellString the encapsulating sub-string, or "shell string", to the left and right of the core string
+ * @return {Array <String>} the left,core, and right sub-strings (not including the shell string)
+ */
 function extractEncapsulated(str, shellString){
     if (countOccurrences(str, shellString) < 2) return null;
     let beginIndex = str.indexOf(shellString);
@@ -1037,208 +1127,270 @@ function extractEncapsulated(str, shellString){
  * if given capacity then there is a limit to the size, otherwise no limit.
  * if given an array then the queue is created using that array
  ***/
-function Queue (capacity, array){
-    if (capacity){
-        if (!Number.isInteger(capacity))
-            throw new Error("Invalid arg given:  ["+capacity+"] is not an integer");
-        if (capacity < 1)
-            throw new Error("Invalid arg given:  capacity less than 1");
-        if (array){
-            if (array.length > capacity) 
-                throw new Error("Invalid args:  Array is larger than given capacity");
+class Queue {
+    constructor(capacity, array) {
+        if (capacity) {
+            if (!Number.isInteger(capacity))
+                throw new Error("Invalid arg given:  [" + capacity + "] is not an integer");
+            if (capacity < 1)
+                throw new Error("Invalid arg given:  capacity less than 1");
+            if (array) {
+                if (array.length > capacity)
+                    throw new Error("Invalid args:  Array is larger than given capacity");
+            }
         }
+        if (array !== undefined && !Array.isArray(array))
+            throw new Error("Invalid arg for array");
+
+        this._elements = (array !== undefined ? array : []);
+        this._capacity = capacity;
     }
-    if (array !== undefined && !Array.isArray(array)) 
-        throw new Error("Invalid arg for array");
-    
-    this._elements = (array!==undefined ? array : []);
-    this._capacity = capacity;
-}
-/**
- * add element to the end of the queue
- **/
-Queue.prototype.enqueue = function (element){ //
-    if (this._capacity && this._elements.length == this._capacity)
-        throw new Error(`Queue is full ( ${this._elements.length} / ${this._capacity} )`);
-    this._elements.push(element);     
-}
-/**
- * return and remove the first element of the queue
- **/
-Queue.prototype.dequeue = function (){ 
-    if (this._elements.length < 1)
-        throw new Error( this._capacity ? `Queue is empty ( ${this._elements.length} / ${this._capacity} )` : "Queue is empty");
-    return this._elements.shift();
-}
-/**
- * alias for enqueue
- **/
-Queue.prototype.push = function(element){ 
-    try { this.enqueue(element); }
-    catch (err) { throw (err); }
-}
-/**
- * alias for dequeue
- **/
-Queue.prototype.pop = function(){ 
-    try { return this.dequeue(); }
-    catch (err) { throw (err); }
-}
-/**
- * return true if empty
- **/
-Queue.prototype.isEmpty = function (){ 
-    return this._elements.length == 0;
-}
-/**
- * return the first element of the queue without removing, or undefined
- **/
-Queue.prototype.peek = function (){ 
-    return (this.isEmpty() ? null : this._elements[0]);
-}
-/**
- * return current size of the queue
- **/
-Queue.prototype.length = function (){ 
-    return this._elements.length;
-}
-/**
- * return current size of the queue
- **/
-Queue.prototype.size = function (){ 
-    return this._elements.length;
-}
-/**
- * return capacity (might be undefined)
- **/
-Queue.prototype.capacity = function(){ 
-    return this._capacity;
-}
-/**
- * remove first instance of element from queue and returns it
- **/
-Queue.prototype.remove = function(element){ 
-    let index = this._elements.indexOf(element);
-    if (index < 0 ) throw new Error("element not found in Queue");
-    return this._elements.splice(index, 1);
-}
-/**
- * remove the first element to satisfy the conditionFunction and return it
- */
-Queue.prototype.removeOneConditioned = function(conditionFunction){
-    let index = this._elements.findIndex(conditionFunction);
-    if (index < 0 ) throw new Error("element not found in Queue");
-    return this._elements.splice(index, 1);
-}
-/**
- * remove element at index of queue
- **/
-Queue.prototype.removeIndex = function(index){ 
-    return this._elements.splice(index, 1);
-}
-/**
- * remove element at index of queue
- **/
-Queue.prototype.removePosition = function(index){ 
-    return this._elements.splice(index, 1);
-}
-/**
- * remove all instances of element from queue
- **/
-Queue.prototype.removeAll = function(element){ 
-    this._elements = this._elements.filter(Q_item => Q_item !== element);
-}
-/**
- * clear the queue
- **/
-Queue.prototype.clear = function(){ 
-    this._elements = [];
-}
-/**
- * insert element into the queue at position
- **/
-Queue.prototype.insert = function(element, index){ 
-    if (this._capacity && this._elements.length == this._capacity)
-        throw new Error("Queue is full ( "+this._elements.length+" / "+this._capacity+" )");
-    this._elements.splice(index, 0, element);
-}
-/**
- * return whether queue contains element
- **/
-Queue.prototype.has = function(element){ 
-    return this._elements.includes(element);
-}
-/**
- * return whether queue contains element
- **/
-Queue.prototype.includes = function(element){ 
-    return this._elements.includes(element);
-}
-/**
- * return index of first occurence of element (optional startIndex and endIndex)
- **/
-Queue.prototype.indexOf = function(element, startIndex, endIndex){ 
-    if (endIndex) return this._elements.substring(startIndex, endIndex).indexOf(element)+startIndex;
-    if (startIndex) return this._elements.substring(startIndex).indexOf(element)+startIndex;
-    return this._elements.indexOf(element);
-}
-/**
- * return queue as string
- **/
-Queue.prototype.toString = function(){ 
-    return this._elements.toString();
-}
-/**
- * return number of occurences of element in queue
- **/
-Queue.prototype.count = function(element){ 
-    return this._elements.filter(Q_item => Q_item === element).length;
-}
-/**
- * return a key-value copy of queue with indices as keys
- **/
-Queue.prototype.toKeyValue = function(){ 
-    let keyval = {};
-    for (let idx = 0; idx < this._elements.length; idx++){
-        keyval[idx] = this._elements[idx];
+    /**
+     * add element to the end of the queue
+     * @param {*} element item to add to the queue
+     * @throws {Error} if queue has capacity and is full
+     **/
+    enqueue(element) {
+        if (this._capacity && this._elements.length == this._capacity)
+            throw new Error(`Queue is full ( ${this._elements.length} / ${this._capacity} )`);
+        this._elements.push(element);
     }
-    return keyval;
+    /**
+     * return and remove the first element of the queue
+     * @return {*} return the first item from the queue
+     **/
+    dequeue() {
+        if (this._elements.length < 1)
+            throw new Error(this._capacity ? `Queue is empty ( ${this._elements.length} / ${this._capacity} )` : "Queue is empty");
+        return this._elements.shift();
+    }
+    /**
+     * alias for enqueue
+     * @param {*} element item to add to the queue
+     * @throws {Error} if queue has capacity and is full
+     **/
+    push(element) {
+        try { this.enqueue(element); }
+        catch (err) { throw (err); }
+    }
+    /**
+     * alias for dequeue
+     * @return {*} return the first item from the queue
+     **/
+    pop() {
+        try { return this.dequeue(); }
+        catch (err) { throw (err); }
+    }
+    /**
+     * return true if empty
+     * @return {Boolean} whether the queue is empty
+     **/
+    isEmpty() {
+        return this._elements.length == 0;
+    }
+    /**
+     * return the first element of the queue without removing, or undefined
+     * @return {*} return the first item on the queue
+     **/
+    peek() {
+        return (this.isEmpty() ? null : this._elements[0]);
+    }
+    /**
+     * return current size of the queue
+     * @return {Number} the length of the queue
+     **/
+    length() {
+        return this._elements.length;
+    }
+    /**
+     * return current size of the queue
+     * @return {Number} the length of the queue
+     **/
+    size() {
+        return this._elements.length;
+    }
+    /**
+     * return capacity (might be undefined)
+     * @return {Number | undefined } the capacity of the queue or undefined if there is no capacity
+     **/
+    capacity() {
+        return this._capacity;
+    }
+    /**
+     * remove first instance of element from queue and returns it
+     * @param {*} element the item to look for to remove
+     * @return {*} the removed element
+     **/
+    remove(element) {
+        let index = this._elements.indexOf(element);
+        if (index < 0)
+            throw new Error("element not found in Queue");
+        return this._elements.splice(index, 1);
+    }
+    /** 
+     * @callback findIndexPredicate
+     * @param {*} element The current element being processed in the array
+     * @param {Number | undefined} index [OPTIONAL] The index of the current element being processed in the array
+     * @param {Array <*> | undefined} array [OPTIONAL] The array findIndex() was called upon
+     * @return {Boolean} returns true an element satisfies the condition
+     */
+    /**
+     * remove the first element to satisfy the conditionFunction and return it
+     * @param {findIndexPredicate} conditionFunction a function that is executed on each item on the queue until it finds one that returns true
+     * @return {*} the removed element
+     */
+    removeOneConditioned(conditionFunction) {
+        let index = this._elements.findIndex(conditionFunction);
+        if (index < 0)
+            throw new Error("element not found in Queue");
+        return this._elements.splice(index, 1);
+    }
+    /**
+     * remove element at index of queue
+     * @param {Number} index the index of the item to remove
+     * @return {*} the removed element
+     **/
+    removeIndex(index) {
+        return this._elements.splice(index, 1);
+    }
+    /**
+     * remove element at index of queue
+     * @param {Number} index the index of the item to remove
+     * @return {*} the removed element
+     **/
+    removePosition(index) {
+        return this._elements.splice(index, 1);
+    }
+    /**
+     * remove all instances of element from queue
+     * @param {*} element the item to remove all instances of
+     **/
+    removeAll(element) {
+        this._elements = this._elements.filter(Q_item => Q_item !== element);
+    }
+    /**
+     * clear the queue
+     **/
+    clear() {
+        this._elements = [];
+    }
+    /**
+     * insert element into the queue at position
+     * @param {*} element the item to insert into the queue
+     * @param {Number} index the index to insert at
+     * @throws {Error} if the queue has a capacity and it is full
+     **/
+    insert(element, index) {
+        if (this._capacity && this._elements.length == this._capacity)
+            throw new Error("Queue is full ( " + this._elements.length + " / " + this._capacity + " )");
+        this._elements.splice(index, 0, element);
+    }
+    /**
+     * return whether queue contains element
+     * @param {*} element the item to search for
+     **/
+    has(element) {
+        return this._elements.includes(element);
+    }
+    /**
+     * return whether queue contains element
+     * @param {*} element the item to search for
+     **/
+    includes(element) {
+        return this._elements.includes(element);
+    }
+    /**
+     * return index of first occurence of element (optional startIndex and endIndex)
+     * @param {*} element the item to search for
+     * @param {Number} startIndex 
+     * @param {Number} endIndex 
+     **/
+    indexOf(element, startIndex, endIndex) {
+        if (endIndex)
+            return this._elements.substring(startIndex, endIndex).indexOf(element) + startIndex;
+        if (startIndex)
+            return this._elements.substring(startIndex).indexOf(element) + startIndex;
+        return this._elements.indexOf(element);
+    }
+    /**
+     * return number of occurences of element in queue
+     * @param {*} element the item to count occurences of
+     * @return {Number} the number of occurences
+     **/
+    count(element) {
+        return this._elements.filter(Q_item => Q_item === element).length;
+    }
+    /**
+     * return a key-value copy of queue with indices as keys
+     * @return {Object}
+     **/
+    toKeyValue() {
+        let keyval = {};
+        for (let idx = 0; idx < this._elements.length; idx++) {
+            keyval[idx] = this._elements[idx];
+        }
+        return keyval;
+    }
+    /**
+     * @callback arrayMappingFunction
+     * @param {*} element The current element being processed in the array
+     * @param {Number | undefined} index [OPTIONAL] The index of the current element being processed in the array
+     * @param {Array<*> | undefined} array [OPTIONAL] The array map was called upon
+     */
+    /**
+     * apply a map function on a copy of the queue and return the result
+     * @param {arrayMappingFunction} mappingFunction a function to apply on each item in the queue
+     * @return {Array <*>} the resulting queue array
+     */
+    map(mappingFunction) {
+        return this._elements.map(mappingFunction);
+    }
+    /**
+     * @callback arrayFilterFunction
+     * @param {*} element The current element being processed in the array
+     * @param {Number | undefined} index [OPTIONAL] The index of the current element being processed in the array
+     * @param {Array<*> | undefined} array [OPTIONAL] The array filter was called upon
+     * @return {Boolean} returns true if the element satisfies the condition
+     */
+    /**
+     * apply a filter function on a copy of the queue and return the result
+     * @param {arrayFilterFunction} filterFunction a function to apply to each item in the queue
+     * @return {Array <*>} the resulting queue array
+     */
+    filter(filterFunction) {
+        return this._elements.filter(filterFunction);
+    }
+    /**
+     * return a shallow copy of queue
+     * @return {Array <*>}
+     **/
+    copy() {
+        return Array.from(this._elements);
+    }
+    /**
+     * return queue array as a string
+     * @return {String}
+     **/
+    toString() {
+        return `[${this._elements.toString()}]`;
+    }
+    /**
+     * stringify the queue
+     * @return {String}
+     **/
+    stringify() {
+        return JSON.stringify(this._elements);
+    }
+    /**
+     * create a new Queue from the array with a given capacity
+     * @param {Array <*>} array
+     * @param {Number | undefined} capacity [OPTIONAL]
+     * @return {Queue}
+     **/
+    static from(array, capacity) {
+        try { return new Queue(capacity, array); }
+        catch (err) { throw (err); }
+    }
 }
-/**
- * apply a map function on a copy of the queue and return the result
- */
-Queue.prototype.map = function(mappingFunction){
-    return this._elements.map(mappingFunction);
-}
-/**
- * apply a filter function on a copy of the queue and return the result
- */
-Queue.prototype.filter = function(filterFunction){
-    return this._elements.filter(filterFunction);
-}
-/**
- * return a shallow copy of queue
- **/
-Queue.prototype.copy = function(){
-    return Array.from(this._elements);
-}
-/**
- * return queue array as a string
- **/
-Queue.prototype.toString = function(){
-    return `[${this._elements.toString()}]`;
-}
-/**
- *  stringify the queue
- **/
-Queue.prototype.stringify = function(){
-    return JSON.stringify(this._elements);
-}
-/**
- * create a new Queue from the array with a given capacity
- **/
-Queue.from = function(array, capacity){ 
-    try{ return new Queue(capacity, array); }
-    catch (err) { throw (err); }
-}
+module.exports.Queue = Queue;
 

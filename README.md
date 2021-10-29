@@ -10,7 +10,7 @@ This bot is intended for light use and is primarily intended for single server u
 
 The code for the bot is fully open-sourced, available at https://github.com/ruestgeo/discord_bot
 
-Feel free to use or distribute the code as you like, however according to the license you must not privatize the source code, modifications, or additions.  
+Feel free to use or distribute the code as you like, however according to the license you must not privatize the source code, modifications, or additions if publishing a release.  
 
 
 ## Setup

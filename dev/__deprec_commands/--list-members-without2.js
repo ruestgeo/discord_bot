@@ -8,7 +8,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -26,9 +26,8 @@ module.exports = {
 
 
 
-    manual: "--list-role-members2  ->  \\*roleName\\* ~~  or  ~~ \\*roleID\\*  < ,  ... additional_roles_for_filtering>"+
-            ".     *reply with a list of members (with mentions) that have the specified role*\n"+
-            ".     *if additional roles are given (delimited by comma) then it will filter the list such that anyone who does not have those roles is excluded*\n"+
+    manual: "--list-members-without2  ->  \\*none\\* ~~  or  ~~ \\*roleName\\* ~~  or  ~~ \\*roleID\\*  < ,  ... additional_roles_for_filtering>"+
+            ".     *reply with an ordered list of members (with mentions) that do not have the specified roles (separated by commas)*\n"+
             ".     *NOTE: roles cannot contain commas, otherwise this command will not function properly*",
 
 
@@ -37,21 +36,30 @@ module.exports = {
     func: async function (globals, msg, args){ 
         let configs = globals.configs;
 
-        let list;
+        
         let roles;
         let server_roles = await msg.guild.roles.fetch();
+        let members = await msg.guild.members.fetch();
+        let list = [...members.values()];
         let members_count;
         let criteriaName;
-        utils.botLogs(globals,"--obtaining member list of role(s): "+args);
-        if ( !args.includes(",") ){
-            var resolved = server_roles.resolve(args);
-            if ( !resolved )   resolved = server_roles.cache.find(_role => _role.name === args.trim());
-            if ( !resolved )   throw ("Invalid role ::  role ["+args+"] not found");
-            list = [...resolved.members.values()];
-            members_count = list.length;            
-            criteriaName = resolved.name+":"+resolved.id;
+        
+
+        if ( args === "" ){
+            utils.botLogs(globals,"--obtaining member list without any roles");
+            for ( let member of list ){  await member.fetch();  } //cache
+            list = list.filter(member => {
+                if ( member.roles.cache.size > 1 ) //everyone has @everyone
+                    return false;
+                return true;
+            });
+            members_count = list.length;
+            criteriaName = "\\**none*\\*";
         }
+
+
         else {
+            utils.botLogs(globals,"--obtaining member list without role(s): "+args);
             roles = args.split(",").map(elem => elem.trim())
             .map( elem => {
                 let resolved = server_roles.resolve(elem);
@@ -59,21 +67,17 @@ module.exports = {
                 if ( !resolved )   throw ("Invalid role ::  role ["+elem+"] not found");
                 return resolved;
             });
-            //console.log("DEBUG roles:  "+roles.map(elem => elem.name));
             utils.botLogs(globals,"--filtering member list");
-            criteriaName = roles.map(role => role.name+":"+role.id).join(", ");
-            list = [...roles[0].members.values()];
-            roles = roles.slice(1);
             list = list.filter(member => {
                 for (let role of roles){
-                    utils.botLogs(globals,"----"+ role.name+" has "+member.displayName+"#"+member.user.discriminator+"  "+role.members.has(member.id));
-                    if ( !role.members.has(member.id) ){
+                    if ( role.members.has(member.id) ){
                         return false;
                     }
                 }
                 return true;
             });
             members_count = list.length;
+            criteriaName = roles.map(role => role.name+":"+role.id).join(", ");
         }
         utils.botLogs(globals,"--found "+members_count+" members\n--prepairing to send list through message(s)");
 
@@ -94,7 +98,7 @@ module.exports = {
             if (all.trim() !== "") msg.channel.send(all); //last part
         }
         else if (all.trim() != "")  msg.channel.send(all);
-        return "found "+members_count+" members with the role(s) ["+criteriaName+"]";
+        return "found "+members_count+" members without the role(s) ["+criteriaName+"]";
     }   
 
 }

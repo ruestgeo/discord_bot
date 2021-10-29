@@ -8,7 +8,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -21,15 +21,16 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.2,
+    version: 2.0,
     auth_level: 3,
 
 
 
-    manual: "--list-role-members  ->  \\*roleName\\* ~~  or  ~~ \\*roleID\\*  < ,  ... additional_roles_for_filtering>"+
+    manual: "--list-role-members  -> <\\*@@\\*>  \\*roleResolvable\\*  < ,  ... additional_roles_for_filtering>"+
             ".     *reply with a list of members that have the specified role*\n"+
             ".     *if additional roles are given (delimited by comma) then it will filter the list such that anyone who does not have those roles is excluded*\n"+
-            ".     *NOTE: roles cannot contain commas, otherwise this command will not function properly*",
+            ".     *if \"@@\" is given as an arg then listed members will include a ping/mention*\n"+
+            ".     *NOTE: roles cannot contain commas or \"@@\", otherwise this command will not function properly*",
 
 
 
@@ -42,6 +43,13 @@ module.exports = {
         let server_roles = await msg.guild.roles.fetch();
         let members_count;
         let criteriaName;
+
+        let ping = false;
+        if (args.includes("@@")){
+            ping = true;
+            args = args.replace(/@@/g,"").trim();
+        }
+
         utils.botLogs(globals,"--obtaining member list of role(s): "+args);
         if ( !args.includes(",") ){
             var resolved = server_roles.resolve(args);
@@ -78,22 +86,20 @@ module.exports = {
         utils.botLogs(globals,"--found "+members_count+" members\n--prepairing to send list through message(s)");
 
         
-        var all = "";
-        list.forEach(member => {
-            all += member.displayName+"#"+member.user.discriminator+"\n";
-        });
-
-        if (all.length > 2000){
-            var parts = [];
-            while (all.length > 2000){
-                var split_index = all.substr(1800, all.length).indexOf("\n")+1800;
-                parts.push(all.substr(0,split_index));
-                all = all.substr(split_index, all.length);
-            }
-            for (var part of parts){ msg.channel.send(part); }
-            if (all.trim() !== "") msg.channel.send(all); //last part
+        let all = "";
+        if (!ping){
+            list.forEach(member => {
+                all += member.displayName+"#"+member.user.discriminator+"\n";
+            });
         }
-        else if (all.trim() != "")  msg.channel.send(all);
+        else {
+            list.forEach(member => {
+                all += "<@"+member.id+">  "+member.displayName+"#"+member.user.discriminator+"\n";
+            });
+        }
+
+        await utils.message(msg,all,false);
+
         return "found "+members_count+" members with the role(s) ["+criteriaName+"]";
     }   
 }

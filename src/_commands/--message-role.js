@@ -8,7 +8,7 @@ notices must be preserved. Contributors provide an express grant of patent
 rights.
 
 Made by JiJae (ruestgeo)
---feel free to use or distribute the code as you like, however according to the license you must share the source-code when asked if not already made public
+--feel free to use or distribute the code as you like, however according to the license you must share the source-code if distributing any modifications
 */
 
 
@@ -32,7 +32,7 @@ module.exports = {
 
 
     func: async function (globals, msg, content){ 
-        if (!content.includes(' ')){
+        if (!content.includes(' ') && !content.includes('\n') ){
             utils.botLogs(globals,  "----incorrect request body");
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
@@ -50,7 +50,13 @@ module.exports = {
         let role;
         try {
             role = utils.resolveRole(globals, targetRole, server_roles, true);
-        } catch (err) { throw (err); }
+        } catch (err) {
+            targetRole = content.substr(0, content.indexOf('\n')).trim();
+            message_to_send = content.substr(content.indexOf('\n')+1).trim();
+            try {
+                role = utils.resolveRole(globals, targetRole, server_roles, true);
+            } catch (err) { throw (err); }
+        }
         utils.botLogs(globals, "--found role: "+role.name+" : "+role.id);
 
         //update role cache
@@ -81,7 +87,7 @@ module.exports = {
                     continue;
                 }
                 try {
-                    await DM_channel.send( "On behalf of  "+senderDisplayName+" ("+senderMention+")\n" + message_to_send );
+                    await DM_channel.send( "On behalf of  "+senderDisplayName+" ("+senderMention+")\n" + message_to_send , {split: true});
                     count++;
                     await msg.channel.send("Sent DM to member  "+memberName+" : "+memberID).catch(err2 => {
                         utils.botLogs("ERROR sending DM confirm message: "+err2);
