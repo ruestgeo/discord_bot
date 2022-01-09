@@ -1,6 +1,6 @@
 {
   "name": "discord_bot",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "description": "A Discord Bot",
   "main": "main.js",
   "bin": "./main.js",
@@ -10,10 +10,10 @@
     "async-mutex": "^0.2.6",
     "discord-tts": "^1.2.0",
     "discord.js": "^12.5.3",
-    "ffmpeg-static": "^4.4.0",
-    "google-spreadsheet": "^3.1.15",
+    "ffmpeg-static": "^4.4.1",
+    "google-spreadsheet": "^3.2.0",
     "luxon": "^1.28.0",
     "node-localstorage": "^2.2.1",
-    "ytdl-core": "^4.9.1"
+    "ytdl-core": "^4.9.2"
   }
 }
