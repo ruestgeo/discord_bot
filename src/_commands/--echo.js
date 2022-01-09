@@ -56,22 +56,23 @@ module.exports = {
             let args = utils.extractEncapsulated(content, '`');
             if (args[1].trim().length == 0)   throw ("Incorrect request body.  At least one channel resolvable must be provided");
             target = args[1].trim();
-            message_to_echo = args[2].trim()
-            utils.botLogs(globals,  "--targetChannel:: "+channel);
+            message_to_echo = args[2].trim();
+            utils.botLogs(globals,  "--targetChannel:: "+target);
             
             try {
-                channel = resolveChannel(globals, target, server.channels, true);
+                channel = utils.resolveChannel(globals, target, server.channels, true);
             }catch (err) {throw (err)}
             if (channel.type !== "text"){
                 throw new Error("Incorrect given text channel.  Given channel ["+target+"] is type: '"+channel.type+"'");
             }
         }
         
-        await channel.send(message_to_echo).catch(err => {
+        let echoed_message = await channel.send(message_to_echo).catch(err => {
             throw ("Error when sending message to text channel ["+channel.name+" : "+channel.id+"] ::   "+err)
         });
 
 
+        return "Request complete.\nSuccessfully posted message <"+utils.url_prefix+echoed_message.guild.id+"/"+echoed_message.channel.id+"/"+echoed_message.id+">";
 
         
     }

@@ -18,10 +18,15 @@ Made by JiJae (ruestgeo)
 --requires google sheets setup to use DocumentDump functions
 */
 
-console.log("[main.js]\n--importing bot.js");
+const VERSION = 1.1; //VERSION of main.js
+
+console.log("[main.js] "+VERSION+"\n--importing bot.js");
+const bot = require(process.cwd()+"/bot.js");  //prevents bot.js from being included in executable compilation
+console.log("--starting bot \n");
+/*console.log("[main.js]\n--importing bot.js");
 const bot = require("./bot.js");
 const utils = require("./utils.js");
-console.log("--starting bot \n");
+console.log("--starting bot \n");*/
 
 bot.set_exit_handler();
 bot.init(true).catch(err => console.log(err));

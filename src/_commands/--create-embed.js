@@ -22,7 +22,7 @@ const Discord = require('discord.js');
 
 module.exports = {
     version: 1.0,
-    auth_level: 9,
+    auth_level: 3,
 
 
 

@@ -22,15 +22,15 @@ const gs_utils = require(process.cwd()+'/_utils/googleSheets_utils');
 
 
 module.exports = {
-    version: 2.1,
+    version: 2.2,
     auth_level: 3,
 
 
 
-    manual: "**--document-reacts**  ->  *message_link*  <roleID/Name , ... >\n" +
+    manual: "**--document-reacts**  ->  *message_link*  <roleID/Name , ... >  <`---no-role-reacts`> \n" +
             ".     *Records the reactions and users who reacted of the specified message into a google sheet.*\n"+
             ".     *If no role resolvable is provided then only the names of the users who reacted are recorded*\n"+
-            ".     *At least one role resolvable is provided then each role will have a column for displayName and username of each of the reactions and members of that role who have not reacted, as well as columns for each react with members with none of the roles*",
+            ".     *At least one role resolvable is provided then each role will have a column for displayName and username of each of the reactions and members of that role who have not reacted, and if `---no-role-reacts` is given as an arg then columns for each react with members with none of the roles is also added*",
 
 
 
@@ -48,6 +48,11 @@ module.exports = {
         /* parse args */
         let targetMessage;
         let targetRoles;
+        let noRoleReacts = false;
+        if (content.includes("---no-role-reacts")){
+            content = content.replace(/---no-role-reacts/g,"");
+            noRoleReacts = true;
+        }
         if (content.includes(" ")){
             utils.botLogs(globals,  "--roles mode");
             targetMessage = content.substr(0, content.indexOf(' ')).trim();
@@ -170,31 +175,34 @@ module.exports = {
             }
 
             //obtain list of user who reacted but have none of the roles
-            let server_members = await server.members.fetch();
-            for (let emote in msg_reacts){
-                let emote_string = msg_reacts[emote].string;
-                let no_role_users = reacted_no_role[emote].reduce( (A,B) => A.filter( memberID => B.includes(memberID)) );
-                let no_role_users_displayName = [];
-                let no_role_users_username = [];
-                no_role_users_displayName.push(emote_string + " no roles");
-                no_role_users_username.push("\\\\");
-                utils.botLogs(globals,  "\n\n"+emote_string+" reacts but none of the roles");
-                for (let id of no_role_users){
-                    let no_role_user = server_members.get(id);
-                    if (!no_role_user) { //is not server member
-                        no_role_user = await client.users.fetch(id);
-                        no_role_users_displayName.push("|ID| "+id);
-                        no_role_users_username.push(no_role_user ? no_role_user.tag : no_role_user.id);
+            if (noRoleReacts){
+                let server_members = await server.members.fetch();
+                for (let emote in msg_reacts){
+                    let emote_string = msg_reacts[emote].string;
+                    let no_role_users = reacted_no_role[emote].reduce( (A,B) => A.filter( memberID => B.includes(memberID)) );
+                    let no_role_users_displayName = [];
+                    let no_role_users_username = [];
+                    no_role_users_displayName.push(emote_string + " no roles");
+                    no_role_users_username.push("\\\\");
+                    utils.botLogs(globals,  "\n\n"+emote_string+" reacts but none of the roles");
+                    for (let id of no_role_users){
+                        let no_role_user = server_members.get(id);
+                        if (!no_role_user) { //is not server member
+                            no_role_user = await client.users.fetch(id);
+                            no_role_users_displayName.push("|ID| "+id);
+                            no_role_users_username.push(no_role_user ? no_role_user.tag : no_role_user.id);
+                        }
+                        else { //is server member
+                            no_role_users_displayName.push(no_role_user.displayName+"#"+no_role_user.user.discriminator);
+                            no_role_users_username.push(no_role_user.user.tag);
+                        }
                     }
-                    else { //is server member
-                        no_role_users_displayName.push(no_role_user.displayName+"#"+no_role_user.user.discriminator);
-                        no_role_users_username.push(no_role_user.user.tag);
-                    }
+                    utils.botLogs(globals,  no_role_users_displayName.slice(1).map(dn => "  "+dn).join("\n"));
+                    list.push(no_role_users_displayName);
+                    list.push(no_role_users_username);
                 }
-                utils.botLogs(globals,  no_role_users_displayName.slice(1).map(dn => "  "+dn).join("\n"));
-                list.push(no_role_users_displayName);
-                list.push(no_role_users_username);
             }
+            
         }
         else { //@everyone
             for (let emote in msg_reacts){

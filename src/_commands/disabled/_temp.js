@@ -17,7 +17,7 @@ Made by JiJae (ruestgeo)
 
 
 const utils = require(process.cwd()+'/utils.js');
-
+const Discord = require('discord.js');
 
 
 module.exports = {
@@ -34,6 +34,15 @@ module.exports = {
         let client = globals.client;
 
         //let server = await msg.guild.fetch();
+        let embed_JSON = {
+            "title": "test", 
+            "description": "testing 🇨 :ookG: <:ookG:697998261893464156> ✅ :white_check_mark:", 
+             "color": 3119775 ,
+            "footer":{"text": "testing 🇨 :ookG: <:ookG:697998261893464156> ✅ :white_check_mark:"}
+            }
+        let embed = new Discord.MessageEmbed(embed_JSON);
+        await msg.channel.send({content: "test ✅ :white_check_mark:", embed: embed}).catch(err => {throw(err)});
+        await msg.react(":ookG:697998261893464156");
         
         return "Request complete";
     }

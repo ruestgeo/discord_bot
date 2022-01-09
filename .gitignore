@@ -23,5 +23,7 @@
 !**/_startup/*.txt
 !**/_startup/disabled
 
+**/VERSIONS/deprec/*
+
 #sub-directories of the bot main directory of this repo, within _commands & _startup (excluding 'disabled'), are the location of macros for personal use
 #censored copies of those files can be provided for learning purposes by request

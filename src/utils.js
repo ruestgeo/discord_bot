@@ -247,6 +247,16 @@ module.exports = {
 
 
 
+    /**
+     * Return a link to the given discord message
+     * @param {Discord.Message} message a discord message object
+     * @returns {String} link to the discord message
+     */
+    message_link: function (message){
+        return this.url_prefix+message.guild.id+"/"+message.channel.id+"/"+message.id;
+    },
+
+
 
     /** Post a message in the same channel as a given message, the content which is split into parts if exceeding 2000 char
      * @param {Discord.Message} msg a message in the desired channel to post a new message to
@@ -273,7 +283,6 @@ module.exports = {
             if (content.trim() !== "") {  //last part
                 let last_msg = (reply ? await msg.reply(content, {split: true}) :
                     await msg.channel.send(content, {split: true}) );
-                console.log(last_msg);
                 if (Array.isArray(last_msg)) last_msg = last_msg[last_msg.length-1]; //split option causes an array to be returned by send; return only the latest
                 return last_msg;
             }
@@ -281,7 +290,6 @@ module.exports = {
         else if (content.trim() != "")  {
             let last_msg = (reply ? await msg.reply(content, {split: true}) :
                 await msg.channel.send(content, {split: true}) );
-                console.log(last_msg);
             if (Array.isArray(last_msg)) last_msg = last_msg[last_msg.length-1];
             return last_msg;
         }
@@ -323,7 +331,7 @@ module.exports = {
      * @param {String} targetServer the target server ID
      * @param {Boolean} log whether to print to botLogs
      * @param {String} log_prefix a prefix to add to the botLogs, if set
-     * @returns {Discord.Guild } the resolved server (Discord.Guild), or throws an error if unable to resolve
+     * @returns {Discord.Guild} the resolved server (Discord.Guild), or throws an error if unable to resolve
      * @throws {Error} if cannot resolve
      */
     resolveServer: function (globals, targetServer, log, log_prefix){
@@ -338,7 +346,7 @@ module.exports = {
      * @param {String} targetServer the target server ID
      * @param {Boolean} log whether to print to botLogs
      * @param {String} log_prefix a prefix to add to the botLogs, if set
-     * @returns {Discord.Guild } the resolved server (Discord.Guild), or throws an error if unable to resolve
+     * @returns {Discord.Guild} the resolved server (Discord.Guild), or throws an error if unable to resolve
      * @throws {Error} if cannot resolve
      */
     fetchServer: async function (globals, targetServer, log, log_prefix){
@@ -460,7 +468,7 @@ module.exports = {
      * @param {String} link the link to resolve IDs from, which may not be valid or may not link to either a guild, channel, or message
      * @returns an array of the resolved IDs
      */
-    resolveLink: function(link){
+    resolveLink: function (link){
         link = link.replace(/[<>]+/g, '');
         if ( !link.startsWith("https://discordapp.com/channels/") && !link.startsWith("https://discord.com/channels/"))
             return null;
@@ -468,6 +476,21 @@ module.exports = {
             link.substring("https://discordapp.com/channels/".length).split("/") : 
             link.substring("https://discord.com/channels/".length).split("/"));
         return ids;
+    },
+
+    /**
+     * Fetch a discord message from a provided link to a message
+     * @param {*} globals 
+     * @param {String} link the discord message link
+     * @param {Boolean} log whether to print to botLogs
+     * @param {String} log_prefix a prefix to add to the botLogs, if set
+     */
+    fetchMessageFromLink: async function (globals, link, log, log_prefix){
+        let ids = this.resolveLink(link);
+        if ( !ids  ||  ids.length != 3 ) {
+            throw new Error("Invalid link");
+        }
+        return await this.fetchMessage(globals,ids[0],ids[1],ids[2],log,log_prefix).catch(err => {throw(err);});
     },
 
     /**
@@ -846,7 +869,7 @@ module.exports = {
      * @property {reactControllerCallback} callback the callback to run when this emote is reacted to by an authorized user
      */
     /**
-     * Create message with the given content that runs callbacks on certain reactions which remains active for a certain window;
+     * Create message with the given content that runs callbacks on certain reactions which remains active indefinitely (until bot is shutdown);
      *   callbacks shouldn't request worklock within the function, instead set the 'awaitLock' property as true
      * @param {Object} globals --
      * @param {String} requester_title the title of the requesting command to create a react controller
@@ -1042,11 +1065,16 @@ module.exports = {
     countOccurrences,
     extractEncapsulated,
     url_prefix,
+    matchDay,
+    getDay,
+    getWeekDays,
+    getWeekDate,
+    getWeekFromDate,
     //Queue
 }
 
 
-async function flushAwaitLogs(globals, botLogs){
+async function flushAwaitLogs (globals, botLogs){
     //clear awaitLogs prior to mutex to prevent race
     let temp = globals.__awaitLogs.content;
     globals.__awaitLogs.content = null;
@@ -1084,7 +1112,7 @@ function json_formatted (jsonObj){
  * @param {Number} numSpaces the nunmber of spaces to fill after commas
  * @returns {String}
  */
-function cleanCommas(str, numSpaces){
+function cleanCommas (str, numSpaces){
     return str.replace(/ +(?<=, +)/g, " ".repeat(numSpaces));
 }
 /**
@@ -1092,7 +1120,7 @@ function cleanCommas(str, numSpaces){
  * @param {String} str the string to clean
  * @returns {String}
  */
-function cleanSpaces(str){
+function cleanSpaces (str){
     return str.replace(/ +(?= )/g, '');
 }
 /**
@@ -1101,7 +1129,7 @@ function cleanSpaces(str){
  * @param {String} countString the sub-string to count within the main string
  * @returns {Number}
  */
-function countOccurrences(str, countString){
+function countOccurrences (str, countString){
     return (str.match(new RegExp(countString,"g")) || []).length;
 }
 /** Return an array containing the substring before the shell encapsulating the core string, the core string, and the substring after the core 
@@ -1109,7 +1137,7 @@ function countOccurrences(str, countString){
  * @param {String} shellString the encapsulating sub-string, or "shell string", to the left and right of the core string
  * @return {Array <String>} the left,core, and right sub-strings (not including the shell string)
  */
-function extractEncapsulated(str, shellString){
+function extractEncapsulated (str, shellString){
     if (countOccurrences(str, shellString) < 2) return null;
     let beginIndex = str.indexOf(shellString);
     let endIndex = str.indexOf(shellString, beginIndex + shellString.length);
@@ -1120,6 +1148,87 @@ function extractEncapsulated(str, shellString){
 }
 
 
+const dayMatch = {
+    "Sunday": ["s","sun","sunday"],
+    "Monday": ["m","mon","monday"],
+    "Tuesday": ["t","tue","tues","tuesday"],
+    "Wednesday": ["w","wed","wedn","wedne","wednes","wednesday"],
+    "Thursday": ["th","thu","thur","thurs","thursday"],
+    "Friday": ["f","fri","friday"],
+    "Saturday": ["s","sat","satur","saturday"]
+}
+/**
+ * Get the proper representation of a day as a string (ex: Friday) from any form of string representing a week day (excluding a date string)
+ * @param {String} day 
+ * @returns {String} a proper day string like "Wednesday"
+ */
+function matchDay (day){
+    let match = Object.entries(dayMatch).find(([k,v]) => v.includes(day.toLowerCase()) );
+    return (match ? match[0] : null);
+}
+/**
+ * Get the day as a numeral representation with Sunday being 0
+ * @param {Date} date 
+ * @returns week day number
+ */
+function getDay (date){
+    return date.getDay() == 6 ? 0 : date.getDay() + 1;
+}
+const dayNum = {
+    "Sunday": 0,
+    "Monday": 1,
+    "Tuesday": 2,
+    "Wednesday": 3,
+    "Thursday": 4,
+    "Friday": 5,
+    "Saturday": 6
+}
+module.exports.dayNum = dayNum;
+/**
+ * Get the Date objects of the days of the week (from Sunday to Saturday) for the week of the given Date object
+ * @param {Date} day 
+ * @returns {{"String": Date}} an k-v object containing an entry of Date's for each weekday
+ */
+function getWeekDays (day){
+    let first = day.getDate()-day.getDay();
+    return {
+        "Sunday": new Date(new Date(day).setDate(first)),
+        "Monday": new Date(new Date(day).setDate(first+1)),
+        "Tuesday": new Date(new Date(day).setDate(first+2)),
+        "Wednesday": new Date(new Date(day).setDate(first+3)),
+        "Thursday": new Date(new Date(day).setDate(first+4)),
+        "Friday": new Date(new Date(day).setDate(first+5)),
+        "Saturday": new Date(new Date(day).setDate(first+6)),
+    }
+}
+/**
+ * Get the first date of a week (Sunday to Saturday) given the week number
+ * @param {Number} weekNum a week number from 1 to 52
+ * @param {Number} year 
+ * @returns {Date} first day / sunday of that week
+ */
+function getWeekDate (weekNum, year) {
+    let simple = new Date(year, 0, 1 + (weekNum - 1) * 7);
+    let day = simple.getDay();
+    let date = simple;
+    if (day <= 4)
+        date.setDate(simple.getDate() - simple.getDay());
+    else
+        date.setDate(simple.getDate() + 7 - simple.getDay());
+    return date;
+}
+/**
+ * Get the week number from a given Date object (week from Sunday to Saturday)
+ * @param {Date} date
+ * @returns {Number} the week number of that date
+ */
+function getWeekFromDate (date){
+    let firstDay = new Date(date.getFullYear(),0,1);
+    let firstSunday = new Date(firstDay).setDate(firstDay.getDate()-firstDay.getDay()+6);
+    //console.log(firstDay.toString());console.log(firstSunday.toString());
+    let numberOfDays = Math.floor((date - firstSunday) / (24 * 60 * 60 * 1000));
+    return Math.ceil(numberOfDays / 7);
+}
 
 //exports.Queue = Queue;
 /***

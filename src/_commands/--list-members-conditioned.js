@@ -21,12 +21,12 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 2.1,
+    version: 2.2,
     auth_level: 3,
 
 
 
-    manual: "--list-members-conditioned  ->  {<\"mention\": true/false>  <,  \"has_role\": [role_Names/IDs , ...]>  <, \"lacks_role\": [role_Names/IDs , ...]>  <, \"has_one\": [role_Names/IDs , ...]>  <, \"lacks_one\": [role_Names/IDs , ...]>}"+
+    manual: "--list-members-conditioned  ->   <@@> { <,  \"has_role\": [role_Names/IDs , ...]>  <, \"lacks_role\": [role_Names/IDs , ...]>  <, \"has_one\": [role_Names/IDs , ...]>  <, \"lacks_one\": [role_Names/IDs , ...]>}"+
             ".     *reply with an ordered list of members that have specified roles as well as lack specified roles*\n"+
             ".     *can specify whether to mention or not (default no mention) and if the member has all of the roles in the group or has just one, and similarly for lacks role(s)*\n"+
             ".     *NOTE: role names cannot contain commas, otherwise this command will not function properly*",
@@ -41,6 +41,13 @@ module.exports = {
         let members = await msg.guild.members.fetch();
         let list = [...members.values()];
         let members_count;
+
+        let ping = false
+        if (args.includes("@@")){
+            args = args.replace(/@@/g,"");
+            ping = true;
+        }
+        
 
         let criteria;
         try {
@@ -117,7 +124,7 @@ module.exports = {
 
         
         let all = "";
-        if (criteria.hasOwnProperty("mention") && criteria.mention === true){
+        if (ping && criteria.mention === true){
             list.forEach(member => {
                 all += "<@"+member.id+"> "+member.displayName+"#"+member.user.discriminator+"\n";
             });
