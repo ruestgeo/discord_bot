@@ -1066,7 +1066,6 @@ module.exports = {
     extractEncapsulated,
     url_prefix,
     matchDay,
-    getDay,
     getWeekDays,
     getWeekDate,
     getWeekFromDate,
