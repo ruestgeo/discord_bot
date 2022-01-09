@@ -1166,14 +1166,6 @@ function matchDay (day){
     let match = Object.entries(dayMatch).find(([k,v]) => v.includes(day.toLowerCase()) );
     return (match ? match[0] : null);
 }
-/**
- * Get the day as a numeral representation with Sunday being 0
- * @param {Date} date 
- * @returns week day number
- */
-function getDay (date){
-    return date.getDay() == 6 ? 0 : date.getDay() + 1;
-}
 const dayNum = {
     "Sunday": 0,
     "Monday": 1,
