@@ -124,7 +124,7 @@ module.exports = {
 
         
         let all = "";
-        if (ping && criteria.mention === true){
+        if (ping){
             list.forEach(member => {
                 all += "<@"+member.id+"> "+member.displayName+"#"+member.user.discriminator+"\n";
             });
