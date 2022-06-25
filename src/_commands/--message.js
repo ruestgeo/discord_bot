@@ -16,6 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js');
 
 
@@ -26,19 +27,20 @@ module.exports = {
 
 
 
-    manual: "**--message**  ->  \\**user_ID/name/mention*\\* ~~~\n" +
-            ".     *takes a user ID/name (with or without discriminator; prior recommended) of a member within the same server as the request, and repeats anything written after that to that member through a direct message*",
+    manual: "**--message**  ->  *memberResolvable* ~~~\n" +
+            "~~**•** >~~  *takes a user ID/name or mention of a member within the same server as the request, and repeats anything written after that to that member through a direct message*",
 
 
 
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} content   @returns {String|void} */
     func: async function (globals, msg, content){ 
         let client = globals.client;
         if (!content.includes(' ')){
             utils.botLogs(globals,  "----incorrect request body");
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
-        let target = content.substr(0, content.indexOf(' ')).trim();
-        let message_to_echo = content.substr(content.indexOf(' ')+1).trim();
+        let target = content.substring(0, content.indexOf(' ')).trim();
+        let message_to_echo = content.substring(content.indexOf(' ')+1).trim();
 
 
         utils.botLogs(globals, "--given target: "+target);

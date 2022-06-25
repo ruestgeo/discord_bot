@@ -15,24 +15,24 @@ Made by JiJae (ruestgeo)
 
 
 
-
-const utils = require(process.cwd()+'/utils.js');
 const Discord = require('discord.js');
+const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 2.0,
     auth_level: 4,
 
 
 
-    manual: "--insert-embed  ->  *__message_link__*   embed_JSON"+
-            ".     *insert or overwrite an embed with properties defined by the given JSON object into the given linked bot message\n*"+
-            ".     *following this format:  https://discord.com/developers/docs/resources/channel#embed-object*",
+    manual: "--insert-embed  ->  <`---replace`> __*message_link*__   *embed_JSON*"+
+            "~~**•** >~~  *insert or overwrite an embed with properties defined by the given JSON object into the given linked bot message.\n*"+
+            "~~**•** >~~  *if '---replace' is provided as the first arg then the existing message embeds are replaced rather than appended to.\n*"+
+            "~~**•** >~~  *following this format:  https://discord.com/developers/docs/resources/channel#embed-object*",
 
 
 
-
+    /** @param {Globals} globals   @param {Discord.Message} msg   @param {String} content   @returns {String|void} */
     func: async function (globals, msg, content){ 
         if ( !content.includes("https://discordapp.com/channels/") && !content.includes("https://discord.com/channels/") ){
             utils.botLogs(globals,  "----incorrect request body");
@@ -40,16 +40,14 @@ module.exports = {
         }
         
         /* parse the message link and edit content */
-        let target = content.substr(0, content.indexOf(' ')).trim();
-        let args = content.substr(content.indexOf(' ')+1).trim();
+        let replace = content.startsWith("---replace");
+        if (content.startsWith("---replace"))  content = content.substring("---replace".length).trim();
+        let target = content.substring(0, content.indexOf(' ')).trim();
+        let args = content.substring(content.indexOf(' ')+1).trim();
         
 
         /* fetch message */
         let message = await utils.fetchMessageFromLink(globals, target, true).catch(err => {throw (err)});
-        if (message.deleted){
-            utils.botLogs(globals,  "----message "+message.id+" DELETED");
-            throw ("Message with id ["+message.id+"] had been deleted");
-        }
         if (message.author.id !== globals.client.user.id){
             utils.botLogs(globals,  "----message "+message.id+" is not a message from this bot");
             throw ("Message with id ["+message.id+"] is not a message from this bot");
@@ -66,7 +64,7 @@ module.exports = {
 
 
 
-        await message.edit({content: message.content, embed: embed}).catch(err => {throw(err)});
+        await message.edit({content: message.content, embeds: (replace ? [embed] : [...msg.embeds, embed])}).catch(err => {throw(err)});
         return "Request complete.\nSuccessfully edited message <"+target+">";
     }   
 }

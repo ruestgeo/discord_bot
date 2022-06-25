@@ -16,23 +16,24 @@ Made by JiJae (ruestgeo)
 
 
 
-const utils = require(process.cwd()+'/utils.js');
 const Discord = require('discord.js');
+const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.0,
+    version: 2.0,
     auth_level: 3,
 
 
 
-    manual: "--create-embed  ->  embed_JSON"+
-            ".     *create an embed with properties defined by in a JSON object\n*"+
-            ".     *following this format:  https://discord.com/developers/docs/resources/channel#embed-object*",
+    manual: "--create-embed  ->  *embed_JSON*"+
+            "~~**•** >~~  *create an embed with properties defined by in a JSON object\n*"+
+            "~~**•** >~~  *following this format:  https://discord.com/developers/docs/resources/channel#embed-object*",
 
 
 
 
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
         //let server = await msg.guild.fetch();
 
@@ -42,7 +43,7 @@ module.exports = {
         catch (err){ throw (err); }
         utils.botLogs(globals, "--creating embed with properties: "+JSON.stringify(args, null, "    "));
         let embed = new Discord.MessageEmbed(args);
-        await msg.channel.send(embed).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
+        await msg.channel.send({embeds: [embed]}).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
     }   
 }
 

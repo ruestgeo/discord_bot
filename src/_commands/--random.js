@@ -16,6 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js'); 
 
 
@@ -31,20 +32,21 @@ module.exports = {
 
 
 
-    manual: "--random {\"mode\": \" dice // coin // range\" <,\"rangeStart\": integer >  <,\"rangeEnd\": integer >}"
-            +"\n.     *make a random choice using a dice, coin, or range of numbers.  If [range] is used then the [rangeStart] and [rangeEnd] should be defined*",
+    manual: "--random {\"(`mode`\": \" `dice` **/** `coin` **/** `range`)\" <,\"`rangeStart`\": integer >  <,\"`rangeEnd`\": integer >}\n"
+            +"~~**•** >~~  *make a random choice using a dice, coin, or range of numbers.  If [range] is used then the [rangeStart] and [rangeEnd] should be defined*",
 
 
 
 
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
         //mode: dice, coin, range
-        var client = globals.client;
+        let client = globals.client;
 
         utils.botLogs(globals,  "--parsing request");
         const argsJSON = JSON.parse(args);
 
-        var result;
+        let result;
         if (argsJSON.mode === "coin"){
             result = getRandInteger(0,1);
             msg.reply(  result == 1 ? "heads" : "tails" );

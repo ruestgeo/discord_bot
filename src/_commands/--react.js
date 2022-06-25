@@ -16,21 +16,23 @@ Made by JiJae (ruestgeo)
 
 
 
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js');
 
 
 
 module.exports = {
-    version: 1.0,
+    version: 1.1,
     auth_level: 3,
 
 
 
-    manual: "**--react**  ->  *emote* < ...>  *__message_link__* \n" +
-            ".     *takes up to 20 emotes (any extra is ignored) separated by spaces and a message link, and reacts to that message with those emotes*",
+    manual: "**--react**  ->  *emote* < ...>  __*message_link*__ \n" +
+            "~~**•** >~~  *takes up to 20 emotes (any extra is ignored) separated by spaces and a message link, and reacts to that message with those emotes*",
 
 
 
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} content   @returns {String|void} */
     func: async function (globals, msg, content){ 
         let client = globals.client;
         if ( !content.includes("https://discordapp.com/channels/") && !content.includes("https://discord.com/channels/") ){
@@ -40,8 +42,8 @@ module.exports = {
         
         let index = content.includes("https://discordapp.com/channels/") ? content.indexOf("https://discordapp.com/channels/") : (content.includes("https://discord.com/channels/") ? content.indexOf("https://discord.com/channels/") : null);
         if (index < 0) throw ("Incorrect request body. Please ensure a message link is provided and that the link is accurate");
-        let emotes = content.substr(0, index).trim().replace(/ +(?= )/g,'').replace("<","").replace(">","").split(" ",20);
-        let target = content.substr(index).trim();
+        let emotes = content.substring(0, index).trim().replace(/ +(?= )/g,'').replace("<","").replace(">","").split(" ",20);
+        let target = content.substring(index).trim();
 
         utils.botLogs(globals,  "--obtained emotes:  [ "+emotes+" ]\n--fetching message ["+target+"]");
         let ids = target.startsWith("https://discordapp.com/channels/") ? target.substring("https://discordapp.com/channels/".length).split("/") : target.substring("https://discord.com/channels/".length).split("/");
@@ -65,10 +67,6 @@ module.exports = {
             utils.botLogs(globals,  err.stack);
             throw (err);
         });
-        if (message.deleted){
-            utils.botLogs(globals,  "----message "+message.id+" DELETED");
-            throw ("Message with id ["+message_id+"] had been deleted");
-        }
 
         let count = 0;
         for (let emote of emotes){

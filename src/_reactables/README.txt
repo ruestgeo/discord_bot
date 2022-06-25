@@ -16,7 +16,7 @@ Made by JiJae (ruestgeo)
 
 
 
-/* Should include "exact" or "contains" to do something meaningful, while "targetServers" is optional.
+/* Should include "exact" or "contains" or "regex" to do something meaningful, while "targetServers" is optional.
    Limit the reply string to 2000 chars as per Discord post restrictions; preferably keep it short.
 
    The key is the actuating string.
@@ -24,16 +24,21 @@ Made by JiJae (ruestgeo)
 
    REPLIES will reply if the string is equal
    CONTAINS will reply if the string contains the key
-
+   REGEX will reply if the string matches the regex
 
    REPLY and REACTIONS is optional, if not specified nothing is done
-   if DIRECTED is not specified then defaults to true
+   if DIRECTED is not specified then defaults to false
 
    if DIRECTED then the reply will @ the poster, otherwise the reply message will just be posted in the same channel
 
    if CASE_INSENSITIVE is true (case ignored) then the keyword should 
    also be all lowercase (for example "testreply" rather than "testReply")
+   (this wont apply for REGEX, use FLAGS "i" instead)
 
+   FLAGS is optional and only applies for REGEX, which can be either g,d,i,m,s,u,y for advanced regex searching
+
+   the REGEX key must have double escaped characters (such as "\\s") and should not include the preceeding nor proceeding "/"
+   ("test\\s*"  not  "/test\s/") 
 
    TARGETSERVERS can be specified by list of server_IDs of which these reactables will apply to,
    otherwise it will apply to all.
@@ -43,10 +48,10 @@ Made by JiJae (ruestgeo)
 */
 
 module.exports = {
-    targetServers: [],
-    exact: {
+    targetServers: [123snowflake321],
+    exact?: {
         "testReply" : {
-            case_insensitive = false,
+            case_insensitive: false,
             directed: true,
             reply: "reply to `testReply`",
             reactions: ['🇹', '🇪', '🇸', '➕', '↪️']
@@ -59,6 +64,12 @@ module.exports = {
         }
     },
     contains: {
+    },
+    regex: {
+        "test\\s*regex" :{
+            flags: ["g","i"],
+            reactions: ['🇹', '🇪', '🇸', '➕', '↪️']
+        }
     }
 }
 

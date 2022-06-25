@@ -49,7 +49,7 @@ Made by JiJae (ruestgeo)
 
 
 
-
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js'); //base utils is located in the base dir, if needed
 //const custom_utils = require(process.cwd()+'/_utils/custom_utils'); //custom utils located in the _utils directory
 
@@ -81,33 +81,53 @@ const utils = require(process.cwd()+'/utils.js'); //base utils is located in the
 */
 
 module.exports = {
-    version: 1.0,
+    version: 1.0, //major#.minor#   :  major if breaking changes, minor if small or bug fixes
 
     
-    auth_level: 0,
+    auth_level: 0,  
+
+    /*set and modify auth_level the values as desired;
+     * 0 and less means anyone can use the command,
+     * otherwise only those with the same level or higher auth level can use the command
+     */
 
 
 
     requisites: {
-        "commands" : ["path/to/file/from/_commands/fileName.js", ...],
-        "startups" : ["path/to/file/from/_startups/fileName.js", ...]
+        "commands" : [/*"path/to/file/from/_commands/fileName.js", ...*/],
+
+        "startupTasks": {
+            files: [/*"path/to/file/from/_startup/fileName.js", ...*/],
+            functions: [/*{title: "task1", func: (globals) => void|Promise} || func: (globals) => void|Promise, ...*/]   //if no title is provided then it will be labeled "_" under the fileName
+        },
+
+        "shutdownTasks": [/*{title: "task1", func: (globals) => void|Promise} || func: (globals) => void|Promise, ...*/]   //if no title is provided then it will be labeled "_" under the fileName
     },
+    /* If needing to use the functions of commands listed in requisites.commands then there are two options:
+     * a) [regular import] import the command file like regular with the path relative to the current working directory (which should be where main.js is located)
+     * b) [dynamic import] create a startup task to import the command file via utils.getCommandFunction, which should work regardless of the location of either file
+     */
 
 
-    manual: "Example modular function manual.", 
+    //manual: "Example modular function manual.", 
+    manual: "**--command**  ->  args\n" +
+            "~~**•** >~~  *description* \n" +
+            "~~**•** >~~  *description*" +
 
     
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
         /*
-        *   the parameters provided are (globals, msg, args)
-        * --globals contains the general configs, client handle, and so on
-        * -- msg is the triggering Message object
-        * -- args is the request contents
-        * 
-        * these parameters are fixed until further expansion
-        */
+         *   the parameters provided are (globals, msg, args)
+         * --globals contains the general configs, client handle, and so on
+         * -- msg is the triggering Message object
+         * -- args is the request contents
+         * 
+         * these parameters are fixed until further expansion
+         */
         console.log("this is an example modular function from example-function.js");
         msg.reply("this is an example modular function from example-function.js");
+        return "this will reply to the request message";
     }
 
     
@@ -116,8 +136,12 @@ module.exports = {
 /*
 MANUAL conventions are as follows:
 
-.  commandName  ->  arguments 
-.    any quotation marks, curly brackets, or square brackets are necessary are necessary
+commandName  ->  arguments 
+.    any (escaped) quotation marks, curly brackets, or square brackets are necessary are necessary
+.    any regular brackets indicate a grouping, intended for alternative arg groups indicated with a (bolded?) forward slash
+.    any backticks (grave accent/marks) imply a literal string or word input, not including escaped backticks which imply literal backtick required in args
+.    any args italicized mean to refer to placeholder text for instruction, for example *roleResolvable* means to replace with a role resolvable such as id, name, or mention
+.    any link args should be italicized and underlined
 .    "..." implies that you can input more than one
 .    encapsulating with < and > like "< args >" implies the argument is optional
 .    do not include elipses, <, >, or single quotations in the command 
@@ -126,7 +150,6 @@ MANUAL conventions are as follows:
 .    {"message": "i quote, 'something' and it succeeded :>"}
 .    {"message": "i quote, \"something\" and it succeeded :>"}
 */
-
 
 
 

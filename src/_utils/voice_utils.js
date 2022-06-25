@@ -12,8 +12,10 @@ Made by JiJae (ruestgeo)
 */
 
 
+//TODO use @discordjs/voice
+//requires heavy re-coding
 
-
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js');
 const fs = require("fs");
 
@@ -28,7 +30,7 @@ module.exports = {
     version: 1.2,
     hasRolePermission: async function(member){
         if (noRestrition) return true;
-        for (var role_id of requiredRole){
+        for (let role_id of requiredRole){
             if (await utils.memberHasRole(member, role_id)){
                 return true;
             }
@@ -36,9 +38,14 @@ module.exports = {
         return false;
     },
 
+    /**
+     * Fetch the voice channel connection the bot has in on the given server (otherwise null)
+     * @param {Discord.Client} client 
+     * @param {String} server_id 
+     * @returns {Discord.VoiceConnection | null}
+     */
     fetchLatestConnection: function(client, server_id){
-        var connections = Array.from(client.voice.connections.values());
-        for (var connection of connections){
+        for (let connection of Array.from(client.voice.connections.values())){
             if (connection.channel.guild.id === server_id) {
                 return connection;
             }
@@ -47,8 +54,8 @@ module.exports = {
     },
 
     fetchChannelConnection: function(client, channel_id){
-        var connections = Array.from(client.voice.connections.values());
-        for (var connection of connections){
+        let connections = Array.from(client.voice.connections.values());
+        for (let connection of connections){
             if (connection.channel.id === channel_id) {
                 return connection;
             }
@@ -60,7 +67,7 @@ module.exports = {
 
     removeReqRole: function(role){
         if (!requiredRole.hasOwnProperty(role.id)) throw ("Role ["+role.name+":"+role.id+"] isn't a voice authorized role");
-        //var newReqRoles = JSON.parse(JSON.stringify(requiredRole));
+        //let newReqRoles = JSON.parse(JSON.stringify(requiredRole));
 
         while (requiredRole.indexOf(role.id) != -1){ //remove all instances of role in reqRoles
             requiredRole.splice(requiredRole.indexOf(role.id), 1);
@@ -78,7 +85,7 @@ module.exports = {
     }
 }
 
-function setReqRoles(){
+function setReqRoles (){
     let obj = {};
     obj["requiredRole"] = requiredRole; 
     obj["noRestrition"] = noRestrition;

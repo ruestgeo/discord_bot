@@ -16,29 +16,32 @@ Made by JiJae (ruestgeo)
 
 
 
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js'); 
 
 
 
 module.exports = {
-    version: 1.0,
+    version: 2.0,
     auth_level: 1,
 
 
 
-    manual: "--random-choice   *each line after the command will be an item to chose, one line is chosen at random (use shift+ENTER for newline)*"
-            +"\n.     *An empty space must be given after the command before the first newline (\"--random choice  \")*",
+    manual: "--random-choice   *each line after the command will be an item to chose, one line is chosen at random (use shift+ENTER for newline)*\n"
+            +"~~**•** >~~  *If no newline is detected then it will split by vertical bar ` | `*",
 
 
 
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
+        let delimiter = "\n";
         //chose a random line
-        if (!args.includes("\n"))
-            throw new Error("incorrect command use, no lines to choose from");
-        var choices = args.split("\n");
-        choices = choices.splice(1,choices.length);
+        if (!args.includes(delimiter))
+            delimiter = "|"; //throw new Error("incorrect command use, no lines to choose from");
+        let choices = args.split(delimiter).map(i => i.trim()).filter(i => i !== "");
+        //choices = choices.splice(1,choices.length);
         utils.botLogs(globals, "choices :  "+choices);
-        var randomItem = choices[Math.floor(Math.random()*choices.length)];
+        let randomItem = choices[Math.floor(Math.random()*choices.length)];
         utils.botLogs(globals, "chosen item: "+ randomItem);
         msg.reply(randomItem);
     }

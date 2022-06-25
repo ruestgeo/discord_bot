@@ -1,29 +1,27 @@
 **/auth.json
 **/configs.json
 **/googleClientSecret.json
+
 **/node_modules
 **/*.exe
 **/logs
 **/*.db
-**/_configs/**/*.json
-**/_private/**/*.json
-**/_private/**/*.txt
 **/_db
+**/_configs/**/*
+**/_private/**/*
 **/_assets/*
-**/_assets/READEME.txt
 **/_output/*
+**/console.txt
 
-**/_commands/*
-!**/_commands/*.js
-!**/_commands/*.txt
-!**/_commands/disabled
+!**/README.txt
+!**/*.example
+!**/*.README
 
-**/_startup/*
-!**/_startup/*.js
-!**/_startup/*.txt
-!**/_startup/disabled
+**/_commands/~*
+
+**/_startup/~*
 
 **/VERSIONS/deprec/*
 
-#sub-directories of the bot main directory of this repo, within _commands & _startup (excluding 'disabled'), are the location of macros for personal use
+#sub-directories of the bot main directory of this repo, within _commands & _startup (excluding any prefixed with "__"), are the location of macros for personal use
 #censored copies of those files can be provided for learning purposes by request

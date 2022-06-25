@@ -14,13 +14,14 @@ Made by JiJae (ruestgeo)
 
 //example.js
 
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js'); //base utils is located in the base dir, if needed
 //const custom_utils = require(process.cwd()+'/_utils/custom_utils'); //custom utils located in the _utils directory
 
 
 
 /* Must include "func" which takes globals as argument (can ignore it if not needed)
-    func will run before the bot is activated (to wait until bot is ready, use the "botReady" event with globals["botEventEmitter"] )
+    func will run before the bot is activated (to wait until bot is ready, use the "ready" event with globals["botEventEmitter"] )
 
   By convention, use console.log rather than botLogs during the startup and optionally lead with eight (8) empty spaces for readability in the logs,
   unless printing logs after the botReady event in which no leading spaces are needed and botLogs can be used.
@@ -28,13 +29,17 @@ const utils = require(process.cwd()+'/utils.js'); //base utils is located in the
 
 module.exports = {
     func: async function (globals){
-        var leading_space = "        ";
-        console.log(leading_space + "doing something");
-        //do something
+        let logger =  (utils.loggerIsReady() ? (str) => { utils.botLogs(globals, str) } : (str) => console.log(str));
+
+        logger("doing something");  //this isn't really neccessary as the logger should be ready, but it is a safer way to log
+
+
+        /* do something here */
     
         
-        globals.botEventEmitter.once('botReady', () => {
-            utils.botLogs("doing something else on botReady");
+        globals.botEventEmitter.once('ready', () => {
+            
+            utils.botLogs("doing something else on bot 'ready'");
             //do something once bot is fully ready
             
         })

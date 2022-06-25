@@ -33,10 +33,10 @@ You can launch the bot using the command `node main.js` when in the code base di
 The Node.JS version mentioned above or fully compatable versions are required when launching through `node`.
 
 Create a shortcut of the executable or script to make it easier to launch from anywhere, including adding a shortcut to the start menu (search for tutorials on how to do so).
-You can create a shortcut bu right clicking to open the context menu;  otherwise search for how to do so on your operating system.
+You can create a shortcut by right clicking to open the context menu;  otherwise search for how to do so on your operating system.
 
 ### executable
-If preferrable you can use a compiler such as [Nexe](https://github.com/nexe/nexe) to compile it all to your preference, or just the nodeJS runtime, into an executable (.exe and such) for ease of use.
+If preferrable you can use a compiler such as [Nexe](https://github.com/nexe/nexe) to compile it all to your preference, or just the nodeJS runtime, into an executable (.exe and such) for ease of use and portability.
 
 `npm install -g nexe`
 `nexe main.js -r "node_modules/**/*"` **or** `nexe main.js -r "bot.js" -r "utils.js" -r "node_modules/**/*"`
@@ -71,7 +71,7 @@ The launcher file, imports bot.js and runs it.
 The main logic file,  imports all necessary files on startup and handles the underlying logic.
 
 #### utils.js
-Contains the main utility functions and data used by most other functions (dont modify this if adding more commands, see `_utils`).
+Contains the main utility functions, type definitions, and data used by most other functions (dont modify this if adding more commands, see `_utils`).
 
 #### configs.json 
 Contains the main configs for the bot (do not modify this if adding additional configs, see `_configs`).
@@ -96,10 +96,10 @@ Contains all files pertaining to basic react & reply logic.
 
 #### _startup
 Contains all files that are intended to run a function at startup.
-To run commands post startup see the TODO (WIP) command to setup.
+To run commands post startup see the _startup/README to setup; listen for 'ready' event via the botEventEmitter 
 
 #### _shutdown
-Doesn't exist!  Instead there is an object `globals["_shutdown"]` which is intended to contain functions that take `globals` as an argument and will run those functions on shutdown.  This is an object with keys being the source command and the value being an array of functions to run on shutdown.  Just push functions with any shutdown logic into that array either via _startup or after a command request (if applicable).
+Is not used!  Instead either define a requisite shutdownTask, or import and run "('utils.js').addShutdownTask" which takes a `name` and a function (or async function) that takes `globals` as an argument and will run those functions on shutdown; `addShutdownTask` can be called via _startup files or when you deem it appropriate in a command.
 
 #### _utils
 Contains all utility files, ones which contain common code and such.  This is different from the utils.json in the base directory in that the latter is intended for the most basic uses where files within this directory are intended for more customized use.
@@ -108,7 +108,6 @@ Contains all utility files, ones which contain common code and such.  This is di
 If it doesn't exist then it will be created assuming logging is enabled in the configs.  Files within contain logging information.
 
 
-TODO define globals properties
 
 
 

@@ -16,40 +16,37 @@ Made by JiJae (ruestgeo)
 
 
 
+const Discord = require('discord.js');
 const utils = require(process.cwd()+'/utils.js');
 
 
 
 module.exports = {
-    version: 1.2,
+    version: 2.0,
     auth_level: 2,
 
 
 
-    manual: "--auth-level  ->  \\*none\\* ~~  or  ~~ \\*commandName\\* ~~  or  ~~ \\*userID\\* ~~  or  ~~ @user"+
-            ".     *if \\*none\\* is given then it reply with your highest authorization level*\n"+
-            ".     *if \\*commandName\\* is given then reply with the authorization level required for that command*\n"+
-            ".     *if \\*userID\\* or @user is given then it reply with that users highest authorization level*",
+    manual: "--auth-level  ->  ( \\*none\\* **/** *commandName* **/** *userID* **/** *@member* ) "+
+            "~~**•** >~~  *if \\*none\\* is given then it reply with your highest authorization level*\n"+
+            "~~**•** >~~  *if \\*commandName\\* is given then reply with the authorization level required for that command*\n"+
+            "~~**•** >~~  *if \\*userID\\* or @user is given then it reply with that users highest authorization level*",
 
 
 
 
+/** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
-        var configs = globals.configs;
+        let configs = globals.configs;
         if ( args === "" ){
-            var member =  await msg.member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
-            var memberAuthLevel = 0;
-            var authorizedRole = null;
-            if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
-                memberAuthLevel = configs.authorization.authorizedUsers[member.id];
-            }
-            for ( var roleID in configs.authorization.authorizedRoles ){
-                var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
-                if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
-                    memberAuthLevel = roleAuthLevel;
-                    authorizedRole = member.roles.cache.get(roleID);
-                }                
-            }
+            let member =  await msg.member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
+            let authorizedRole = null; 
+            let auth = await utils.getMemberAuthorizationLevel(configs,member,msg.guild.id); 
+            let authSource = auth[0];
+            let memberAuthLevel = auth[1];
+            if (authSource !== "universal" && !authSource.startsWith("server"))
+                authorizedRole = member.roles.cache.get(authSource);
+
             if ( !authorizedRole ){ //user Authorized
                 return "Authorization level ["+memberAuthLevel+"] through user authorization";
             }
@@ -59,16 +56,16 @@ module.exports = {
         }
 
 
-        var resolved = (args.startsWith("<@") && args.endsWith(">")) ? msg.guild.members.resolve(args.substring(2, args.length-1)) : msg.guild.members.resolve(args);
+        let resolved = (args.startsWith("<@") && args.endsWith(">")) ? msg.guild.members.resolve(args.substring(2, args.length-1)) : msg.guild.members.resolve(args);
         if ( resolved ){
-            var member = resolved;
-            var memberAuthLevel = 0;
-            var authorizedRole = null;
+            let member = resolved;
+            let memberAuthLevel = 0;
+            let authorizedRole = null;
             if ( configs.authorization.authorizedUsers.hasOwnProperty(member.id) ){
                 memberAuthLevel = configs.authorization.authorizedUsers[member.id];
             }
-            for ( var roleID in configs.authorization.authorizedRoles ){
-                var roleAuthLevel = configs.authorization.authorizedRoles[roleID];
+            for ( let roleID in configs.authorization.authorizedRoles ){
+                let roleAuthLevel = configs.authorization.authorizedRoles[roleID];
                 if ( member.roles.cache.has(roleID) && (roleAuthLevel > memberAuthLevel) ){
                     memberAuthLevel = roleAuthLevel;
                     authorizedRole = member.roles.cache.get(roleID);
@@ -82,14 +79,9 @@ module.exports = {
             }
         }
         
-        else if ( globals.nonblocking_built_in_funcs.includes(args) ){
-            return ("Command ["+args+"] has an authorization level of [0]");
-        }
-        else if ( globals.blocking_built_in_funcs.includes(args) ){
-            return ("Command ["+args+"] has an authorization level of ["+globals.configs.built_in_AuthLevels[args]+"]");
-        }
-        else if ( globals.modularCommands.hasOwnProperty(args) ){
-            return ("Command ["+args+"] has an authorization level of ["+globals.modularCommands[args].auth_level+"]");
+
+        else if ( utils.hasCommand(args) ){
+            return ("Command ["+args+"] has an authorization level of ["+utils.getCommandAuthLevel(args)+"]");
         }
         else { return ("command or user_ID ["+args+"] doesn't exist"); }
         
