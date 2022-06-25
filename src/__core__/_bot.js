@@ -799,8 +799,8 @@ function acquireConfigs (newConfigsPath){
     
     if ( !configs.hasOwnProperty("authorization") ){ configs['authorization'] = {}; missing.push("authorization"); }
     else if ( typeof configs.authorization !== "object" ){ invalid = true; incorrect.push("authorization"); }
-    else if ( !configs.authorization.hasOwnProperty("authorizedRoles") ){ configs.authorization.authorizedRoles = {}; missing.push("authorization.authorizedRoles"); }
-    else if ( !configs.authorization.hasOwnProperty("authorizedUsers") ){ configs.authorization.authorizedUsers = {'_':{}}; missing.push("authorization.authorizedUsers"); }
+    else if ( !configs.authorization.hasOwnProperty("authorizedRoles") ){ configs.authorization["authorizedRoles"] = {}; missing.push("authorization.authorizedRoles"); }
+    else if ( !configs.authorization.hasOwnProperty("authorizedUsers") ){ configs.authorization["authorizedUsers"] = {'_':{}}; missing.push("authorization.authorizedUsers"); }
     else if ( !configs.authorization.authorizedUsers.hasOwnProperty("_") ){ configs.authorization.authorizedUsers['_'] = {}; missing.push("authorization.authorizedUsers._"); }
     else if ( typeof configs.authorization.authorizedRoles !== "object" || !(Object.values(configs.authorization.authorizedRoles).map(val => typeof val === "object").reduce((acc, next) => acc && next)) || !(Object.values(configs.authorization.authorizedRoles).map(val => Object.values(val)).flat().map(elem => typeof elem === "number").reduce((acc, next) => acc && next)) ){ invalid = true; incorrect.push("authorization.authorizedRoles"); }
     else if ( typeof configs.authorization.authorizedUsers !== "object" || !(Object.values(configs.authorization.authorizedUsers).map(val => typeof val === "object").reduce((acc, next) => acc && next)) || !(Object.values(configs.authorization.authorizedUsers).map(val => Object.values(val)).flat().map(elem => typeof elem === "number").reduce((acc, next) => acc && next)) ){ invalid = true; incorrect.push("authorization.authorizedUsers"); }
@@ -814,9 +814,9 @@ function acquireConfigs (newConfigsPath){
         if ( !configs.channelAuth[serverID].hasOwnProperty('reactableAllowList') ){ missing.push('channelAuth.'+serverID+'.reactableAllowList'); }
         if ( !configs.channelAuth[serverID].hasOwnProperty('listForCommands') ){ missing.push('channelAuth.'+serverID+'.listForCommands'); }
         if ( !configs.channelAuth[serverID].hasOwnProperty('listForReactables') ){ missing.push('channelAuth.'+serverID+'.listForReactables'); }
-        if ( configs.channelAuth[serverID].hasOwnProperty('adminBypass') && typeof configs.channelAuth[serverID].adminBypass !== "boolean" ){  configs.channelAuth[serverID].adminBypass = DEFAULT_AUTH_ADMIN_BYPASS; incorrect.push("channelAuth_"+serverID+".adminBypass");  }
-        if ( configs.channelAuth[serverID].hasOwnProperty('commandAllowList') && typeof configs.channelAuth[serverID].commandAllowList !== "boolean" ){  configs.channelAuth[serverID].commandAllowList = DEFAULT_CHANNEL_AUTH_STRICT; incorrect.push("channelAuth_"+serverID+".commandAllowList");  }
-        if ( configs.channelAuth[serverID].hasOwnProperty('reactableAllowList') && typeof configs.channelAuth[serverID].reactableAllowList !== "boolean" ){  configs.channelAuth[serverID].reactableAllowList = DEFAULT_CHANNEL_AUTH_STRICT; incorrect.push("channelAuth_"+serverID+".reactableAllowList");  }
+        if ( configs.channelAuth[serverID].hasOwnProperty('adminBypass') && typeof configs.channelAuth[serverID].adminBypass !== "boolean" ){  configs.channelAuth[serverID]['adminBypass'] = DEFAULT_AUTH_ADMIN_BYPASS; incorrect.push("channelAuth_"+serverID+".adminBypass");  }
+        if ( configs.channelAuth[serverID].hasOwnProperty('commandAllowList') && typeof configs.channelAuth[serverID].commandAllowList !== "boolean" ){  configs.channelAuth[serverID]['commandAllowList'] = DEFAULT_CHANNEL_AUTH_STRICT; incorrect.push("channelAuth_"+serverID+".commandAllowList");  }
+        if ( configs.channelAuth[serverID].hasOwnProperty('reactableAllowList') && typeof configs.channelAuth[serverID].reactableAllowList !== "boolean" ){  configs.channelAuth[serverID]['reactableAllowList'] = DEFAULT_CHANNEL_AUTH_STRICT; incorrect.push("channelAuth_"+serverID+".reactableAllowList");  }
         if ( configs.channelAuth[serverID].hasOwnProperty('listForCommands') && !Array.isArray(configs.channelAuth[serverID].listForCommands) ){  invalid = true; incorrect.push("channelAuth_"+serverID+".listForCommands");  }
         if ( configs.channelAuth[serverID].hasOwnProperty('listForReactables') && !Array.isArray(configs.channelAuth[serverID].listForReactables) ){  invalid = true; incorrect.push("channelAuth_"+serverID+".listForReactables");  }
     }
@@ -1392,7 +1392,7 @@ async function handleReactables (msg){
 
         if ( replyFile.hasOwnProperty("regex") ){
             for ( let key in replyFile.regex ){
-                let re = replyFile.regex.re;
+                let re = replyFile.regex[key].re;
                 if (msg.content.match(re)){
                     if ( replyFile.regex[key].hasOwnProperty("reactions") ){
                         for ( let reaction of replyFile.regex[key].reactions ){

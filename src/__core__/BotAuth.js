@@ -36,14 +36,14 @@ const logging = require('./BotLogging.js');
     let memberAuthLevel = 0;
     let authorizingSource = "default"; 
     member =  await member.fetch().catch(err => { throw ("ERROR in member validation ::   "+err) });
-    if ( configs.authorization.authorizedUsers["_"].hasOwnProperty(member.id) ){
+    if ( configs.authorization.authorizedUsers["_"]?.hasOwnProperty(member.id) ){
         let level = configs.authorization.authorizedUsers["_"][member.id];
         if (level > memberAuthLevel){
             memberAuthLevel = level;
             authorizingSource = "universal";
         }
     }
-    if ( configs.authorization.authorizedUsers[serverID].hasOwnProperty(member.id) ){
+    if ( configs.authorization.authorizedUsers[serverID]?.hasOwnProperty(member.id) ){
         let level = configs.authorization.authorizedUsers[serverID][member.id];
         if (level > memberAuthLevel){
             memberAuthLevel = level;

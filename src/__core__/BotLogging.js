@@ -178,7 +178,7 @@ function setupLogger (globals, configs){
     destroyLogger();
 
     if ((configs.logsFileMode !== "none") && (configs.logsFileMode !== "")){
-        console.log("\nlogsFileMode:  "+configs.logsFileMode);
+        console.log("[[BotLogging]] Creating logger\nlogsFileMode:  "+configs.logsFileMode);
         if (!fs.existsSync(logsPath)){
             console.log("--creating ["+logsPath+"] dir(s)");
             fs.mkdirSync(logsPath, { recursive: true });
