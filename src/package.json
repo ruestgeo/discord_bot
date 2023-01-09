@@ -9,7 +9,7 @@
     "async-mutex": "^0.3.2",
     "discord.js": "^13.8.1",
     "google-spreadsheet": "^3.2.0",
-    "luxon": "^2.4.0",
+    "luxon": "^2.5.2",
     "node-localstorage": "^2.2.1"
   }
 }
