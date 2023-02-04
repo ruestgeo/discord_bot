@@ -18,8 +18,10 @@
 !**/*.README
 
 **/_commands/~*
+**/_commands/__~*
 
 **/_startup/~*
+**/_startup/__~*
 
 **/VERSIONS/deprec/*
 

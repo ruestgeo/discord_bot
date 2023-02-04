@@ -443,13 +443,15 @@ async function interactableHandleButton (interaction){
 
     try{
         if ( __button_confirm.hasOwnProperty(msg_token) ){
-            if ( !__button_confirm[msg_token].buttonIDs.includes(customID) )  return;
+            if ( !__button_confirm[msg_token].buttonIDs.includes(customID) || __button_confirm[msg_token].lock )  return;
+
             if ( !__button_confirm[msg_token].authorized.includes(user.id) ){
                 await interaction.reply({content: "<@"+user.id+"> you are not authorized to use this button_confirm prompt", ephemeral: true})
                 return;
             }
             else await interaction.deferReply({ephemeral: true});
             clearTimeout(__button_confirm[msg_token].timeout);
+            __button_confirm[msg_token]['lock'] = true;
             let requester = __button_confirm[msg_token].requester;
             await interaction.editReply({content: (button.emoji.id ? "<:"+button.emoji.name+":"+button.emoji.id+">" : button.emoji.name)+" "+button.label});
             //await ((interaction.replied || interaction.deferred) ? interaction.editReply : interaction.reply)({content: button.emoji+" "+button.label, ephemeral: true}); 
@@ -489,14 +491,15 @@ async function interactableHandleButton (interaction){
 
 
 
-        if ( __button_prompt.hasOwnProperty(msg_token) ){
-            if ( !__button_prompt[msg_token].buttonIDs.includes(customID) )  return;
+        else if ( __button_prompt.hasOwnProperty(msg_token) ){
+            if ( !__button_prompt[msg_token].buttonIDs.includes(customID) || __button_prompt[msg_token].lock )  return;
             if ( !__button_prompt[msg_token].authorized.includes(user.id) ){
                 await interaction.reply({content: "<@"+user.id+"> you are not authorized to use this button_confirm prompt", ephemeral: true})
                 return;
             }
             else await interaction.deferReply({ephemeral: true});
             clearTimeout(__button_prompt[msg_token].timeout);
+            __button_prompt[msg_token]['lock'] = true;
             let requester = __button_prompt[msg_token].requester;
             await interaction.editReply({content: (button.emoji.id ? "<:"+button.emoji.name+":"+button.emoji.id+">" : button.emoji.name)+" "+button.label});
             //await ((interaction.replied || interaction.deferred) ? interaction.editReply : interaction.reply)({content: button.emoji+" "+button.label, ephemeral: true}); 
@@ -532,9 +535,10 @@ async function interactableHandleButton (interaction){
 
 
 
-        if ( __button_controller.hasOwnProperty(msg_token) ){
-            if ( !__button_controller[msg_token].buttonIDs.includes(customID) )  return;
+        else if ( __button_controller.hasOwnProperty(msg_token) ){
+            if ( !__button_controller[msg_token].buttonIDs.includes(customID) || __button_controller[msg_token].lock )  return;
             let requester = __button_controller[msg_token].requester;
+            __button_controller[msg_token]['lock'] = true;
             try {
                 if ( !(await __button_controller[msg_token].isAuthorized(globals, message.guild.id, user.id)) ){ //auth user
                     await interaction.reply({content: "<@"+user.id+"> you are not authorized to use this button controller", ephemeral: true})
@@ -544,6 +548,7 @@ async function interactableHandleButton (interaction){
             }
             catch (err){
                 await logging.awaitLog(globals, "BUTTON_CONTROLLER ERROR ["+requester+"] "+url_prefix+msg_token+"\n"+err, 5);
+                __button_controller[msg_token]['lock'] = false;
                 await message.channel.send("An error occurred:\n"+err).catch(err => {console.error(err); return;});
                 return;
             }
@@ -553,10 +558,15 @@ async function interactableHandleButton (interaction){
                 await workLock.acquire("button_controller["+msg_token+"]"+requester+"-"+customID);
                 try { await __button_controller[msg_token].callbacks[customID].callback(globals, message.guild.id, user.id, msg_token, interaction); }
                 catch (err){ console.error(err) }
-                finally { workLock.release("button_controller["+msg_token+"]"+requester+"-"+customID); }
+                finally { 
+                    __button_controller[msg_token]['lock'] = false; 
+                    workLock.release("button_controller["+msg_token+"]"+requester+"-"+customID); 
+                }
             }
-            else
+            else {
                 await __button_controller[msg_token].callbacks[customID].callback(globals, message.guild.id, user.id, msg_token, interaction);
+                __button_controller[msg_token]['lock'] = false;
+            }
         }
     }
     catch (err){ console.error(err); }

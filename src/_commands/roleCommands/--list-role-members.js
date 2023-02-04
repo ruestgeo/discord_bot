@@ -32,7 +32,7 @@ module.exports = {
             "~~**•** >~~  *if additional roles are given (delimited by comma) then it will filter the list such that anyone who does not have those roles is excluded*\n"+
             "~~**•** >~~  *if \"@@\" is given as an arg then listed members will include a ping/mention*\n"+
             "~~**•** >~~  *if \"@id\" is given as an arg then listed members will be listed by discord ID*\n"+
-            "~~**•** >~~  *if \"@u\" is given as an arg then listed members will include a ping/mention*\n"+
+            "~~**•** >~~  *if \"@u\" is given as an arg then member will be listed by discord username*\n"+
             "~~**•** >~~  *NOTE: role names cannot contain commas or \"@\", otherwise this command will not function properly*",
 
 
@@ -83,6 +83,11 @@ module.exports = {
             });
         }
         members_count = list.length;
+        
+        if (members_count == 0){
+            utils.botLogs(globals,"--found "+members_count+" members");
+            return "found "+members_count+" members with the role(s) ["+criteriaName+"]"; 
+        }
         utils.botLogs(globals,"--found "+members_count+" members\n--prepairing to send list through message(s)");
 
         

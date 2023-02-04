@@ -27,8 +27,8 @@ module.exports = {
 
 
 
-    manual: "**--give-role-conditioned**  ->  {\"`give-role`\": [\"*roleResolvable*\", ...] <, \"`target`\": \"*roleResolvable*\"> <,  \"`has-role`\": [\"*roleResolvable*\", ...]> <,  \"`missing-role`\": [\"*roleResolvable*\", ...]> <,  \"`missing-one-from-each-group`\": [[\"*group1_roleResolvable*\", ...], [\"*group2_roleResolvable*\", ...], ...]> <,  \"`missing-all-from-one-group`\": [[\"*group1_roleResolvable*\", ...], [\"*group2_roleResolvable*\", ...], ...]>  } \n" +
-            "~~**•** >~~  *Give role(s) to a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"give-role\", but \"has-role\", \"missing-role\", \"missing-one-from-each-group\" and \"missing-all-from-one-group\" are optional. Give a target-role for better performance.*",
+    manual: "**--give-role-conditioned**  ->  {\"`give-role`\": [\"*roleResolvable*\", ...] <, \"`target`\": \"*roleResolvable*\"> <,  \"`has-role`\": [\"*roleResolvable*\", ...]> <,  \"`missing-role`\": [\"*roleResolvable*\", ...]> <,  \"`missing-one-from-each-group`\": [[\"*group1_roleResolvable*\", ...], [\"*group2_roleResolvable*\", ...], ...]> <,  \"`missing-all-from-one-group`\": [[\"*group1_roleResolvable*\", ...], [\"*group2_roleResolvable*\", ...], ...]> <,  \"`has-one-from-each-group`\": [[\"*group1_roleResolvable*\", ...], [\"*group2_roleResolvable*\", ...], ...]> <,  \"`has-all-from-one-group`\": [[\"*group1_roleResolvable*\", ...], [\"*group2_roleResolvable*\", ...], ...]>  } \n" +
+            "~~**•** >~~  *Give role(s) to a user in the server if they have or doesn't have some role.  If a target role is given then it will only look at the list of users who have that role.  Must give at least one \"give-role\", but \"has-role\", \"missing-role\", \"missing-one-from-each-group\", \"missing-all-from-one-group\", \"has-one-from-each-group\" and \"has-all-from-one-group\" are optional. Give a target-role for better performance.*",
 
 
 
@@ -43,10 +43,6 @@ module.exports = {
         let server_roles = await server.roles.fetch();
         utils.botLogs(globals,  "--verifying and resolving roles");
         
-        if (args.hasOwnProperty("has-one-from-each-group") || args.hasOwnProperty("has-all-from-one-group")){
-            utils.botLogs(globals,  "----incorrect request body");
-            throw ("Incorrect request body.  has-one-from-each-group  &  has-all-from-one-group  are not supported.");
-        }
         if (args.hasOwnProperty("give-role")){
             args["give-role"] = args["give-role"].map(resolvable => {
                 resolvable = resolvable.trim();
@@ -71,7 +67,7 @@ module.exports = {
                 return role.id;
             });
         }
-        if (args.hasOwnProperty("missing-one-from-each-group")){ //grc2
+        if (args.hasOwnProperty("missing-one-from-each-group")){
             args["missing-one-from-each-group"] = args["missing-one-from-each-group"].map(rolegroup => 
                 rolegroup.map(resolvable => {
                     resolvable = resolvable.trim();
@@ -80,8 +76,26 @@ module.exports = {
                 })
             );
         }
-        if (args.hasOwnProperty("missing-all-from-one-group")){ //grc3
+        if (args.hasOwnProperty("missing-all-from-one-group")){
             args["missing-all-from-one-group"] = args["missing-all-from-one-group"].map(rolegroup => 
+                rolegroup.map(resolvable => {
+                    resolvable = resolvable.trim();
+                    let role = utils.resolveRole(globals,resolvable,server_roles,true);
+                    return role.id;
+                })
+            );
+        }
+        if (args.hasOwnProperty("has-one-from-each-group")){
+            args["has-one-from-each-group"] = args["has-one-from-each-group"].map(rolegroup => 
+                rolegroup.map(resolvable => {
+                    resolvable = resolvable.trim();
+                    let role = utils.resolveRole(globals,resolvable,server_roles,true);
+                    return role.id;
+                })
+            );
+        }
+        if (args.hasOwnProperty("has-all-from-one-group")){
+            args["has-all-from-one-group"] = args["has-all-from-one-group"].map(rolegroup => 
                 rolegroup.map(resolvable => {
                     resolvable = resolvable.trim();
                     let role = utils.resolveRole(globals,resolvable,server_roles,true);
@@ -109,6 +123,7 @@ module.exports = {
         utils.botLogs(globals,  "--searching user list for candidates");
         for (let _member of list){
             let member = await _member.fetch();
+            utils.botLogs(globals,  "  ["+member.displayName+":"+member.id+"] processing");
             let skip = false;
             if (args.hasOwnProperty("has-role")){
                 for (let role of args['has-role']){ //check if member doesn't have role, if so skiptrue and break
@@ -117,7 +132,10 @@ module.exports = {
                         break;
                     }
                 }
-                if (skip) continue;
+                if (skip) {
+                    utils.botLogs(globals,  "  -- has-role not satisfied");
+                    continue;
+                }
             }
             if(args.hasOwnProperty("missing-role")){
                 for (let role of args["missing-role"]){ //check if member has role, if so skiptrue and break
@@ -126,9 +144,12 @@ module.exports = {
                         break;
                     }
                 }
-                if (skip) continue;
+                if (skip) {
+                    utils.botLogs(globals,  "  -- missing-role not satisfied");
+                    continue;
+                }
             }
-            if(args.hasOwnProperty("missing-one-from-each-group")){ //grc2
+            if(args.hasOwnProperty("missing-one-from-each-group")){
                 let skip = false;
                 for (let rolegroup of args["missing-one-from-each-group"]){
                     let missingOne = false;
@@ -141,9 +162,12 @@ module.exports = {
                         break;
                     }
                 }
-                if (skip) continue;
+                if (skip) {
+                    utils.botLogs(globals,  "  -- missing-one-from-each-group not satisfied");
+                    continue;
+                }
             }
-            if(args.hasOwnProperty("missing-all-from-one-group")){ //grc3
+            if(args.hasOwnProperty("missing-all-from-one-group")){
                 let skip = true;
                 for (let rolegroup of args["missing-all-from-one-group"]){
                     let missingRoleGroup = true;
@@ -156,7 +180,46 @@ module.exports = {
                         break;
                     }
                 }
-                if (skip) continue;
+                if (skip) {
+                    utils.botLogs(globals,  "  -- missing-all-from-one-group not satisfied");
+                    continue;
+                }
+            }
+            if(args.hasOwnProperty("has-one-from-each-group")){
+                let skip = false;
+                for (let rolegroup of args["has-one-from-each-group"]){
+                    let hasOne = false;
+                    for (let role of rolegroup){ //check if member has at least one of this role group
+                        let has = member.roles.cache.has( role );
+                        hasOne = hasOne || has; //if any is true then hasOne is true, if all false then hasOne is false
+                    }
+                    if (!hasOne) { //missing all, therefore cannot satisfy having at least one role from each rolegroup
+                        skip = true;
+                        break;
+                    }
+                }
+                if (skip) {
+                    utils.botLogs(globals,  "  -- has-one-from-each-group not satisfied");
+                    continue;
+                }
+            }
+            if(args.hasOwnProperty("has-all-from-one-group")){
+                let skip = true;
+                for (let rolegroup of args["has-all-from-one-group"]){
+                    let hasRoleGroup = true;
+                    for (let role of rolegroup){ //check if member has at least all of one role group
+                        let has = member.roles.cache.has( role );
+                        hasRoleGroup = hasRoleGroup && has; //true if all roles in rolegroup are satisfied
+                    }
+                    if (hasRoleGroup) { //has all of rolegroup, condition satisfied
+                        skip = false;
+                        break;
+                    }
+                }
+                if (skip) {
+                    utils.botLogs(globals,  "  -- has-all-from-one-group not satisfied");
+                    continue;
+                }
             }
 
             //give role(s)

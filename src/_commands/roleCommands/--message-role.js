@@ -86,9 +86,21 @@ module.exports = {
                 let count = 0;
                 let count_f = 0;
                 for (let memberID of roleMembers){
-                    let member = role.members.get(memberID);
-                    let memberName = member.displayName+"#"+member.user.discriminator;
                     let DM_channel;
+                    let member = role.members.get(memberID);
+                    let memberName;
+                    try{
+                        memberName = member.displayName+"#"+member.user.discriminator;
+                    }
+                    catch (err){
+                        count_f++;
+                        msg.channel.send("An error occurred when trying to resolve user  "+memberID+"\n"+err);
+                        await msg.channel.send("An error occurred when trying to resolve user  "+memberID+"\n"+err).catch(err2 => {
+                            utils.botLogs("ERROR sending error: "+err2);
+                        }); 
+                        continue;
+                    }
+                    
                     try{
                         DM_channel = await member.createDM().catch(err => {
                             count_f++;

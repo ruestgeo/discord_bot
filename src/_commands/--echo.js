@@ -22,7 +22,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 1.4,
+    version: 1.5,
     auth_level: 3,
 
 
@@ -56,7 +56,7 @@ module.exports = {
             /* parse args */
             let server = await msg.guild.fetch();
             if (content.startsWith("<#")){
-                target = content.substring( (isNaN(content.charAt(2)) ? 3 : 2), content.length-1);
+                target = content.substring( (isNaN(content.charAt(2)) ? 3 : 2), content.indexOf(">"));
                 message_to_echo = content.substring(content.indexOf(">")+1).trim();
             }
             else{

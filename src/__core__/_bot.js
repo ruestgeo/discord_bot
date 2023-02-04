@@ -39,6 +39,7 @@ const DEFAULT_INIT_OPTIONS = {
 };
 
 const DEFAULT_QUEUE_CAP = 10;
+const DEFAULT_SCAN_DEPTH = 2;
 
 const DEFAULT_START_STATUS_TEXT = "[started]";
 const DEFAULT_IDLE_STATUS_TEXT = "[idle]";
@@ -104,6 +105,7 @@ let configs = null;
 
 let queueLength = 0;
 let queueCapacity = DEFAULT_QUEUE_CAP;
+let scanDepth = DEFAULT_SCAN_DEPTH;
 
 let _requisites = {
     /** @type {{[requiredCommand: String]: String[]}} */
@@ -465,7 +467,7 @@ function onRateLimit (rateLimitInfo){
  * @param {Set<Discord.Snowflake>} unavailableGuilds 
  */
 function onShardReady (id, unavailableGuilds){
-    console.log("<< Shard "+id+" ready >>"+ (unavailableGuilds ? "\nUnavailable servers (id): "+unavailableGuilds: ""));
+    console.log( "\n"+ timeUtils.getTimeString(globals) + "\n<< Shard "+id+" ready >>"+ (unavailableGuilds ? "\nUnavailable servers (id): "+unavailableGuilds: ""));
     //utils.change_status(client, 'idle', configs.startupStatusText).catch(err => logging.log(globals, err));
 }
 /**
@@ -473,7 +475,7 @@ function onShardReady (id, unavailableGuilds){
  * @param {Number} id 
  */
 function onShardReconnecting (id){
-    console.log("<< Shard "+id+" reconnecting... >>");
+    console.log( "\n"+ timeUtils.getTimeString(globals) + "\n<< Shard "+id+" reconnecting... >>");
 }
 /**
  * on shardResume event, log the info
@@ -481,7 +483,7 @@ function onShardReconnecting (id){
  * @param {Number} replayedEvents 
  */
 function onShardResume (id, replayedEvents){
-    console.log("<< Shard "+id+" connection resumed; "+replayedEvents+" events replaying >>");
+    console.log( "\n"+ timeUtils.getTimeString(globals) + "\n<< Shard "+id+" connection resumed; "+replayedEvents+" events replaying >>");
     //utils.change_status(client, 'idle', "reconnected shard "+id).catch(err => logging.log(globals, err));
 }
 /**
@@ -490,7 +492,7 @@ function onShardResume (id, replayedEvents){
  * @param {Number} id 
  */
 function onShardDisconnect (closeEvent, id){
-    console.log("<< Shard "+id+" disconnected >>\ncode: "+closeEvent.code+"  (wasClean: "+closeEvent.wasClean+")\nreason: "+closeEvent.reason);
+    console.log( "\n"+ timeUtils.getTimeString(globals) + "\n<< Shard "+id+" disconnected >>\ncode: "+closeEvent.code+"  (wasClean: "+closeEvent.wasClean+")\nreason: "+closeEvent.reason);
 }
 /**
  * on shardError event, log the info
@@ -498,7 +500,7 @@ function onShardDisconnect (closeEvent, id){
  * @param {Number} shardId 
  */
 function onShardError (error, shardId){
-    console.log("<< Shard "+shardId+" encountered an error >>\n");
+    console.log( "\n"+ timeUtils.getTimeString(globals) + "\n<< Shard "+shardId+" encountered an error >>\n");
     console.error(error);
 }
 
@@ -511,6 +513,7 @@ function onShardError (error, shardId){
 //----------------------------------------------------------------
 //#region Acquire
 
+
 //#region commands
 /**
  * import all modular commands (excluding those in a directory prefixed with "_")
@@ -518,59 +521,7 @@ function onShardError (error, shardId){
 function acquireCommands (){
     logging.log(globals, "\nAcquiring _commands");
     if (fs.existsSync(commandsPath)) {
-        let files = fs.readdirSync(commandsPath);
-        botEventEmitter.emit('acquiringCommands', files.length, commandsPath);
-        logging.log(globals, "--scanning _commands directory: ");
-        let innerDirs = [];
-
-        /* scan commands dir */
-        let count_f = 0;
-        for ( let file of files ){
-            botEventEmitter.emit('acquiringCommand', count_f++, commandsPath+file);
-            if ((file.startsWith("_")) ||  (file === "README.txt"))  continue;
-            if (file.endsWith('.js')){
-                let jsFile = require(relativePath(commandsPath+file));
-                if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") ){
-                    if (!jsFile.hasOwnProperty("auth_level")) jsFile['auth_level'] = Number.MAX_VALUE;
-                    jsFile["__filePath"] = commandsPath+file;
-                    modularCommands[file.substring(0,file.length-'.js'.length)] = jsFile; 
-                    logging.log(globals, "    \""+file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
-                }
-                else logging.log(globals, "    \""+file+"\"  not included");
-            }
-
-            else if ( fs.lstatSync(commandsPath+file).isDirectory() ){ //parse 1 layer of directories, but no deeper
-                innerDirs.push(file+"/");
-            }
-
-            else logging.log(globals, "    \""+file+"\"  not included");
-        }
-        botEventEmitter.emit('acquiringCommand', files.length, null);
-
-        /* scan inner dirs */
-        for (let inner_dir of innerDirs){
-            let files = fs.readdirSync(commandsPath+inner_dir);
-            botEventEmitter.emit('acquiringCommands', files.length, commandsPath+inner_dir);
-            logging.log(globals, "--scanning _commands inner directory ["+inner_dir+"]: ");
-            let count_inner = 0;
-            for ( let inner_file of files ){
-                botEventEmitter.emit('acquiringCommand', count_inner++, commandsPath+inner_dir+inner_file);
-                if ((inner_file.startsWith("_")) ||  (inner_file === "README.txt"))  continue;
-                if (inner_file.endsWith('.js')){
-                    let jsFile = require(relativePath(commandsPath+inner_dir+inner_file));
-                    if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") ){
-                        if (!jsFile.hasOwnProperty("auth_level")) jsFile['auth_level'] = Number.MAX_VALUE;
-                        jsFile["__filePath"] = commandsPath+inner_dir+inner_file;
-                        modularCommands[inner_file.substring(0,inner_file.length-'.js'.length)] = jsFile; 
-                        logging.log(globals, "    \""+inner_file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
-                    }
-                    else logging.log(globals, "    \""+inner_file+"\"  not included");
-                }
-                else logging.log(globals, "    \""+inner_file+"\"  not included");
-            }
-            botEventEmitter.emit('acquiringCommand', files.length, null);
-        }
-
+        scanCommandDirectories( commandsPath, scanDepth-1 );
     }
     else logging.log(globals, "--directory not found");
 
@@ -584,6 +535,50 @@ function acquireCommands (){
     importRequisiteCommands();
 
     botEventEmitter.emit('acquiredCommands');
+}
+
+/**
+ * recursively scan and import command files
+ */
+function scanCommandDirectories (path, depth){//recursive, returns list
+    logging.log(globals, "--scanning directory ["+path+"]: ");
+    let files = fs.readdirSync(path);
+    let innerDirs = [];
+
+    /* scan path dir */
+    let count_f = 0;
+    for ( let file of files ){
+        botEventEmitter.emit('acquiringCommand', count_f++, path+file);
+        if ((file.startsWith("_")) ||  (file === "README.txt"))  continue;
+        if (file.endsWith('.js')){
+            let jsFile = require(relativePath(path+file));
+            if ( jsFile.hasOwnProperty("func") && jsFile.hasOwnProperty("manual") ){
+                if (!jsFile.hasOwnProperty("auth_level")) jsFile['auth_level'] = Number.MAX_VALUE;
+                jsFile["__filePath"] = path+file;
+                let commandName = file.substring(0,file.length-'.js'.length);
+                if (modularCommands.hasOwnProperty(commandName)){
+                    logging.log(globals, "!!  \""+file+"\"  conflict name '"+commandName+"';  taking newest file");
+                }
+                modularCommands[commandName] = jsFile; 
+                logging.log(globals, "    \""+file+"\" "+(jsFile.version ? " (v"+jsFile.version+") " : "")+"  included  [Lv."+jsFile.auth_level+"]");
+            }
+            else logging.log(globals, "    \""+file+"\"  not included");
+        }
+
+        else if ( fs.lstatSync(path+file).isDirectory() ){
+            innerDirs.push(file+"/");
+        }
+
+        else logging.log(globals, "    \""+file+"\"  not included");
+    }
+    botEventEmitter.emit('acquiringCommand', files.length, null);
+
+    /* scan inner dirs */
+    if (depth > 0){ //recursion if depth > 0
+        for (let inner_dir of innerDirs){
+            scanCommandDirectories( path+inner_dir, depth-1 );
+        }
+    }
 }
 
 
@@ -847,6 +842,11 @@ function acquireConfigs (newConfigsPath){
     else if ( typeof configs.workQueueCapacity !== "number" ){ incorrect.push("workQueueCapacity (default 10)"); configs["workQueueCapacity"] = DEFAULT_QUEUE_CAP; }
     else if ( configs.workQueueCapacity < 1 )   configs.workQueueCapacity = 1;
 
+    //default 2
+    if ( !configs.hasOwnProperty("scanDepth") ){ missing.push("scanDepth (default 2)"); configs["scanDepth"] = DEFAULT_SCAN_DEPTH; }
+    else if ( typeof configs.scanDepth !== "number" ){ incorrect.push("scanDepth (default 2)"); configs["scanDepth"] = DEFAULT_SCAN_DEPTH; }
+    else if ( configs.scanDepth < 1 )   configs.scanDepth = 1;
+
     //default false
     if ( !configs.hasOwnProperty("timestamp") ){ missing.push("timestamp (default false)"); configs["timestamp"] = logging.DEFAULT_TIMESTAMP; }
     else if ( typeof configs.timestamp !== "boolean" ){ incorrect.push("timestamp (default false)"); configs["timestamp"] = logging.DEFAULT_TIMESTAMP; }
@@ -892,6 +892,7 @@ function acquireConfigs (newConfigsPath){
 
     globals["configs"] = configs;
     queueCapacity = configs.workQueueCapacity;
+    scanDepth = configs.scanDepth;
 
     miscUtils.deepFreeze(globals.configs);
     freezeGlobal("configs");
@@ -1614,12 +1615,12 @@ async function _helpCommand (msg, content, cmd){
         
     if ( content === "" ){
         if (msg){
-            await msg.reply("This is the usage manual for searching for other usage manuals: \n"+built_in_commands.manual["--help"]);
+            await msg.reply("This is the usage manual for searching for other usage manuals: \n"+built_in_commands["--help"].manual);
             await msg.channel.send(command_description);
             return;
         }
         else
-            return "This is the usage manual for searching for other usage manuals: \n"+built_in_commands.manual["--help"]+"\n\n"+command_description;
+            return "This is the usage manual for searching for other usage manuals: \n"+built_in_commands["--help"].manual+"\n\n"+command_description;
     }
 
     if ( content === "all" || content === "-all" || content === "--all" ){
@@ -1635,7 +1636,7 @@ async function _helpCommand (msg, content, cmd){
     }
     
     if ( nonblocking_built_in_funcs.includes(content) || blocking_built_in_funcs.includes(content)) {
-        let manual = built_in_commands.manual[content];
+        let manual = built_in_commands[content].manual;
         if (msg){
             utils.sendMessage(msg,manual,true); //await msg.reply(manual);
             return;
@@ -1658,7 +1659,7 @@ async function _helpCommand (msg, content, cmd){
     await msg.reply("The following keywords are being used list matching command names\n["+keywords.toString().replace(/,/g, ", ")+"]");
     let matches = new Set();
     let allList = [];
-    allList = allList.concat(Object.keys(built_in_commands.manual), Object.keys(modularCommands));
+    allList = allList.concat(Object.keys(built_in_commands), Object.keys(modularCommands));
 
     let keyword = remaining_keywords.shift();
     for (let cmd of allList){
@@ -1887,7 +1888,6 @@ const importTypes = ["command","reactable","configs"];
 /** @param {Discord.Message} msg @param {String} content @throws {Error} */
 async function _importCommand (msg, content, cmd){
     const logger = (built_in_commands[cmd].blocking ? logging.log : logging.awaitLog);
-    const importTypeError = "Invalid import type  ["+import_type+"]\nOnly \"command\", \"reactable\", or \"configs\"";
 
     if (content === "")  throw ("No args were given");
     //"**--import command/reactable/configs *path/to/file/from/cwd/fileName.js*"
@@ -1901,6 +1901,7 @@ async function _importCommand (msg, content, cmd){
         import_type = content.trim().toLowerCase();
         originalPaths = "";
     }
+    const importTypeError = "Invalid import type  ["+import_type+"]\nOnly \"command\", \"reactable\", or \"configs\"";
     if ( !importTypes.includes(import_type) ) 
         throw new Error(importTypeError);
 

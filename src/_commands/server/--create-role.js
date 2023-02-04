@@ -21,7 +21,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 2.0,
+    version: 2.1,
     auth_level: 9,
 
 
@@ -45,7 +45,7 @@ module.exports = {
             try{
                 role = await server.roles.create({
                     name: roleName,
-                    permissions: 0,
+                    permissions: BigInt(0),
                     reason: 'created upon requested bot command',
                 });
             }
