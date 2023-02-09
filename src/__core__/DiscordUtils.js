@@ -17,6 +17,7 @@ Made by JiJae (ruestgeo)
 
 
 const Discord = require('discord.js');
+const { ChannelType } = require('discord.js');
 
 const { Globals } = require('./_typeDef');
 const { url_prefix } = require('./_const.js');
@@ -175,7 +176,7 @@ async function createFakeMessage (client,channelID,serverID, content, messageID)
         reference: null,
         interaction: null,
         
-        flags: new Discord.MessageFlags(),//BitField(),
+        flags: new Discord.MessageFlagsBitField(),//BitField(), MessageFlags
         pinned: false,
         tts: false,
         editable: false,
@@ -228,14 +229,14 @@ async function disableComponents (msg, customIDs){
 /** Return an array of disabled components on an editable message.
  * @param {Discord.Message} msg
  * @param {String[]} [customIDs] (optional) if provided, disable only the components with the provided customIDs
- * @returns {Discord.MessageActionRow[]|void}
+ * @returns {Discord.ActionRowBuilder[]|void}
  */
 function getDisabledComponents (msg, customIDs){
     if ( !msg.editable ) return;
     return msg.components.map(  actionRow => {
         actionRow.components.map(component =>  {
             if (customIDs?.includes(component.customId) ?? true)
-                component.setDisabled(true);
+                Discord.ButtonBuilder.from(component).setDisabled(true);
             return component;
         }); 
         return actionRow;
@@ -490,7 +491,7 @@ async function fetchMessage (globals, serverID, channelID, messageID, log, log_p
 async function fetchMessages (globals, channel_messages, options, log){
     let channel = channel_messages.channel;
     let fetchAmount = options.amount ? options.amount : 30;
-    if (log) logging.log(globals,"--acquiring "+fetchAmount+" latest messages from  "+(channel.type == "DM"?"DM":channel.name)+"  id:"+channel.id+ "   type: "+channel.type);
+    if (log) logging.log(globals,"--acquiring "+fetchAmount+" latest messages from  "+(channel.type === ChannelType.DM?"DM":channel.name)+"  id:"+channel.id+ "   type: "+channel.type);
     let messages = await channel.messages.fetch({ limit: fetchAmount }).catch(err => {throw (err);});
     messages = messages.sort(function (a, b){return a.createdTimestamp - b.createdTimestamp}); //ascending (earliest first, latest last)
     let last_message = messages.lastKey();
@@ -536,15 +537,15 @@ function resolveVoiceChannels (globals, resolvables, server, log){
     for (let target of  resolvables){
         let channel = resolveChannel(globals, target, server.channels, log);
         if (log)   logging.log(globals,  "--channel type:  "+channel.type);
-        if ( channel.type === "GUILD_CATEGORY" ){
-            for (let _channel of [...channel.children.filter(_channel => _channel.type === "GUILD_VOICE").values()]){
+        if ( channel.type === ChannelType.GuildCategory ){
+            for (let _channel of [...channel.children.cache.filter(_channel => _channel.type === ChannelType.GuildVoice).values()]){
                 voiceNames.push(_channel.name+":"+_channel.id);
                 //channelHandles.push(_channel);
                 targetVoiceChannels.push(_channel.id);
             }
             if (log)   logging.log(globals, "----found voice channels in category  ["+channel.name+"] ::  "+voiceNames);
         }
-        else if ( channel.type === "GUILD_VOICE" ){
+        else if ( channel.type === ChannelType.GuildVoice ){
             voiceNames.push(channel.name+":"+channel.id);
             //channelHandles.push(channel);
             targetVoiceChannels.push(channel.id);

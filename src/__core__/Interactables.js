@@ -23,6 +23,9 @@ const DEFAULT_PROMPT_WINDOW = 30;
 
 
 const Discord = require('discord.js');
+const { ButtonStyle } = require('discord.js');
+const { ChannelType } = require('discord.js');
+
 
 const { Globals } = require('./_typeDef');
 const workLock = require('./WorkLock.js');
@@ -65,7 +68,7 @@ let globals = null;
  * @property {String} title the title to identify the use of the emote button (1-3 words)
  * @property {InteractableCallback} callback the callback to run when this emote is interacted with (either by react or button) by an authorized user
  * @property {String} [buttonPosition] (optional) the position of the button from A1 to E5;  maximum of 5 rows and 5 columns (25 buttons)
- * @property {Discord.MessageButtonStyle} [buttonStyle] (optional) the style of the button, of which ["PRIMARY", "SECONDARY", "SUCCESS", and "DANGER"] are available
+ * @property {Discord.ButtonStyle} [buttonStyle] (optional) the style of the button, of which 'green', 'red', 'blurple', 'grey'/'gray' are available
  ** if buttonPosition is not provided then any remaining items will be slotted in any free slots starting from A1 across and down (A1,A2,... E5)
  */
 
@@ -214,7 +217,7 @@ let interactable_ReactionAdd_id = null;
 let controller_MessageDelete_id = null;
 let interactable_ButtonPress_id = null;
 
-let expiredEmbed = new Discord.MessageEmbed({
+let expiredEmbed = new Discord.EmbedBuilder({
     "title": "*expired*",
     "color": 16711680
 });
@@ -222,6 +225,33 @@ let expiredEmbed = new Discord.MessageEmbed({
 
 
 //#region InteractablesLocal
+
+/**
+  * return the style enum for a button, 
+  * of which 'green', 'red', 'blurple'/'blue', 'grey'/'gray' are available
+  * (defaults to grey)
+  * @param {String} arg 
+  * @returns {Discord.ButtonStyle}
+  */
+function convertButtonStyle(arg){
+    switch (arg.toLowerCase().trim()){
+        case 'green':
+        case 'success':
+            return ButtonStyle.Success;
+        case 'red':
+        case 'danger':
+            return ButtonStyle.Danger;
+        case 'blue':
+        case 'blurple':
+        case 'primary':
+            return ButtonStyle.Primary;
+        //case 'gray':
+        //case 'grey':
+        //case 'secondary':
+        default:
+            return ButtonStyle.Secondary;
+    }
+}
 
 /** clear and remove listener if no interactables */
 async function interactableReactionAddCleaner (){
@@ -433,7 +463,7 @@ async function interactableHandleButton (interaction){
 
     globals = getGlobals();
 
-    ///** @type {Discord.MessageButton} */
+    ///** @type {Discord.ButtonStyle} */
     let button = interaction.component;
     //let server = interaction.guild;
     //let channel = interaction.channel;
@@ -763,12 +793,12 @@ async function button_confirm (globals, args){
         throw new Error("Invalid ACCEPT_callback:  Not a function");
     if (typeof REJECT_callback !== "function" && REJECT_callback != null)
         throw new Error("Invalid REJECT_callback:  Not a function");
-    if (channel.type === "GUILD_TEXT"){
+    if (channel.type === ChannelType.GuildText){
         for (let mID of authorized_user_IDs){
             if ( !channel.guild.members.resolve(mID) ) throw new Error("Invalid authorized id:  Cannot resolve member id: "+mID);
         }
     }
-    else if (channel.type === "DM" && !authorized_user_IDs.includes(channel.recipient?.id))
+    else if (channel.type === ChannelType.DM && !authorized_user_IDs.includes(channel.recipient?.id))
         throw new Error("Invalid authorized id:  Must authorize the DM recipient");
     else 
         throw new Error("Invalid target channel:  Must be a text channel or DM channel");
@@ -788,18 +818,18 @@ async function button_confirm (globals, args){
     }
 
     /* post button message */
-    let embed = new Discord.MessageEmbed( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
-    let acceptComponent = new Discord.MessageButton()
+    let embed = new Discord.EmbedBuilder( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
+    let acceptComponent = new Discord.ButtonBuilder()
         .setCustomId("accept")
         .setLabel("Accept")
         .setEmoji('☑️')
-        .setStyle("SUCCESS");
-    let rejectComponent = new Discord.MessageButton()
+        .setStyle(ButtonStyle.Success);
+    let rejectComponent = new Discord.ButtonBuilder()
         .setCustomId("reject")
         .setLabel("Reject")
         .setEmoji('✖️')
-        .setStyle("DANGER");
-    let actionRow = new Discord.MessageActionRow().addComponents(acceptComponent).addComponents(rejectComponent);
+        .setStyle(ButtonStyle.Danger);
+    let actionRow = new Discord.ActionRowBuilder().addComponents(acceptComponent).addComponents(rejectComponent);
     let target_msg;
     if (options instanceof EphemeralReply){
         let msg_options = options.options;
@@ -886,12 +916,12 @@ async function button_prompt (globals, args){
         throw new Error("Invalid authorized list:  Must provide at least one member ID");
     if (Object.keys(callbacks).length > 25) 
         throw new Error("Invalid amount of buttons:  Must be 25 or less");
-    if (channel.type === "GUILD_TEXT"){
+    if (channel.type === ChannelType.GuildText){
         for (let mID of authorized_user_IDs){
             if ( !channel.guild.members.resolve(mID) ) throw new Error("Invalid authorized id:  Cannot resolve member id: "+mID);
         }
     }
-    else if (channel.type === "DM" && !authorized_user_IDs.includes(channel.recipient?.id))
+    else if (channel.type === ChannelType.DM && !authorized_user_IDs.includes(channel.recipient?.id))
         throw new Error("Invalid authorized id:  Must authorize the DM recipient");
     else 
         throw new Error("Invalid target channel:  Must be a text channel or DM channel");
@@ -950,16 +980,16 @@ async function button_prompt (globals, args){
     }
 
     /* post button message */
-    let embed = new Discord.MessageEmbed( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
+    let embed = new Discord.EmbedBuilder( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
     let actionRows = [];
     for ( let row of grid ){
-        let actionRow = new Discord.MessageActionRow();
+        let actionRow = new Discord.ActionRowBuilder();
         for (let buttonID of row){
-            let buttonComponent = new Discord.MessageButton()
+            let buttonComponent = new Discord.ButtonBuilder()
                 .setCustomId(buttonID)
                 .setLabel(callbacks[buttonID].title)
                 .setEmoji(callbacks[buttonID].emote)
-                .setStyle(callbacks[buttonID].buttonStyle ?? "SECONDARY");
+                .setStyle(convertButtonStyle(callbacks[buttonID].buttonStyle ?? 'grey'));
             actionRow.addComponents(buttonComponent);    
             delete callbacks[buttonID].buttonStyle;
             delete callbacks[buttonID].buttonPosition;
@@ -1051,7 +1081,7 @@ async function button_controller (globals, args){
         throw new Error("Invalid isAuthorized:  Must be a function");
     if (Object.keys(callbacks).length > 24)
         throw new Error("Invalid amount of buttons:  Must be 24 or less");
-    if (channel.type !== "GUILD_TEXT" && channel.type !== "DM")
+    if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.DM)
         throw new Error("Invalid target channel:  Must be a text channel or DM channel");
     for ( let emote_key of Object.keys(callbacks) ){ 
         if (!callbacks[emote_key].hasOwnProperty('callback')) 
@@ -1096,7 +1126,7 @@ async function button_controller (globals, args){
         let message = await fetchMessage(globals, resolvables[0], resolvables[1], resolvables[2], false);
         await message.delete(); //delete controller message
     };
-    callbacks['✖️|destroy_controller'] = {emote: "✖️", title: "Close", awaitLock: false, callback: X_callback, buttonStyle: "DANGER"};
+    callbacks['✖️|destroy_controller'] = {emote: "✖️", title: "Close", awaitLock: false, callback: X_callback, buttonStyle: "red"};
     remainder.push('✖️|destroy_controller');
     buttonIDs.push('✖️|destroy_controller');
 
@@ -1129,13 +1159,13 @@ async function button_controller (globals, args){
     /* post button message */
     let actionRows = [];
     for ( let row of grid ){
-        let actionRow = new Discord.MessageActionRow();
+        let actionRow = new Discord.ActionRowBuilder();
         for (let buttonID of row){
-            let buttonComponent = new Discord.MessageButton()
+            let buttonComponent = new Discord.ButtonBuilder()
                 .setCustomId(buttonID)
                 .setLabel(callbacks[buttonID].title)
                 .setEmoji(callbacks[buttonID].emote)
-                .setStyle(callbacks[buttonID].buttonStyle ?? "SECONDARY");
+                .setStyle(convertButtonStyle(callbacks[buttonID].buttonStyle ?? 'grey'));
             actionRow.addComponents(buttonComponent);
             delete callbacks[buttonID].buttonStyle;
             delete callbacks[buttonID].buttonPosition;    
@@ -1200,13 +1230,13 @@ async function react_confirm (globals, args){
         throw new Error("Invalid REJECT_callback:  Not a function");
 
     logging.log(globals, "Creating react confirmation prompt");
-    let embed = new Discord.MessageEmbed( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
+    let embed = new Discord.EmbedBuilder( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
     await target_msg.react('🟢').catch(err => {throw (err)});
     await target_msg.react('🟥').catch(err => {throw (err)});
     if (target_msg.editable){
         await target_msg.edit({
             content: target_msg.content, 
-            embeds: [...(target_msg.embeds ?? []), new Discord.MessageEmbed({
+            embeds: [...(target_msg.embeds ?? []), new Discord.EmbedBuilder({
                 "footer": {
                     "text": "🟢 Accept\n🟥 Reject"
                 },
@@ -1298,10 +1328,10 @@ async function react_prompt (globals, args){
         callbacks[emote.emote] = callbacks[emote_key];
         delete callbacks[emote_key];
     }
-    let embed = new Discord.MessageEmbed( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
+    let embed = new Discord.EmbedBuilder( {color: 16777086, footer: {text: "expires in "+window_seconds+" seconds"}} );
     if (target_msg.editable){
         let embeds = [...(target_msg.embeds ?? []) ];
-        if (embedTitles.length > 0) embeds.push( new Discord.MessageEmbed({
+        if (embedTitles.length > 0) embeds.push( new Discord.EmbedBuilder({
             "description": embedTitles.join("\n"),
             "color": 4645612 
         }) );
@@ -1395,7 +1425,7 @@ async function react_controller (globals, args){
     console.log(embedTitles);
     if (target_msg.editable){
         let embeds = [...(target_msg.embeds ?? []) ];
-        if (embedTitles.length > 0) embeds.push( new Discord.MessageEmbed({
+        if (embedTitles.length > 0) embeds.push( new Discord.EmbedBuilder({
             "description": embedTitles.join("\n"),
             "color": 4645612 
         }) );

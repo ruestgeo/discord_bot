@@ -58,7 +58,8 @@ const readline = require('readline'); //for enterToExit()
 const { DateTime } = require('luxon');
 
 const Discord = require('discord.js');
-const { Intents } = Discord;
+const { IntentsBitField } = Discord;
+const { ChannelType } = require('discord.js');
 
 
 const _package = require('../package.json');
@@ -233,10 +234,10 @@ async function init (options){
     botEventEmitter.emit('Init');
     if (!client) client = new Discord.Client({
         intents: [
-            Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_EMOJIS_AND_STICKERS, 
-            Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES,
-            Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-            Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.DIRECT_MESSAGES
+            IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildEmojisAndStickers, 
+            IntentsBitField.Flags.GuildMembers, IntentsBitField.Flags.GuildPresences,
+            IntentsBitField.Flags.GuildMessages, IntentsBitField.Flags.GuildMessageReactions,
+            IntentsBitField.Flags.GuildVoiceStates, IntentsBitField.Flags.DirectMessages
         ]
         //,fetchAllMembers: true
         //,partials: ['MESSAGE','REACTION']
@@ -285,7 +286,7 @@ async function shutdown (){
         //client.off('ready', onReady);
         client.off('messageCreate', onMessage);
         client.off('error', onError);
-        client.off('rateLimit', onRateLimit);
+        client.rest.off('rateLimit', onRateLimit);
         client.off('shardReady', onShardReady);
         client.off('shardError', onShardError);
         client.off('shardReconnecting', onShardReconnecting);
@@ -395,7 +396,7 @@ function clientSetup (){
     client.once('ready', onReady);
     client.on('messageCreate', onMessage);
     client.on('error', onError);
-    client.on('rateLimit', onRateLimit);
+    client.rest.on('rateLimit', onRateLimit);
 
     client.on('shardReady', onShardReady);
     client.on('shardError', onShardError);
@@ -427,7 +428,7 @@ function onReady (){
 async function onMessage (msg) {
     if ( !msg.guild || msg.partial || msg.system || msg.webhookId ) 
         return;  //skip all partial messages, system messages, and webhook (includes ephemeral) messages 
-    if ( (msg.channel.type !== "GUILD_TEXT" && !msg.channel.isThread()) ) 
+    if ( (msg.channel.type !== ChannelType.GuildText && !msg.channel.isThread()) ) 
         return; //ignore DMs, News
 
     /* check channel auth */
@@ -1453,7 +1454,7 @@ async function selfCommand (sendMessage, reason, command, content, serverID, cha
             logging.log(globals,"ERROR during selfCommand ::  Invalid channel id");
             throw new Error("Invalid channel id");
         }
-        if (channel.type !== "GUILD_TEXT"){
+        if (channel.type !== ChannelType.GuildText){
             botEventEmitter.emit('selfCommandError', "Invalid channel type: "+channel.type);
             logging.log(globals,"ERROR during selfCommand ::  Invalid channel type: "+channel.type);
             throw new Error("Invalid channel type: "+channel.type);

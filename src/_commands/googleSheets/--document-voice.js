@@ -17,13 +17,14 @@ Made by JiJae (ruestgeo)
 
 
 const Discord = require('discord.js');
+const { ChannelType } = require('discord.js');
 const utils = require(process.cwd()+'/utils.js'); 
 const gs_utils = require(process.cwd()+'/_utils/googleSheets_utils'); 
 
 
 
 module.exports = {
-    version: 3.0,
+    version: 4.0,
     auth_level: 3,
 
             
@@ -68,7 +69,7 @@ module.exports = {
         try {
             channel = utils.resolveChannel(globals, targetChannel, server.channels, true);
         } catch (err) { throw (err); }
-        if ( channel.type !== "GUILD_VOICE" ){
+        if ( channel.type !== ChannelType.GuildVoice ){
             throw new Error("Invalid given voice channel.  Given channel ["+targetChannel+"] is type: '"+channel.type+"'");
         }
         

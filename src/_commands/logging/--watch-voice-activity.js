@@ -19,6 +19,7 @@ Made by JiJae (ruestgeo)
 //const utils = require(process.cwd()+'/utils.js'); 
 const utils = require('../../utils.js'); 
 const Discord = require('discord.js');
+const { ChannelType } = require('discord.js');
 
 
 
@@ -63,7 +64,7 @@ let shutdownTask = async (_globals) => {
 
 
 module.exports = {
-    version: 3.0,
+    version: 4.0,
     auth_level: 3,
 
 
@@ -123,7 +124,7 @@ module.exports = {
         try {
             textChannel = utils.resolveChannel(_globals, targetText, server.channels, true);
         } catch (err) { throw (err); }
-        if ( textChannel.type !== "GUILD_TEXT" ){
+        if ( textChannel.type !== ChannelType.GuildText ){
             throw new Error("Invalid given text channel.  Given channel ["+targetText+"] is type: '"+textChannel.type+"'");
         }
 
@@ -233,7 +234,7 @@ async function listenToVoiceChannelActivity(oldState, newState){
 
 /** @param {Discord.Message} msg */
 async function wva_listener(msg){
-    if ( msg.channel.type !== "GUILD_TEXT" ) return;
+    if ( msg.channel.type !== ChannelType.GuildText ) return;
     if ( msg.author.bot )  return;
     if (!listeningServers.has(msg.guild.id)) return;
     let textChannel = await client.channels.fetch( textChannels[msg.guild.id] );

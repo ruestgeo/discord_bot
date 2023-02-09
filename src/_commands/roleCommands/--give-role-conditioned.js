@@ -22,7 +22,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 3.0,
+    version: 4.0,
     auth_level: 4,
 
 

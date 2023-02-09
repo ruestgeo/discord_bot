@@ -17,13 +17,14 @@ Made by JiJae (ruestgeo)
 
 
 const Discord = require('discord.js');
+const { ChannelType } = require('discord.js');
 const utils = require(process.cwd()+'/utils.js');
 
 const outputPath = "./_output/";
 
 
 module.exports = {
-    version: 1.2,
+    version: 2.0,
     auth_level: 3,
 
 
@@ -84,7 +85,7 @@ module.exports = {
         else {
             throw ("Invalid input, please provide a message link for the source");
         }
-        if ( srcChannel.type !== "GUILD_TEXT" ){
+        if ( srcChannel.type !== ChannelType.GuildText ){
             throw new Error("Incorrect given source text channel.  Given channel ["+source+"] is type: '"+srcChannel.type+"'");
         }
         utils.botLogs(globals,"----src channel resolved");
@@ -118,7 +119,7 @@ module.exports = {
         else {
             throw ("Invalid input, please provide a message link for the destination");
         }
-        if ( dstChannel.type !== "GUILD_TEXT" ){
+        if ( dstChannel.type !== ChannelType.GuildText ){
             throw new Error("Incorrect given destination text channel.  Given channel ["+destination+"] is type: '"+dstChannel.type+"'");
         }
         utils.botLogs(globals,"----dst channel resolved");
@@ -139,7 +140,7 @@ module.exports = {
                 if (message.content.trim() !== "")   await dstChannel.send(message.content).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
                 if ( message.embeds.length > 0 ){
                     for (let embed of message.embeds){
-                        let cloneEmbed = new Discord.MessageEmbed(embed);
+                        let cloneEmbed = new Discord.EmbedBuilder(embed);
                         await dstChannel.send(cloneEmbed).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
                     }
                 }
@@ -149,7 +150,7 @@ module.exports = {
         if (before_message.content.trim() !== "")   await dstChannel.send(before_message.content).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
         if ( before_message.embeds.length > 0 ){
             for (let embed of before_message.embeds){
-                let cloneEmbed = new Discord.MessageEmbed(embed);
+                let cloneEmbed = new Discord.EmbedBuilder(embed);
                 await dstChannel.send(cloneEmbed).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
             }
         }

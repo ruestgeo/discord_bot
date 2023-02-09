@@ -21,7 +21,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 2.0,
+    version: 3.0,
     auth_level: 3,
 
 
@@ -42,7 +42,7 @@ module.exports = {
         }
         catch (err){ throw (err); }
         utils.botLogs(globals, "--creating embed with properties: "+JSON.stringify(args, null, "    "));
-        let embed = new Discord.MessageEmbed(args);
+        let embed = new Discord.EmbedBuilder(args);
         await msg.channel.send({embeds: [embed]}).catch(err => {utils.botLogs(globals, "----ERROR: "+err)});
     }   
 }

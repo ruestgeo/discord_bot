@@ -17,6 +17,7 @@ Made by JiJae (ruestgeo)
 
 
 const Discord = require('discord.js');
+const { ChannelType } = require('discord.js');
 const utils = require(process.cwd()+'/utils.js');
 const fs = require('fs'); 
 
@@ -24,7 +25,7 @@ const outputPath = "./_output/";
 
 
 module.exports = {
-    version: 1.2,
+    version: 2.0,
     auth_level: 3,
 
 
@@ -94,7 +95,7 @@ module.exports = {
             }
         }
 
-        if (textChannel.type !== "GUILD_TEXT"){
+        if (textChannel.type !== ChannelType.GuildText){
             throw new Error("Incorrect given text channel.  Given channel ["+target+"] is type: '"+textChannel.type+"'");
         }
         utils.botLogs(globals,"----channel resolved");

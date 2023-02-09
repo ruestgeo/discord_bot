@@ -20,7 +20,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 2.0,
+    version: 3.0,
     auth_level: 4,
 
 
@@ -60,7 +60,7 @@ module.exports = {
         }
         catch (err){ throw (err); }
         utils.botLogs(globals, "--creating embed with properties: "+JSON.stringify(embed_JSON, null, "    "));
-        let embed = new Discord.MessageEmbed(embed_JSON);
+        let embed = new Discord.EmbedBuilder(embed_JSON);
 
 
 
