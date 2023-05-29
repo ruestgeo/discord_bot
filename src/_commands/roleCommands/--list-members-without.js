@@ -22,7 +22,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 2.1,
+    version: 2.2,
     auth_level: 3,
 
 
@@ -40,7 +40,7 @@ module.exports = {
 
 /** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
-        let configs = globals.configs;
+        //let configs = globals.configs;
 
         
         let roles;
@@ -102,7 +102,10 @@ module.exports = {
             all += (ping ? "<@"+member.id+">  " : "")+(mode === "nickname" ? member.displayName+"#"+member.user.discriminator : (mode === "username" ? member.user.username+"#"+member.user.discriminator : member.id))+"\n";
         });
 
-        await utils.sendMessage(msg,all,false);
+        if (all.length > 0){
+            await utils.sendMessage(msg,all,false);
+        }
+        
 
         return "found "+members_count+" members without the role(s) ["+criteriaName+"]";
     }   

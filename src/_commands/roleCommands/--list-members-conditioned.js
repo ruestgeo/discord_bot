@@ -22,7 +22,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 2.2,
+    version: 2.3,
     auth_level: 3,
 
 
@@ -40,7 +40,7 @@ module.exports = {
 
 /** @param {Globals} globals   @param {Discord.Message} msg   @param {String} args   @returns {String|void} */
     func: async function (globals, msg, args){ 
-        let configs = globals.configs;
+        //let configs = globals.configs;
        
         let server_roles = await msg.guild.roles.fetch();
         let members = await msg.guild.members.fetch();
@@ -142,10 +142,13 @@ module.exports = {
             all += (ping ? "<@"+member.id+">  " : "")+(mode === "nickname" ? member.displayName+"#"+member.user.discriminator : (mode === "username" ? member.user.username+"#"+member.user.discriminator : member.id))+"\n";
         });
 
-        try {
-            await utils.sendMessage(msg, all, false);
+        if (all.length > 0){
+            try {
+                await utils.sendMessage(msg, all, false);
+            }
+            catch (err){ throw (err); }
         }
-        catch (err){ throw (err); }
+        
 
 
         return ("found "+members_count+" members that"+ 

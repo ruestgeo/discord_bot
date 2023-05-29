@@ -34,7 +34,7 @@ Made by JiJae (ruestgeo)
     pattern = pattern.replace(/[A-Za-z0-9]/g,"0");
     let iter = pattern.replace(/[^A-Za-z0-9]/g,"-");
     if (!pattern.includes("0")) return; //no pattern to generate
-    let parts = pattern.replace(/[^A-Za-z0-9]/g,"-").split("-");
+    //let parts = pattern.replace(/[^A-Za-z0-9]/g,"-").split("-");
     let uid = "";
     let idx = 0; let idxA; let len; let part;
     let rand = () => { return Math.floor((1 + Math.random()) * 0x10000).toString(hex ? 16 : 36); }
@@ -54,6 +54,7 @@ Made by JiJae (ruestgeo)
         if (idxA < 0){ idxA = pattern.length; } //end of string
         len = idxA-idx;
         if (!noCase) part = rand().split('').map( c => { return (Math.random() < 0.5 ? c : c.toUpperCase()); }).join('');
+        else part = rand();
         if (part.length > len) part = part.substring(part.length - len); //trim extra length
         uid += part;
         idx += part.length;

@@ -22,7 +22,7 @@ const utils = require(process.cwd()+'/utils.js');
 
 
 module.exports = {
-    version: 4.0,
+    version: 4.1,
     auth_level: 4,
 
 
@@ -44,7 +44,17 @@ module.exports = {
         utils.botLogs(globals,  "--verifying and resolving roles");
         
         if (args.hasOwnProperty("give-role")){
+            if (typeof args["give-role"] === "string")
+                args["give-role"] = [args["give-role"]];
+            else if (!Array.isArray(args["give-role"])){
+                utils.botLogs(globals,  "----incorrect request body");
+                throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
+            }
             args["give-role"] = args["give-role"].map(resolvable => {
+                if (typeof resolvable !== "string"){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                    throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                }
                 resolvable = resolvable.trim();
                 let role = utils.resolveRole(globals,resolvable,server_roles,true);
                 return role.id;
@@ -53,55 +63,119 @@ module.exports = {
             utils.botLogs(globals,  "----incorrect request body");
             throw ("Incorrect request body.  Please ensure that the input arguments are correct.");
         }
-        if (args.hasOwnProperty("has-role")){    
+        if (args.hasOwnProperty("has-role")){ 
+            if (typeof args["has-role"] === "string")
+                args["has-role"] = [args["has-role"]];   
             args["has-role"] = args["has-role"].map(resolvable => {
+                if (typeof resolvable !== "string"){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                    throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                }
                 resolvable = resolvable.trim();
                 let role = utils.resolveRole(globals,resolvable,server_roles,true);
                 return role.id;
             });
         }
         if (args.hasOwnProperty("missing-role")){
+            if (typeof args["missing-role"] === "string")
+                args["missing-role"] = [args["missing-role"]];
             args["missing-role"] = args["missing-role"].map(resolvable => {
+                if (typeof resolvable !== "string"){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                    throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                }
                 resolvable = resolvable.trim();
                 let role = utils.resolveRole(globals,resolvable,server_roles,true);
                 return role.id;
             });
         }
-        if (args.hasOwnProperty("missing-one-from-each-group")){
-            args["missing-one-from-each-group"] = args["missing-one-from-each-group"].map(rolegroup => 
-                rolegroup.map(resolvable => {
-                    resolvable = resolvable.trim();
-                    let role = utils.resolveRole(globals,resolvable,server_roles,true);
-                    return role.id;
-                })
-            );
-        }
-        if (args.hasOwnProperty("missing-all-from-one-group")){
-            args["missing-all-from-one-group"] = args["missing-all-from-one-group"].map(rolegroup => 
-                rolegroup.map(resolvable => {
-                    resolvable = resolvable.trim();
-                    let role = utils.resolveRole(globals,resolvable,server_roles,true);
-                    return role.id;
-                })
-            );
-        }
         if (args.hasOwnProperty("has-one-from-each-group")){
-            args["has-one-from-each-group"] = args["has-one-from-each-group"].map(rolegroup => 
-                rolegroup.map(resolvable => {
+            if (typeof args["has-one-from-each-group"] === "string")
+                args["has-one-from-each-group"] = [args["has-one-from-each-group"]];
+            args["has-one-from-each-group"] = args["has-one-from-each-group"].map(rolegroup => {
+                if (typeof rolegroup === "string"){
+                    rolegroup = [rolegroup];
+                }
+                else if (!Array.isArray(rolegroup)){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof rolegroup)+">: rolegroup");
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires an array but gave a "+(typeof resolvable));
+                }
+                return rolegroup.map(resolvable => {
+                    if (typeof resolvable !== "string"){
+                        utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                    }
                     resolvable = resolvable.trim();
                     let role = utils.resolveRole(globals,resolvable,server_roles,true);
                     return role.id;
                 })
-            );
+            });
         }
         if (args.hasOwnProperty("has-all-from-one-group")){
-            args["has-all-from-one-group"] = args["has-all-from-one-group"].map(rolegroup => 
-                rolegroup.map(resolvable => {
+            if (typeof args["has-all-from-one-group"] === "string")
+                args["has-all-from-one-group"] = [args["has-all-from-one-group"]];
+            args["has-all-from-one-group"] = args["has-all-from-one-group"].map(rolegroup => {
+                if (typeof rolegroup === "string"){
+                    rolegroup = [rolegroup];
+                }
+                else if (!Array.isArray(rolegroup)){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof rolegroup)+">: rolegroup");
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires an array but gave a "+(typeof resolvable));
+                }
+                return rolegroup.map(resolvable => {
+                    if (typeof resolvable !== "string"){
+                        utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                    }
                     resolvable = resolvable.trim();
                     let role = utils.resolveRole(globals,resolvable,server_roles,true);
                     return role.id;
                 })
-            );
+            });
+        }
+        if (args.hasOwnProperty("missing-one-from-each-group")){
+            if (typeof args["missing-one-from-each-group"] === "string")
+                args["missing-one-from-each-group"] = [args["missing-one-from-each-group"]];
+            args["missing-one-from-each-group"] = args["missing-one-from-each-group"].map(rolegroup => {
+                if (typeof rolegroup === "string"){
+                    rolegroup = [rolegroup];
+                }
+                else if (!Array.isArray(rolegroup)){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof rolegroup)+">: rolegroup");
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires an array but gave a "+(typeof resolvable));
+                }
+                return rolegroup.map(resolvable => {
+                    if (typeof resolvable !== "string"){
+                        utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                    }
+                    resolvable = resolvable.trim();
+                    let role = utils.resolveRole(globals,resolvable,server_roles,true);
+                    return role.id;
+                })
+            });
+        }
+        if (args.hasOwnProperty("missing-all-from-one-group")){
+            if (typeof args["missing-all-from-one-group"] === "string")
+                args["missing-all-from-one-group"] = [args["missing-all-from-one-group"]];
+            args["missing-all-from-one-group"] = args["missing-all-from-one-group"].map(rolegroup => {
+                if (typeof rolegroup === "string"){
+                    rolegroup = [rolegroup];
+                }
+                else if (!Array.isArray(rolegroup)){
+                    utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof rolegroup)+">: rolegroup");
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires an array but gave a "+(typeof resolvable));
+                }
+                return rolegroup.map(resolvable => {
+                    if (typeof resolvable !== "string"){
+                        utils.botLogs(globals,  "----incorrect request body\t\t <"+(typeof resolvable)+">: "+resolvable);
+                        throw ("Incorrect request body.  Please ensure that the input arguments are correct.\n Requires a string but gave a "+(typeof resolvable)+": "+resolvable);
+                    }
+                    resolvable = resolvable.trim();
+                    let role = utils.resolveRole(globals,resolvable,server_roles,true);
+                    return role.id;
+                })
+            });
         }
 
         let list;
